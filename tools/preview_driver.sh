@@ -8,9 +8,15 @@ P=$(realpath "$1"); NAME=$2
 F=$P/preview_frames; mkdir -p "$F"
 PY=/root/bpyenv/bin/python; R=$(dirname "$0")/render_frames.py
 AUDIO=$P/gpu_render/soundtrack.flac
-run_pass() {   # $1 = first frame (1 odd, 2 even)
-    $PY "$R" "$P/$NAME.blend" "$F" "$1-900:2" --scale 50 --samples 4 --skip-existing &
-    $PY "$R" "$P/$NAME.blend" "$F" "$(( $1 + 900 ))-1800:2" --scale 50 --samples 4 --skip-existing &
+run_pass() {   # $1 = first frame (1 odd, 2 even): missing frames dealt out alternately, so both workers finish together
+    local a="" b="" k=0
+    for f in $(seq "$1" 2 1800); do
+        [ -s "$F/frame_$(printf %04d "$f").png" ] && continue
+        if [ $((k % 2)) = 0 ]; then a="$a,$f"; else b="$b,$f"; fi
+        k=$((k + 1))
+    done
+    [ -n "$a" ] && $PY "$R" "$P/$NAME.blend" "$F" "${a#,}" --scale 50 --samples 4 --skip-existing &
+    [ -n "$b" ] && $PY "$R" "$P/$NAME.blend" "$F" "${b#,}" --scale 50 --samples 4 --skip-existing &
     wait
 }
 encode() {   # $1 = output, $2 = 12 or 24
