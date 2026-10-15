@@ -9,14 +9,31 @@ F=$P/preview_frames; mkdir -p "$F"
 PY=/root/bpyenv/bin/python; R=$(dirname "$0")/render_frames.py
 AUDIO=$P/gpu_render/soundtrack.flac
 run_pass() {   # $1 = first frame (1 odd, 2 even): missing frames dealt out alternately, so both workers finish together
-    local a="" b="" k=0
-    for f in $(seq "$1" 2 1800); do
-        [ -s "$F/frame_$(printf %04d "$f").png" ] && continue
-        if [ $((k % 2)) = 0 ]; then a="$a,$f"; else b="$b,$f"; fi
-        k=$((k + 1))
-    done
-    worker "${a#,}" &
-    worker "${b#,}" &
+    # Frames in HEAVY (memory hungry: two at once hit the memory limit) all go to worker A; the rest are
+    # dealt to whichever worker has less estimated work, using measured seconds per frame per shot.
+    local lists a b
+    lists=$(python3 - "$F" "$1" <<'PYEOF'
+import os, sys
+F, first = sys.argv[1], int(sys.argv[2])
+heavy = range(122, 486)
+cost = lambda f: 150 if f in heavy else 30 if f < 122 or 486 <= f < 1096 else 48 if f < 1262 else 115
+miss = [f for f in range(first, 1801, 2) if not (os.path.exists(f"{F}/frame_{f:04d}.png") and os.path.getsize(f"{F}/frame_{f:04d}.png"))]
+a = [f for f in miss if f in heavy]
+b = []
+la, lb = sum(map(cost, a)), 0
+for f in (f for f in miss if f not in heavy):
+    if la <= lb:
+        a.append(f); la += cost(f)
+    else:
+        b.append(f); lb += cost(f)
+print(",".join(map(str, sorted(a))))
+print(",".join(map(str, sorted(b))))
+PYEOF
+)
+    a=$(echo "$lists" | sed -n 1p); b=$(echo "$lists" | sed -n 2p)
+    echo "$(date -u +%H:%M) worker A: $(echo "$a" | tr ',' '\n' | grep -c .) frames, worker B: $(echo "$b" | tr ',' '\n' | grep -c .) frames"
+    [ -n "$a" ] && worker "$a" &
+    [ -n "$b" ] && worker "$b" &
     wait
 }
 worker() {   # $1 = comma list; a fresh Blender every 40 frames (memory grows per frame and got OOM killed)
