@@ -1,0 +1,23 @@
+Where do the fish hide at the beach? Not just anywhere in the surf. Here's how to read a beach like a map.
+
+Why the surf isn't all the same:
+• To fish, the surf zone is mostly a place to feed and travel. A global review of 152 studies found beaches work as feeding grounds and travel routes, but may not be widely used as nurseries or spawning sites.
+• Waves sculpt the bottom into sandbars with deeper troughs between the bars and the beach, and the troughs hold a different mix of fish than the bars.
+
+Where to look:
+• The jetty. Rock walls hold fish: on breakwaters in an Australian estuary, researchers counted 1.9 to 7.6 times more fish and 1.3 to 2.6 times more species than on nearby natural reefs. Rocks also break the current. On reefs, small fish shelter in holes and behind coral heads, where the flow drops by 60 to 100%. Work your jig low along the base of the rocks.
+• The trough. The deeper gutter between the beach and the sandbar where the waves break: the first deep water out from your feet.
+• The rip. A rip is a channel of water flowing away from shore, out through the surf and past the breaking waves. Its signs: a gap where waves aren't breaking, water that's a different color, a channel of churning, choppy water, or a line of foam and debris moving steadily out to sea. Not every rip shows them. From the beach, cast into it and let the current sweep your jig out.
+
+Never wade or swim into a rip. If one pulls you out, don't fight it: swim parallel to the shore until you're free, then angle back in. If you can't, float and wave or yell for help.
+
+How to work the jig (angler technique, not research):
+• Bounce: short hops off the bottom that kick up puffs of sand.
+• Steady: slow and even, just off the sand, at the fish's eye level.
+• Lift and drop: lift, let it flutter down, and watch your line as it sinks.
+
+One cast. Where does it go? The structure, the trough or the rip.
+
+Sources: Olds et al. (2018), "The ecology of fish in the surf zones of ocean beaches: A global review", Fish and Fisheries 19: 78 to 89; Borland et al. (2017), "Habitat type and beach exposure shape fish assemblages in the surf zones of ocean beaches", Marine Ecology Progress Series 570: 203 to 211; Wright & Short (1984), "Morphodynamic variability of surf zones and beaches: A synthesis", Marine Geology 56: 93 to 118; Fowler & Booth (2013), PLoS ONE 8(9): e75790; Johansen, Bellwood & Fulton (2008), Marine Ecology Progress Series 360: 219 to 226; NOAA National Weather Service, rip current safety, weather.gov/safety/ripcurrent. The beach, rip and fish in the film are simulated: depths and currents on screen are illustrative, and the fish models are illustrative, not a guide to which species live on your beach.
+
+3D assets: rocks, seabed, sand, seagrass, water and snapper (modified) from Babylon.js Assets, CC BY 4.0; barramundi © 2017 Microsoft, CC0, via Khronos glTF Sample Assets.

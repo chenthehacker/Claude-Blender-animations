@@ -1,0 +1,27 @@
+Find the weed line, find the mahi. Here's how offshore anglers troll a line of floating sargassum, what happens at the strike, and how to let the fish go in good shape.
+
+Why the weed line:
+• Mahi gather near floating things. NOAA Fisheries notes that females and smaller males are commonly found near natural and artificial floating objects, including floating Sargassum.
+• The weed holds far more small fish than open water. In a Gulf Stream survey off North Carolina, Sargassum samples held 18,799 fish of at least 80 species, against 2,706 fish of 60 species in open water samples. Most were juveniles.
+• Mahi eat what lives there. In 2,632 stomachs from the southeastern and Gulf coasts of the United States, dolphin were found feeding at the surface on fishes, crustaceans, insects and plants associated with floating Sargassum. A North Atlantic study found flyingfish, swimming crabs and other dolphinfish among their main prey.
+
+The spread (angler technique, not research):
+• Outriggers spread the lines wide: two baits ride out on the riggers and two close on the flat lines.
+• Rigged ballyhoo and skirted lures skip on top and dive, trailing bubbles.
+
+The strike (angler technique, not research):
+• When a fish hits, the line pops free of the release clip and you fight it straight off the rod tip.
+• That moment of slack gives the fish time to grab the bait and turn it before swallowing.
+• Set your strike drag with a scale. A common rule: about 20 percent of line strength for mono up to 20 lb test, 25 percent for 30 to 50 lb mono, and 30 percent for 80 to 130 lb mono.
+
+Release it right (NOAA Fisheries best practices):
+• Unhook the fish in the water whenever you can.
+• If it has to come out, aim for less than 60 seconds.
+• Handle it as little as possible, with wet hands, a wet soft knotless or rubber net, and a dehooker ready.
+• Bag and size limits differ by region and change over time, so check your local rules before you keep one.
+
+Find the weed line. Find the mahi. Let it go right.
+
+Sources: NOAA Fisheries, Atlantic Mahi Mahi species profile, fisheries.noaa.gov; Casazza & Ross (2008), "Fishes associated with pelagic Sargassum and open water lacking Sargassum in the Gulf Stream off North Carolina", Fishery Bulletin 106(4): 348 to 363; Manooch, Mason & Nelson (1984), "Food and gastrointestinal parasites of dolphin Coryphaena hippurus collected along the southeastern and Gulf coasts of the United States", Bulletin of the Japanese Society of Scientific Fisheries 50(9): 1511 to 1525; Rudershausen et al. (2010), "Feeding ecology of blue marlins, dolphinfish, yellowfin tuna, and wahoos from the North Atlantic Ocean and comparisons with other oceans", Transactions of the American Fisheries Society 139: 1335 to 1359; The Tackle Room, How to Set Up Outriggers for Trolling, thetackleroom.com; Florida Sportsman, no rigger trolling tips (22 May 2018), floridasportsman.com; George Poveromo, How to Manage Your Drag, Salt Water Sportsman, saltwatersportsman.com; NOAA Fisheries, Catch and Release Fishing Best Practices, fisheries.noaa.gov. The boat, crew, fish, baits, weed line and sea in the film are simulated: depths, distances and speeds on screen are illustrative, and the 6 knot trolling speed was chosen for the animation, not as a recommendation. The mahi model follows published descriptions of the species (FishBase; Fishes of Australia; Florida Museum of Natural History).
+
+3D assets: all models are procedural; water ripple texture from Babylon.js Assets, CC BY 4.0.

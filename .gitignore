@@ -1,0 +1,7 @@
+# Render outputs (regenerable; keep the repo light)
+*.blend1
+**/gpu_render/frames/
+**/preview.mp4
+build1_offshore_fishing/test_frames/
+build1_saltwater_fishing/test_frames/
+__pycache__/
