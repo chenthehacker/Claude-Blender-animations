@@ -5,3 +5,8 @@
 build1_offshore_fishing/test_frames/
 build1_saltwater_fishing/test_frames/
 __pycache__/
+build_sockeye_masterclass/test_frames/*.png
+build_sockeye_masterclass/test_frames/*.txt
+**/preview_frames/
+**/preview_draft_12fps.mp4
+**/preview_render.log

@@ -5,7 +5,8 @@ Blender 5.2 headless, with on-screen callouts, a synthesized soundtrack, a thumb
 
 ## Environment
 
-- Blender runs as the pip module `bpy` 5.2.2 in `/root/bpyenv` (with numpy, scipy). If missing: `bash tools/setup_env.sh`.
+- Blender runs as the pip module `bpy` 5.2.2 in `/root/bpyenv` (with numpy, scipy). If missing, or EEVEE fails with
+  "Couldn't open libEGL.so.1": `bash tools/setup_env.sh` (installs Mesa EGL too).
   Run scene scripts with `/root/bpyenv/bin/python script.py ...` (not `blender`). System `python3` has Pillow, no scipy.
 - ffmpeg 6.1 is on PATH. EEVEE renders on the CPU here (llvmpipe): about 4 to 8 min per full res frame.
 - Background Bash commands are capped at 2 h; long renders go in chained background batches.
@@ -21,6 +22,9 @@ Blender 5.2 headless, with on-screen callouts, a synthesized soundtrack, a thumb
   `gpu_render/` (render_gpu.py + README for the user's GPU), `caption.txt`, `thumbnail.*`.
 - `build1_saltwater_fishing/` uses imported glTF assets (rocks, snapper, barramundi).
 - `build1_ocean_fishing/` is the first, low-poly version.
+- `build_sockeye_masterclass/` river drift fishing (sockeye): imported Higgsfield/Tripo sockeye GLB, CesiumMan angler
+  reposed with IK, over-under split shot (lens on the waterline, per-pixel fog via scene["split"]), Playfair serif
+  captions with gold italic accents. Unattended preview render: `tools/preview_driver.sh` (detached, resumable).
 - `tools/`: `render_frames.py` (test frames, timings, `--no-hud` thumbnail plates), `contact_sheet.py`,
   `thumbnail.py` (channel thumbnail style), `package_gpu.sh` (GPU zip), `setup_env.sh`.
 
@@ -64,6 +68,11 @@ Audio: `/root/bpyenv/bin/python offshore_audio.py events.json out.wav`, then FLA
 - Standard view transform clips the bright horizon sky to flat white: compress only camera rays
   (Light Path "Is Camera Ray"), preserving hue (scale by the brightest channel).
 - Script must run in stock Blender too: no scipy in scene scripts (numpy only).
+- glTF imports keep the Y-up to Z-up fix in the armature's rotation_quaternion: compose new rotations on top of it.
+- Per-frame cost here is mostly scene sync and sun shadows, not pixels: 25% scale is barely faster than 50%.
+  Each EEVEE process needs about 5 GB here, so run at most two in parallel (about 1.7x throughput).
+- Underwater, hide everything above the surface (it is opaque from below); fewer, stronger shafts; cobbles cast no shadow.
+- Never wait on renders with `pgrep -f render_frames` inside the same shell line: it matches itself and never exits.
 
 ## Rules
 

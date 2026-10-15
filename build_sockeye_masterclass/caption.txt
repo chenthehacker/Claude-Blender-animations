@@ -1,0 +1,24 @@
+Stop wasting your day: the sockeye are probably passing right behind you. Here's where they hold, how the drift rig works, and what makes a fish legal to keep.
+
+Where they travel:
+• Sockeye travel very close to shore. Alaska Department of Fish and Game notes that inexperienced anglers often wade or cast too far out, not realizing the fish are probably passing behind them, which is why most sockeye fishing happens from the bank.
+• They hold in slower water before running the riffles. ADF&G names pools just downstream of shallow riffles, and the main river close to shore, as the most productive spots.
+
+The drift (angler technique, not research):
+• Flip the fly 10 to 15 feet upstream into the current at about 45 degrees.
+• Let it dead drift with the current to its farthest downstream point, then retrieve and repeat.
+• Use enough weight that the fly bounces very near the bottom.
+• On Alaska's Russian River the legal tackle is one unweighted, single hook artificial fly with a gap of 3/8 inch or less, and any weight must be at least 18 inches ahead of the fly.
+
+Why they take it:
+• Salmon stop feeding once they reenter fresh water, so they are hard to catch, but they will sometimes strike at lures (National Park Service, Katmai).
+
+Keep it legal:
+• In Alaska only a fish hooked in the mouth is legally hooked. A fish hooked anywhere else is snagged and must be released immediately.
+• Rules, seasons and limits change every year and differ by river. Check your current local regulations before you fish.
+
+Fish close to shore. Bounce the bottom. Keep only mouth hooked fish.
+
+Sources: Alaska Department of Fish and Game, Russian River sport fishing guide and Russian River regulations summary, adfg.alaska.gov; Alaska Department of Fish and Game, Reel Times newsletter and statewide sport fishing regulations on snagging, adfg.alaska.gov; National Park Service, Katmai National Park and Preserve, Sockeye Salmon Frequently Asked Questions, nps.gov; U.S. Fish and Wildlife Service, Sockeye Salmon fact sheet, fws.gov. The river, fish, angler and tackle in this film are simulated: the river layout, depths, current and distances are illustrative, the weight and fly are drawn larger than life so they read on a phone, and the turquoise water is an artistic choice.
+
+3D assets: sockeye model generated with Higgsfield (Tripo); angler body from Cesium Man by Cesium, Khronos glTF Sample Assets, CC BY 4.0 (modified); rock and water ripple textures from Babylon.js Assets, CC BY 4.0; fonts Inter and Playfair Display, SIL Open Font License.
