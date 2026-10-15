@@ -15,9 +15,16 @@ run_pass() {   # $1 = first frame (1 odd, 2 even): missing frames dealt out alte
         if [ $((k % 2)) = 0 ]; then a="$a,$f"; else b="$b,$f"; fi
         k=$((k + 1))
     done
-    [ -n "$a" ] && $PY "$R" "$P/$NAME.blend" "$F" "${a#,}" --scale 50 --samples 4 --skip-existing &
-    [ -n "$b" ] && $PY "$R" "$P/$NAME.blend" "$F" "${b#,}" --scale 50 --samples 4 --skip-existing &
+    worker "${a#,}" &
+    worker "${b#,}" &
     wait
+}
+worker() {   # $1 = comma list; a fresh Blender every 40 frames (memory grows per frame and got OOM killed)
+    local list=($(echo "$1" | tr ',' ' ')) i
+    for ((i = 0; i < ${#list[@]}; i += 40)); do
+        local chunk=$(IFS=,; echo "${list[*]:i:40}")
+        $PY "$R" "$P/$NAME.blend" "$F" "$chunk" --scale 50 --samples 4 --skip-existing
+    done
 }
 encode() {   # $1 = output, $2 = 12 or 24
     if [ "$2" = 12 ]; then
