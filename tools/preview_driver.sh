@@ -34,6 +34,8 @@ encode() {   # $1 = output, $2 = 12 or 24
 }
 echo "$(date -u +%H:%M) pass 1 (odd frames)"; run_pass 1
 n=$(ls "$F"/frame_*.png 2>/dev/null | wc -l); echo "$(date -u +%H:%M) frames on disk: $n"
+odd=0; for f in $(seq 1 2 1799); do [ -s "$F/frame_$(printf %04d "$f").png" ] && odd=$((odd + 1)); done
+if [ "$odd" -lt 900 ]; then echo "$(date -u +%H:%M) pass 1 incomplete ($odd of 900 odd frames): stopping"; exit 1; fi
 [ ! -e "$P/preview_draft_12fps.mp4" ] && encode "$P/preview_draft_12fps.mp4" 12
 echo "$(date -u +%H:%M) pass 2 (even frames)"; run_pass 2
 n=$(ls "$F"/frame_*.png 2>/dev/null | wc -l); echo "$(date -u +%H:%M) frames on disk: $n"
