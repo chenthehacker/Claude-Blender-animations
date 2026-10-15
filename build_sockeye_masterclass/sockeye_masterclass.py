@@ -3104,7 +3104,7 @@ def under_state(frames):
     return {f: (1.0 if p.z < -0.001 else 0.0) for f, (p, _t, _q) in frames.items()}
 
 
-def key_scene_props(frames, toggles, water, above_only=()):
+def key_scene_props(frames, toggles, water, above_only=(), under_only=()):
     """cam_under and split drive fog, beams and silt; the backdrop and underwater effects swap while a wipe
     is opaque; the surface itself is hidden in the over-under shot and while a wipe hides a crossing."""
     sc = bpy.context.scene
@@ -3128,6 +3128,15 @@ def key_scene_props(frames, toggles, water, above_only=()):
         prev = None
         for f in range(1, FRAME_END + 1):
             vis = ((st[f] > 0.5) or (SPLIT[0] <= f <= SPLIT[1])) == show_when_under
+            if vis != prev:
+                ob.hide_render = not vis
+                key(ob, "hide_render", f)
+                prev = vis
+    # Underwater sun shafts: never in the over-under shot (the lens sits at their tops: full screen overdraw)
+    for ob in under_only:
+        prev = None
+        for f in range(1, FRAME_END + 1):
+            vis = st[f] > 0.5 and not SPLIT[0] <= f <= SPLIT[1]
             if vis != prev:
                 ob.hide_render = not vis
                 key(ob, "hide_render", f)
@@ -3994,7 +4003,7 @@ def build_scene():
     susp = build_suspended(c_fx, M)
     zone, lane = build_zone_and_lane(c_fx, M)
     above_only = [forest, far, act["spray"]] + [o for o in fx if o.name.startswith(("Mist", "SunRay"))]
-    under = key_scene_props(frames, [(back, True), (beams, True)] + [(o, True) for o in susp], water, above_only)
+    under = key_scene_props(frames, [(back, True)] + [(o, True) for o in susp], water, above_only, [beams])
     shells = gear_highlights(c_gear, M, act)
     hud = Hud(cam, c_cam, M, frames)
     build_overlays(hud, frames, act)
