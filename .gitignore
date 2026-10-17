@@ -12,3 +12,5 @@ build_sockeye_masterclass/test_frames/*.txt
 **/preview_render.log
 **/preview_draft_12fps_small.mp4
 **/preview_small.mp4
+build_tackle_box_masterclass/test_frames/*.png
+build_tackle_box_masterclass/test_frames/*.log

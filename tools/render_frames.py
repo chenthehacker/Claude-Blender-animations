@@ -43,14 +43,16 @@ def frame_list(spec):
 
 
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(a.blend))
-sc = bpy.context.scene
+sc = bpy.data.scenes.get("Main") or bpy.context.scene   # overlay builds keep their text in a second scene
+others = [s for s in bpy.data.scenes if s != sc]
 if a.no_hud and "HUD" in bpy.data.objects:
     hud = bpy.data.objects["HUD"]
     for o in [hud, *hud.children_recursive, *[o for o in bpy.data.objects if o.name.startswith("Hi")]]:
         if o.animation_data:
             o.animation_data_clear()          # drops keyed hide_render/alpha so it stays hidden
         o.hide_render = True
-sc.render.resolution_percentage = a.scale
+for s in [sc, *others]:
+    s.render.resolution_percentage = a.scale
 if a.samples:
     sc.eevee.taa_render_samples = a.samples
 if a.no_blur:
@@ -61,7 +63,9 @@ for f in frame_list(a.frames):
     if a.skip_existing and os.path.exists(path) and os.path.getsize(path) > 0:
         continue
     t = time.time()
+    for s in others:
+        s.frame_current = f
     sc.frame_set(f)
     sc.render.filepath = path
-    bpy.ops.render.render(write_still=True)
+    bpy.ops.render.render(write_still=True, scene=sc.name)
     print(f"rendered {f} in {time.time() - t:.1f}s", flush=True)
