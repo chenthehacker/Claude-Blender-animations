@@ -1,0 +1,280 @@
+{
+ "fps": 24,
+ "frames": 1320,
+ "wipes": [
+  [
+   154,
+   161
+  ],
+  [
+   562,
+   569
+  ],
+  [
+   944,
+   951
+  ],
+  [
+   1142,
+   1149
+  ]
+ ],
+ "cuts": [
+  158,
+  566,
+  948,
+  1146
+ ],
+ "overlays": [
+  [
+   -12,
+   "caption",
+   "Stop carrying a *50-pound* tackle box full of junk."
+  ],
+  [
+   110,
+   "caption",
+   "Here's how to pack like a *pro.*"
+  ],
+  [
+   148,
+   "wipe",
+   "wipe"
+  ],
+  [
+   162,
+   "caption",
+   "First, ditch the *chaos.*"
+  ],
+  [
+   211,
+   "badge",
+   "THE CORE LAYOUT"
+  ],
+  [
+   219,
+   "caption",
+   "Organize by *water column,* not brand."
+  ],
+  [
+   296,
+   "caption",
+   "Top tray: *surface topwaters.*"
+  ],
+  [
+   298,
+   "pin",
+   "surface"
+  ],
+  [
+   387,
+   "caption",
+   "Middle: *suspending jerkbaits.*"
+  ],
+  [
+   395,
+   "pin",
+   "mid-column"
+  ],
+  [
+   471,
+   "caption",
+   "Bottom: *heavy jigs.*"
+  ],
+  [
+   479,
+   "pin",
+   "bottom"
+  ],
+  [
+   556,
+   "wipe",
+   "wipe"
+  ],
+  [
+   568,
+   "badge",
+   "THE CLARITY RULE"
+  ],
+  [
+   572,
+   "caption",
+   "One golden rule: *water clarity.*"
+  ],
+  [
+   701,
+   "caption",
+   "Murky water? *High contrast,* heavy vibration."
+  ],
+  [
+   707,
+   "pin",
+   "bright + loud"
+  ],
+  [
+   802,
+   "caption",
+   "Crystal clear? *Natural ghost patterns.*"
+  ],
+  [
+   810,
+   "pin",
+   "natural + subtle"
+  ],
+  [
+   938,
+   "wipe",
+   "wipe"
+  ],
+  [
+   950,
+   "badge",
+   "THE FORAGE MATCH"
+  ],
+  [
+   954,
+   "caption",
+   "Match your profile to the *local forage.*"
+  ],
+  [
+   966,
+   "pin",
+   "BAITFISH"
+  ],
+  [
+   978,
+   "pin",
+   "LURE"
+  ],
+  [
+   1034,
+   "caption",
+   "Small baitfish? *Downsize.*"
+  ],
+  [
+   1078,
+   "pin",
+   "matched"
+  ],
+  [
+   1136,
+   "wipe",
+   "wipe"
+  ],
+  [
+   1148,
+   "badge",
+   "THE CORE LAYOUT"
+  ],
+  [
+   1148,
+   "headline",
+   "RECAP"
+  ],
+  [
+   1154,
+   "caption",
+   "Lightweight, tactical, *ready for anything.*"
+  ],
+  [
+   1156,
+   "badge",
+   "THE CLARITY RULE"
+  ],
+  [
+   1164,
+   "badge",
+   "THE FORAGE MATCH"
+  ],
+  [
+   1213,
+   "cta",
+   "SUBSCRIBE FOR MORE MASTERCLASSES"
+  ]
+ ],
+ "snaps": [
+  96,
+  98,
+  101,
+  103,
+  106,
+  108,
+  112,
+  114,
+  117,
+  119,
+  122,
+  124,
+  126,
+  128,
+  131,
+  133,
+  136,
+  138
+ ],
+ "junk": [
+  70,
+  71,
+  72,
+  73,
+  75,
+  76,
+  77,
+  79,
+  80,
+  81,
+  83,
+  84,
+  85,
+  86,
+  88,
+  89
+ ],
+ "trays": [
+  [
+   62,
+   92
+  ],
+  [
+   68,
+   98
+  ]
+ ],
+ "spin": [
+  566,
+  947
+ ],
+ "rings": [
+  705,
+  802
+ ],
+ "shrink": 1068,
+ "vo_start": {
+  "1": 2,
+  "2": 164,
+  "3": 572,
+  "4": 954,
+  "5": 1140
+ },
+ "vo_len": {
+  "1": 6.348,
+  "2": 16.274,
+  "3": 14.994,
+  "4": 7.471,
+  "5": 6.034
+ },
+ "vo_text": {
+  "1": "Stop carrying a fifty pound tackle box full of junk you never use. Here's how to pack like a pro.",
+  "2": "First, ditch the chaos. Never organize by brand. Organize by water column. Top tray: surface topwaters for low-light feeding. Middle: suspending jerkbaits to cover ground. Bottom: heavy jigs to anchor your setup.",
+  "3": "Next, choosing the right lure comes down to one golden rule: water clarity. Murky water? Throw high-contrast brights with heavy vibration. Crystal clear? Switch to subtle, natural ghost patterns that fool line-shy fish.",
+  "4": "Always match your profile size to the local forage. If the baitfish are small, downsize your presentation immediately.",
+  "5": "Lightweight, tactical, and ready for anything. Hit subscribe for more insider masterclasses."
+ },
+ "beats": [
+  1,
+  158,
+  566,
+  948,
+  1146
+ ]
+}

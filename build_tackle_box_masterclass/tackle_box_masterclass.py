@@ -83,7 +83,7 @@ PIN_RED = srgb(240, 96, 80)
 GLOW = srgb(255, 200, 96)
 TEAL = srgb(12, 86, 92)
 
-CUT1, CUT2, CUT3, CUT4 = 150, 544, 972, 1188
+CUT1, CUT2, CUT3, CUT4 = 158, 566, 948, 1146
 WIPES = [(CUT1 - 4, CUT1 + 3), (CUT2 - 4, CUT2 + 3), (CUT3 - 4, CUT3 + 3), (CUT4 - 4, CUT4 + 3)]   # opaque a-2..b+2
 SEGMENTS = [(1, CUT1 - 1), (CUT1, CUT2 - 1), (CUT2, CUT3 - 1), (CUT3, CUT4 - 1), (CUT4, FRAME_END)]
 
@@ -93,8 +93,8 @@ S4 = Vector((8.0, 0.0, 0.15))    # set 4: the forage match
 # Voiceover: five clips (voiceover/vo1..vo5), one per beat. VO_START is the frame each clip starts on;
 # VO_LEN its length in seconds as measured from the files (vo_timing.json, written by tackle_box_audio.py,
 # overrides these defaults). Caption timings below are offsets into each clip.
-VO_START = {1: 2, 2: 156, 3: 550, 4: 978, 5: 1180}
-VO_LEN = {1: 6.08, 2: 15.68, 3: 16.96, 4: 7.84, 5: 5.6}
+VO_START = {1: 2, 2: 164, 3: 572, 4: 954, 5: 1140}
+VO_LEN = {1: 6.35, 2: 16.27, 3: 14.99, 4: 7.47, 5: 6.03}
 VO_TEXT = {
     1: "Stop carrying a fifty pound tackle box full of junk you never use. Here's how to pack like a pro.",
     2: "First, ditch the chaos. Never organize by brand. Organize by water column. Top tray: surface topwaters "
