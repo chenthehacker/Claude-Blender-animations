@@ -26,9 +26,9 @@ book pages, an open book) inside a rounded square; the word is Playfair Display,
 italic like the channel's thumbnails. The fonts are looked up in a 'fonts' folder next to this script first.
 
 Fish (low to mid poly, smooth shaded, subdivided once): upper left, freshwater (sockeye salmon in spawning
-colours with the hooked jaw and hump; black sea bass; arapaima); upper right, pelagic and reef (mahi mahi,
+colours with the hooked jaw and hump; a king salmon; black sea bass; a channel catfish towards the middle); upper right, pelagic and reef (mahi mahi,
 blue marlin, reef fish); far background, a whale shark; lower left, deep sea (anglerfish with a glowing lure
-and its own point light); lower right, open ocean (great white shark, a swirling school of tuna). The brief placed the shark both "upper background"
+and its own point light, lanternfish) with a large arapaima behind; lower right, open ocean (great white shark, a swirling school of tuna). The brief placed the shark both "upper background"
 and "lower right": it is in the lower right quadrant, set back in depth and rising towards the upper right.
 """
 
@@ -51,8 +51,14 @@ SENSOR = 36.0                           # mm, horizontal fit
 PX_PER_UNIT = 100.0                     # on the focal plane y = 0
 CAM_DIST = (RES_X / PX_PER_UNIT) * LENS / SENSOR      # 71.1 units: the plane is 25.6 units wide
 SAMPLES = 256
+WHALE_POS, WHALE_SCALE = (-10.0, 8.0, -0.2), 0.322    # left of the branding, swimming right (about 5.8 units long on screen, bulkier)
+MARLIN_POS, MARLIN_SCALE = (10.2, 8.0, 0.05), 0.756    # right of it, swimming left (about the same length with the bill)
+BRAND_HEIGHT = 0.68                     # emblem height as a fraction of the 423 px strip
 WATER_DENSITY = 0.02
 EMBLEM_SHAPE = "rounded_square"         # or "circle" (the channel avatar is a circle)
+LOGO_IMAGE = "fishdex_logo.png"         # the channel logo, looked up in assets/ next to this script
+LOGO_CENTER = (0.5, 0.514)              # emblem centre in the image (u, v): it sits slightly above the middle
+LOGO_CROP = 0.67                        # fraction of the image shown on the plate (the file has wide margins)
 SEED = 7
 
 BLUE_DEEP = (0.004, 0.025, 0.07)
@@ -472,34 +478,82 @@ def make_tuna(col, M, name="Tuna"):
 
 
 
-def make_marlin(col, M):
-    """Blue marlin: long spear bill, tall sail-like front dorsal, deeply forked tail, cobalt back, silver belly."""
-    L, h, w = 6.0, 0.62, 0.4
-    rings = body_rings(L, h, w, peak=0.3, nose=0.6, tail=0.05)
+def make_king_salmon(col, M):
+    """King (Chinook) salmon: the largest Pacific salmon; silver sides, a blue-green to olive back with black
+    spots on the back and the tail, no spawning hump."""
+    L, h, w = 3.7, 0.46, 0.26
+    rings = body_rings(L, h, w, peak=0.33, nose=0.5, tail=0.08)
+    bm = bmesh.new()
+    loft(bm, rings)
+    eyes(bm, L / 2 - 0.4, w, 0.1, 0.07, 1)
+    fin(bm, tail_fork(L, 0.6, 0.55), 0.03, 2)
+    fin(bm, [(0.25, 0.42), (-0.1, 0.85), (-0.4, 0.45)], 0.03, 2)
+    fin(bm, [(-1.15, 0.36), (-1.25, 0.5), (-1.35, 0.34)], 0.02, 2)
+    fin(bm, [(-0.75, -0.32), (-0.9, -0.55), (-1.15, -0.3)], 0.02, 2)
+    return finish_fish("KingSalmon", bm, col, [M["king"], M["eye"], M["fin_king"]], rings)
+
+
+def make_catfish(col, M):
+    """Channel catfish: broad flat head, long whisker barbels round the mouth, smooth scaleless grey-olive skin,
+    a forked tail and a small adipose fin."""
+    L, h, w = 3.4, 0.36, 0.42
+    rings = body_rings(L, h, w, peak=0.22, nose=0.35, tail=0.12)
+    rings = [(x, wd * (1.15 if x > L / 5 else 1.0), hh * (0.75 if x > L / 5 else 1.0), zc) for x, wd, hh, zc in rings]
     bm = bmesh.new()
     loft(bm, rings, n=22)
-    tube(bm, [(L / 2 - 0.1, 0, 0.05), (L / 2 + 0.7, 0, 0.03), (L / 2 + 1.7, 0, 0.0)], lambda u: 0.07 * (1 - 0.9 * u), mat=0)
-    eyes(bm, L / 2 - 0.45, w * 0.8, 0.12, 0.1, 1)
-    fin(bm, [(L / 2 - 0.9, 0.5), (L / 2 - 1.2, 1.6), (L / 2 - 1.8, 1.45), (L / 2 - 2.6, 0.9), (L / 2 - 3.4, 0.45)], 0.05, 2)
-    fin(bm, tail_fork(L, 1.5, 1.2), 0.05, 2)
+    eyes(bm, L / 2 - 0.42, w * 0.95, 0.1, 0.06, 1)
+    for s, zb, lb in ((1, -0.05, 1.2), (-1, -0.05, 1.2), (1, -0.2, 0.5), (-1, -0.2, 0.5), (1, -0.25, 0.4), (-1, -0.25, 0.4)):
+        base = Vector((L / 2 - 0.12, s * 0.22, zb))
+        pts = [base + Vector((0.25 * lb * t - 0.6 * lb * t * t, s * 0.7 * lb * t, -0.35 * lb * t * t)) for t in
+               (0.0, 0.25, 0.5, 0.75, 1.0)]
+        tube(bm, pts, lambda u: 0.035 * (1 - 0.8 * u), segs=5, mat=2)          # barbels (whiskers)
+    fin(bm, [(0.75, 0.3), (0.55, 0.85), (0.3, 0.32)], 0.03, 2)
+    fin(bm, [(-0.95, 0.3), (-1.1, 0.48), (-1.3, 0.28)], 0.02, 2)
+    fin(bm, [(-0.3, -0.3), (-0.6, -0.52), (-1.25, -0.25)], 0.03, 2)
+    fin(bm, tail_fork(L, 0.55, 0.55), 0.03, 2)
     for s in (1, -1):
-        fin(bm, [(L / 2 - 1.4, 0.0), (L / 2 - 2.6, s * 1.0), (L / 2 - 2.3, 0.0)], 0.04, 2, plane="XY", offset=(0, s * 0.3, -0.25))
+        fin(bm, [(0.9, 0.0), (0.4, s * 0.6), (0.5, 0.0)], 0.02, 2, plane="XY", offset=(0, s * 0.3, -0.2))
+    return finish_fish("ChannelCatfish", bm, col, [M["catfish"], M["eye"], M["fin_cat"]], rings)
+
+
+def make_marlin(col, M):
+    """Blue marlin: long spear bill, tall sail-like front dorsal rising right behind the head, deeply forked
+    tail, cobalt back over silver sides."""
+    L, h, w = 6.0, 0.86, 0.5
+    rings = body_rings(L, h, w, peak=0.3, nose=0.55, tail=0.05)
+    bm = bmesh.new()
+    loft(bm, rings, n=24)
+    tube(bm, [(L / 2 - 0.15, 0, 0.12), (L / 2 + 0.8, 0, 0.08), (L / 2 + 1.9, 0, 0.02)], lambda u: 0.09 * (1 - 0.92 * u), mat=0)
+    eyes(bm, L / 2 - 0.5, w * 0.85, 0.16, 0.12, 1)
+    fin(bm, [(L / 2 - 0.85, 0.6), (L / 2 - 1.15, 2.05), (L / 2 - 1.5, 2.1), (L / 2 - 2.0, 1.7), (L / 2 - 2.9, 1.15),
+             (L / 2 - 3.6, 0.85), (L / 2 - 3.7, 0.55)], 0.05, 2)                 # the sail
+    fin(bm, [(-L / 2 + 0.25, 0.12), (-L / 2 - 1.0, 1.9), (-L / 2 - 0.7, 0.0), (-L / 2 - 1.0, -1.9), (-L / 2 + 0.25, -0.12)],
+        0.05, 2)                                                                       # forked tail
+    for s_ in (1, -1):                                                                 # pectoral fins, swept down and back
+        fin(bm, [(L / 2 - 1.1, -0.2), (L / 2 - 2.6, -1.25), (L / 2 - 2.4, -1.05), (L / 2 - 1.5, -0.15)], 0.04, 2,
+            offset=(0, s_ * w * 0.8, 0))
+    fin(bm, [(-0.6, -0.4), (-1.0, -1.25), (-1.6, -0.35)], 0.04, 2)                     # anal fin
     return finish_fish("BlueMarlin", bm, col, [M["marlin"], M["eye"], M["fin_marlin"]], rings)
 
 
 def make_whale_shark(col, M):
-    """Whale shark: broad flat head with a wide terminal mouth, ridged dark blue-grey back with pale spots."""
-    L, h, w = 18.0, 1.6, 1.9
-    rings = body_rings(L, h, w, peak=0.25, nose=0.3, tail=0.05)
-    rings = [(x, wd * (1.15 if x > L / 4 else 1.0), hh * (0.8 if x > L / 4 else 1.0), zc) for x, wd, hh, zc in rings]
+    """Whale shark: broad flattened head with a wide terminal mouth, a deep body about 6.5 times as long as it
+    is deep, a tall first dorsal, pectorals angled down, a big tail with the upper lobe longer, dark blue-grey
+    back with pale spots over a pale belly."""
+    L, h, w = 18.0, 2.75, 2.9
+    rings = body_rings(L, h, w, peak=0.3, nose=0.28, tail=0.05)
+    rings = [(x, wd * (1.12 if x > L / 4 else 1.0), hh * (0.72 if x > L / 4 else 1.0), zc - (0.25 * h if x > L / 4 else 0.0))
+             for x, wd, hh, zc in rings]
     bm = bmesh.new()
-    loft(bm, rings, n=28)
-    eyes(bm, L / 2 - 1.3, w * 1.05, 0.2, 0.14, 1)
-    fin(bm, [(1.2, 1.3), (-0.5, 3.4), (-1.4, 1.2)], 0.25, 0)
-    fin(bm, [(-L / 2 + 0.4, 0.2), (-L / 2 - 2.2, 3.8), (-L / 2 - 1.2, 0.0), (-L / 2 - 1.8, -2.4), (-L / 2 + 0.3, -0.2)], 0.2, 0)
-    for s in (1, -1):
-        fin(bm, [(L / 2 - 3.0, 0.0), (L / 2 - 5.2, s * 3.6), (L / 2 - 5.6, s * 3.2), (L / 2 - 4.4, 0.0)], 0.16, 0, plane="XY",
-            offset=(0, s * 1.2, -0.9))
+    loft(bm, rings, n=30)
+    eyes(bm, L / 2 - 1.2, w * 1.0, -0.2, 0.16, 1)
+    tube(bm, [(L / 2 - 0.05, -1.1, -0.95), (L / 2 + 0.05, 0.0, -1.0), (L / 2 - 0.05, 1.1, -0.95)], 0.09, segs=6, mat=1)   # mouth line
+    fin(bm, [(0.8, 1.5), (-1.0, 5.0), (-1.9, 4.9), (-2.7, 1.4)], 0.3, 0)                                                  # first dorsal
+    fin(bm, [(-L / 2 + 2.0, 0.5), (-L / 2 + 1.2, 1.9), (-L / 2 + 0.6, 0.4)], 0.2, 0)                                      # second dorsal
+    fin(bm, [(-L / 2 + 0.6, 0.35), (-L / 2 - 2.6, 5.4), (-L / 2 - 1.5, 0.1), (-L / 2 - 2.1, -3.6), (-L / 2 + 0.5, -0.35)], 0.25, 0)
+    for s_ in (1, -1):
+        fin(bm, [(L / 2 - 3.8, -1.0), (L / 2 - 6.6, -4.0), (L / 2 - 6.0, -3.7), (L / 2 - 4.8, -0.9)], 0.22, 0,
+            offset=(0, s_ * w * 0.86, 0))
     return finish_fish("WhaleShark", bm, col, [M["whale_shark"], M["eye"]], rings)
 
 
@@ -540,7 +594,7 @@ def extrude_outline(name, outline, depth, col, mat, z_front=0.0, bevel=0.0, hole
     res = bmesh.ops.extrude_face_region(bm, geom=list(bm.faces))
     moved = [e for e in res["geom"] if isinstance(e, bmesh.types.BMVert)]
     bmesh.ops.translate(bm, verts=moved, vec=(0, depth, 0))
-    ob = mesh_from_bm(name, bm, col, [mat], smooth=False)
+    ob = mesh_from_bm(name, bm, col, [mat] if mat is not None else [], smooth=False)
     ob.location.y = z_front
     if bevel:
         mod = ob.modifiers.new("Bevel", "BEVEL")
@@ -561,6 +615,56 @@ def emblem_fish_outline(S):
         top.append((x, h + 0.01 * S * (1 - u)))
         bot.append((x, -0.8 * h))
     return top + list(reversed(bot))
+
+
+def script_dirs():
+    """Folders to look in for the logo and fonts: this script's folder and the saved .blend's folder."""
+    out = []
+    if "__file__" in globals() and os.path.exists(str(__file__)):
+        out.append(os.path.dirname(os.path.abspath(__file__)))
+    if bpy.data.filepath:
+        out.append(os.path.dirname(bpy.data.filepath))
+    return out
+
+
+def make_logo_plate(col, size):
+    """The emblem from the channel's own logo image, mapped onto the front of a bevelled rounded square plate
+    (so it matches the logo exactly). Returns None if the image is not found."""
+    path = next((os.path.join(d, sub, LOGO_IMAGE) for d in script_dirs() for sub in ("assets", "")
+                 if os.path.exists(os.path.join(d, sub, LOGO_IMAGE))), None)
+    if path is None:
+        print(f"note: {LOGO_IMAGE} not found in assets/; building the emblem from geometry instead")
+        return None
+    S = size
+    root = link(bpy.data.objects.new("FishDex_Emblem", None), col)
+    outline = rounded_rect(S, S, S * 0.22) if EMBLEM_SHAPE != "circle" else \
+        [(S / 2 * math.cos(2 * math.pi * i / 96), S / 2 * math.sin(2 * math.pi * i / 96)) for i in range(96)]
+    plate = extrude_outline("Emblem_LogoPlate", outline, 0.1 * S, col, None, bevel=0.025 * S)
+    me = plate.data
+    uv = me.uv_layers.new(name="UVMap")
+    for poly in me.polygons:                       # planar projection from the front (x, z) onto the image
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            uv.data[li].uv = (LOGO_CENTER[0] + co.x / S * LOGO_CROP, LOGO_CENTER[1] + co.z / S * LOGO_CROP)
+    m, nt, out = new_mat("FishDexLogo")
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(path, check_existing=True)
+    tex.extension = "EXTEND"
+    b = principled(nt, (0.0, 0.0, 0.0), rough=0.25, coat=0.6)
+    dark = nt.nodes.new("ShaderNodeMix")             # a little diffuse response so the plate sits in the light
+    dark.data_type = "RGBA"
+    dark.inputs[0].default_value = 0.8
+    nt.links.new(tex.outputs["Color"], dark.inputs[6])
+    dark.inputs[7].default_value = (0.0, 0.0, 0.0, 1.0)
+    nt.links.new(dark.outputs[2], b.inputs["Base Color"])
+    nt.links.new(tex.outputs["Color"], b.inputs["Emission Color"])
+    b.inputs["Emission Strength"].default_value = 0.92  # the logo's own colours carry the image
+    nt.links.new(b.outputs[0], out.inputs[0])
+    me.materials.clear()
+    me.materials.append(m)
+    plate.parent = root
+    plate.location = (0, 0.02, 0)
+    return root
 
 
 def make_emblem(col, M, size):
@@ -678,7 +782,7 @@ def make_wordmark(col, M, height):
 def build_branding(col, M):
     group = link(bpy.data.objects.new("Branding_Group", None), col)
     emblem_size = 3.4
-    emblem = make_emblem(col, M, emblem_size)
+    emblem = make_logo_plate(col, emblem_size) or make_emblem(col, M, emblem_size)
     word, tw = make_wordmark(col, M, 2.9)
     emblem.parent = group
     word.parent = group
@@ -687,7 +791,8 @@ def build_branding(col, M):
     emblem.location = (-total / 2 + emblem_size / 2, 0, 0)
     word.location = (-total / 2 + emblem_size + gap, 0, -0.12)
     # fit inside the safe area with a 6% margin (centred on the origin, the safe area's centre)
-    s = min(1.0, SAFE_W / PX_PER_UNIT * 0.94 / total, SAFE_H / PX_PER_UNIT * 0.94 / emblem_size)
+    # 0.68 of the strip height leaves breathing room above and below on desktop (the strip is the safe height)
+    s = min(SAFE_W / PX_PER_UNIT * 0.94 / total, SAFE_H / PX_PER_UNIT * BRAND_HEIGHT / emblem_size)
     group.scale = (s, s, s)
     return group, emblem, word
 
@@ -799,62 +904,14 @@ def place(ob, loc, yaw=0.0, pitch=0.0, roll=0.0, scale=1.0):
 
 
 def build_marine_life(col, M, lights_col):
-    """Fish around the branding, outside the safe area (|x| > 7.7 or |z| > 2.1 on the focal plane, scaled up
-    with depth). Positions are (x, depth y, z); y > 0 is behind the branding, inside the water."""
-    # upper left: freshwater
-    place(make_sockeye(col, M), (-10.6, -1.0, 4.9), yaw=8, pitch=-3, scale=1.3)
-    s2 = make_sockeye(col, M)
-    s2.name = "SockeyeSalmon_Back"
-    place(s2, (-7.6, 12.0, 6.6), yaw=-6, scale=1.05)
-    place(make_bass(col, M), (-5.4, 3.0, 4.6), yaw=-172, pitch=2, scale=1.15)
-    place(make_arapaima(col, M), (-14.6, 6.0, 2.7), yaw=4, pitch=2, scale=0.95)
-    # upper right: pelagic and reef
-    place(make_mahi(col, M), (10.4, -1.0, 4.1), yaw=176, pitch=3, scale=1.15)
-    place(make_marlin(col, M), (14.8, 12.0, 6.9), yaw=188, pitch=-12, scale=0.9)
-    for i, (mat, loc, yaw, sc) in enumerate(((M["reef_yellow"], (8.6, -1.0, 2.75), 170, 1.1),
-                                             (M["reef_blue"], (6.4, 0.0, 5.6), -12, 1.15),
-                                             (M["reef_orange"], (12.4, 2.0, 2.6), 165, 1.0),
-                                             (M["reef_yellow"], (17.0, 8.0, 3.2), 178, 1.2),
-                                             (M["reef_blue"], (10.2, 6.0, 7.0), 172, 1.0))):
-        place(make_reef(col, M, f"ReefFish_{i}", mat), loc, yaw=yaw, scale=sc)
-    # far background, top: a whale shark gliding across, faded by the water
-    place(make_whale_shark(col, M), (1.0, 34.0, 8.6), yaw=176, pitch=2, scale=0.95)
-    # lower left: deep sea
-    angler, esca, tip = make_angler(col, M)
-    place(angler, (-10.4, -1.0, -4.5), yaw=16, scale=1.6)
-    bpy.context.view_layer.update()
-    ld = bpy.data.lights.new("AnglerLureLight", "POINT")
-    ld.energy = 80.0
-    ld.color = (0.45, 1.0, 0.85)
-    ld.shadow_soft_size = 0.1
-    lo = link(bpy.data.objects.new("AnglerLureLight", ld), lights_col)
-    lo.parent = angler
-    lo.location = tip + Vector((0.05, 0, -0.05))
-    # lower right: open ocean apex predator and a swirling tuna school
-    place(make_shark(col, M), (15.5, 13.0, -3.3), yaw=192, pitch=-6, scale=0.95)
-    proto = make_tuna(col, M)
-    proto.hide_render = True
-    proto.hide_viewport = True
-    rng = random.Random(SEED + 1)
-    center = Vector((9.6, -1.0, -5.0))
-    n = 46
-    for i in range(n):                            # a rising helix that tightens: the school's swirl
-        t = i / n
-        a = 2 * math.pi * 2.3 * t + rng.uniform(-0.15, 0.15)
-        r = 2.8 - 1.3 * t + rng.uniform(-0.2, 0.2)
-        p = center + Vector((r * math.cos(a), 0.6 * r * math.sin(a) + 1.5 * t, -1.0 + 2.0 * t + rng.uniform(-0.15, 0.15)))
-        tangent = Vector((-math.sin(a), 0.6 * math.cos(a), 0.15)).normalized()
-        ob = proto.copy()
-        ob.name = f"Tuna_{i:02d}"
-        ob.hide_render = False
-        ob.hide_viewport = False
-        col.objects.link(ob)
-        ob.location = p
-        ob.rotation_mode = "QUATERNION"
-        ob.rotation_quaternion = Vector((1, 0, 0)).rotation_difference(tangent)
-        s = rng.uniform(0.8, 1.05)
-        ob.scale = (s, s, s)
-    return angler
+    """Two big animals either side of the branding, both swimming towards it inside the desktop strip (the
+    middle 423 px): a whale shark on the left and a blue marlin on the right, close in size with the whale
+    shark a little larger on screen. The other species builders above are kept for later use."""
+    ws = make_whale_shark(col, M)
+    place(ws, WHALE_POS, yaw=2, pitch=1.5, roll=4, scale=WHALE_SCALE)
+    mk = make_marlin(col, M)
+    place(mk, MARLIN_POS, yaw=178, pitch=-2, roll=-4, scale=MARLIN_SCALE)
+    return ws, mk
 
 
 # --------------------------------------------------------------------------
@@ -873,6 +930,15 @@ def build_materials():
     M["gold"] = solid_mat("WordmarkGold", srgb(246, 188, 70), rough=0.2, metal=0.3, coat=1.0, emission=srgb(246, 188, 70), strength=0.45)
     M["marlin"] = fish_mat("BlueMarlin", [(0.0, srgb(236, 240, 245)), (0.42, srgb(190, 200, 212)), (0.55, srgb(40, 80, 170)),
                                           (1.0, srgb(14, 34, 96))], metal=0.4)
+    M["king"] = fish_mat("KingSalmon", [(0.0, srgb(236, 238, 240)), (0.45, srgb(196, 204, 212)), (0.62, srgb(90, 120, 120)),
+                                        (1.0, srgb(50, 80, 86))], spots=(srgb(18, 20, 22), 13.0), metal=0.4)
+    M["fin_king"] = solid_mat("FinKing", srgb(70, 90, 96), rough=0.4, sss=0.3)
+    M["catfish"] = fish_mat("ChannelCatfish", [(0.0, srgb(225, 222, 210)), (0.4, srgb(150, 148, 130)), (0.6, srgb(96, 100, 92)),
+                                                (1.0, srgb(58, 62, 60))], spots=(srgb(40, 42, 40), 11.0), metal=0.05, sss=0.2,
+                            rough=0.3, coat=0.7)
+    M["fin_cat"] = solid_mat("FinCatfish", srgb(70, 72, 66), rough=0.4, sss=0.3)
+    M["lanternfish"] = fish_mat("Lanternfish", [(0.0, srgb(120, 140, 170)), (0.4, srgb(40, 50, 80)), (1.0, srgb(14, 18, 34))],
+                                spots=(srgb(120, 230, 255), 14.0), metal=0.4, sss=0.05)
     M["fin_marlin"] = solid_mat("FinMarlin", srgb(24, 60, 150), rough=0.35, sss=0.3)
     M["whale_shark"] = fish_mat("WhaleShark", [(0.0, srgb(210, 216, 220)), (0.4, srgb(200, 206, 212)), (0.5, srgb(60, 80, 100)),
                                                (1.0, srgb(40, 56, 74))], spots=(srgb(220, 228, 235), 2.2), metal=0.0,
