@@ -56,6 +56,8 @@ WHALE_POS, WHALE_SCALE = (-10.05, 8.0, -0.2), 0.328    # left of the branding, s
 MARLIN_POS, MARLIN_SCALE = (10.45, 8.0, 0.05), 0.695    # right of it, swimming left (about the same length with the bill)
 BRAND_HEIGHT = 0.68                     # emblem height as a fraction of the 423 px strip
 WATER_DENSITY = 0.02
+SUN_ENERGY = 3.0
+MARINE_SNOW = 380                       # drifting particles in the water
 EMBLEM_SHAPE = "rounded_square"         # or "circle" (the channel avatar is a circle)
 LOGO_IMAGE = "fishdex_logo.png"         # the channel logo, looked up in assets/ next to this script
 LOGO_CENTER = (0.5, 0.514)              # emblem centre in the image (u, v): it sits slightly above the middle
@@ -72,6 +74,17 @@ def srgb(r, g, b):
         c /= 255.0
         return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
     return (lin(r), lin(g), lin(b))
+
+
+# ocean colours (linear), matched to the logo's background: it runs from (17, 134, 191) at the top through
+# (1, 49, 106) to (1, 33, 87) at the bottom (sRGB); the banner's middle strip sits a little darker than its middle
+OCEAN_DEEP = srgb(0, 10, 34)
+OCEAN_MID = srgb(1, 34, 88)
+OCEAN_HIGH = srgb(6, 70, 140)
+OCEAN_SURFACE = srgb(30, 130, 200)
+WATER_SCATTER = (0.0, 0.22, 0.85)       # volume scatter colour: blue water
+SURFACE_GLOW = 0.014                    # volume emission at the top of the frame (light from the surface)
+WATER_TINT = (0.02, 0.22, 0.62)         # volume absorption colour
 
 
 # --------------------------------------------------------------------------
@@ -1073,7 +1086,11 @@ def build_world(sc):
     tc = nt.nodes.new("ShaderNodeTexCoord")
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     nt.links.new(tc.outputs["Generated"], sep.inputs[0])
-    col = ramp(nt, sep.outputs["Z"], [(0.0, (0.0015, 0.008, 0.025)), (0.5, BLUE_DEEP), (1.0, (0.02, 0.12, 0.28))])
+    # ocean: navy in the depths, the logo's royal blue at eye level, brighter towards the surface
+    fac = nt.nodes.new("ShaderNodeMapRange")
+    fac.inputs["From Min"].default_value, fac.inputs["From Max"].default_value = -0.35, 0.6
+    nt.links.new(sep.outputs["Z"], fac.inputs["Value"])
+    col = ramp(nt, fac.outputs["Result"], [(0.0, OCEAN_DEEP), (0.42, OCEAN_MID), (0.75, OCEAN_HIGH), (1.0, OCEAN_SURFACE)])
     bg = nt.nodes.new("ShaderNodeBackground")
     nt.links.new(col, bg.inputs["Color"])
     bg.inputs["Strength"].default_value = 1.0
@@ -1086,6 +1103,20 @@ def build_environment(col, M):
     bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.LocRotScale(Vector((0, 46, 1.5)), None, Vector((180, 96, 40))))
     vol = mesh_from_bm("WaterVolume", bm, col, [M["water"]], smooth=False)
     vol.visible_shadow = True
+    # marine snow: tiny pale particles drifting through the water (they read as depth and open ocean)
+    rng = random.Random(SEED + 5)
+    bm = bmesh.new()
+    for _ in range(MARINE_SNOW):
+        y = rng.uniform(1.0, 45.0)
+        half_w = 13.5 * (CAM_DIST + y) / CAM_DIST
+        half_h = 7.6 * (CAM_DIST + y) / CAM_DIST
+        x, z = rng.uniform(-half_w, half_w), rng.uniform(-half_h, half_h)
+        if abs(x) < 6.2 and abs(z) < 1.8 and y < 4.0:
+            continue                                       # keep the branding clean
+        r = rng.uniform(0.012, 0.035) * (1.0 + y / 40.0)
+        bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r, matrix=Matrix.Translation((x, y, z)))
+    snow = mesh_from_bm("MarineSnow", bm, col, [M["snow"]], smooth=True)
+    snow.visible_shadow = False
     # light sheet near the surface: lanes and caustic veins let the sun through, making rays in the water
     bm = bmesh.new()
     bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=110, matrix=Matrix.Translation((0, 40, 16)))
@@ -1167,14 +1198,26 @@ def build_materials():
     M["marlin"] = marlin_mat()
     M["fin_whale"] = fin_mat("FinWhaleShark", srgb(56, 72, 92), srgb(30, 40, 54), rays=6.0)
     M["fin_marlin"] = fin_mat("FinMarlin", srgb(30, 64, 150), srgb(12, 24, 70), rays=30.0)
+    M["snow"] = solid_mat("MarineSnow", (0.6, 0.78, 0.95), rough=0.6, emission=(0.5, 0.72, 1.0), strength=0.22)
     M["groove"] = solid_mat("Groove", srgb(18, 24, 32), rough=0.6)
     # water: absorbing, scattering volume (no surface)
     m, nt, out = new_mat("WaterVolume")
     pv = nt.nodes.new("ShaderNodeVolumePrincipled")
-    pv.inputs["Color"].default_value = (0.35, 0.65, 0.9, 1.0)
+    pv.inputs["Color"].default_value = (*WATER_SCATTER, 1.0)
     pv.inputs["Density"].default_value = WATER_DENSITY
-    pv.inputs["Absorption Color"].default_value = (0.02, 0.2, 0.45, 1.0)
+    pv.inputs["Absorption Color"].default_value = (*WATER_TINT, 1.0)
     pv.inputs["Anisotropy"].default_value = 0.3
+    # light from the surface: a faint blue glow in the water that grows towards the top (world z)
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    sepz = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(geo.outputs["Position"], sepz.inputs[0])
+    up = nt.nodes.new("ShaderNodeMapRange")
+    up.interpolation_type = "SMOOTHSTEP"
+    up.inputs["From Min"].default_value, up.inputs["From Max"].default_value = 1.5, 16.0
+    up.inputs["To Min"].default_value, up.inputs["To Max"].default_value = 0.0, SURFACE_GLOW
+    nt.links.new(sepz.outputs["Z"], up.inputs["Value"])
+    pv.inputs["Emission Color"].default_value = (*OCEAN_SURFACE, 1.0)
+    nt.links.new(up.outputs["Result"], pv.inputs["Emission Strength"])
     nt.links.new(pv.outputs[0], out.inputs["Volume"])
     M["water"] = m
     # light sheet: transparent in broad wavering lanes (they cast the rays through the water) and along voronoi
@@ -1219,9 +1262,9 @@ def build_materials():
 # --------------------------------------------------------------------------
 def build_lights(col, group):
     sd = bpy.data.lights.new("Sun", "SUN")
-    sd.energy = 9.0
+    sd.energy = SUN_ENERGY
     sd.angle = math.radians(1.5)
-    sd.color = (0.92, 0.97, 1.0)
+    sd.color = (0.8, 0.93, 1.0)
     sun = link(bpy.data.objects.new("Sun", sd), col)
     sun.rotation_euler = (math.radians(-12), math.radians(-14), 0)     # steep, slanting left and towards the camera
     # dedicated soft spot on the branding, from in front and above the camera line
@@ -1246,6 +1289,18 @@ def build_lights(col, group):
     rim.rotation_mode = "QUATERNION"
     rim.rotation_quaternion = (Vector((0, 0, 0)) - rim.location).to_track_quat("-Z", "Y")
     rim.visible_volume_scatter = False
+    # soft fill on each animal from the front and above (they sit in deep blue water)
+    for name, x in (("FillLeft", WHALE_POS[0]), ("FillRight", MARLIN_POS[0])):
+        fd = bpy.data.lights.new(name, "AREA")
+        fd.energy = 900.0
+        fd.size = 6.0
+        fd.color = (0.75, 0.88, 1.0)
+        fo = link(bpy.data.objects.new(name, fd), col)
+        fo.location = (x * 0.9, -12.0, 6.0)
+        target = Vector((x, 8.0, 0.0))
+        fo.rotation_mode = "QUATERNION"
+        fo.rotation_quaternion = (target - fo.location).to_track_quat("-Z", "Y")
+        fo.visible_volume_scatter = False
 
 
 def build_camera(sc, col):
