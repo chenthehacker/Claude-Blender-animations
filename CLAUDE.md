@@ -25,6 +25,11 @@ Blender 5.2 headless, with on-screen callouts, a synthesized soundtrack, a thumb
 - `build_sockeye_masterclass/` river drift fishing (sockeye): imported Higgsfield/Tripo sockeye GLB, CesiumMan angler
   reposed with IK, over-under split shot (lens on the waterline, per-pixel fog via scene["split"]), Playfair serif
   captions with gold italic accents. Unattended preview render: `tools/preview_driver.sh` (detached, resumable).
+- `build_tackle_box_masterclass/` gear breakdown (55 s): everything procedural (cantilever box, 8 lure types,
+  baitfish); overlays live in a second scene "HUD" with a static camera, composited over "Main" (so camera depth
+  of field never blurs text, and BLENDED overlay materials fade cleanly). Higgsfield text to speech voiceover in
+  `voiceover/` (CDN downloads are blocked: the user uploads them); `tackle_box_audio.py --measure` writes
+  `vo_timing.json`, which the scene reads to time cuts and captions.
 - `tools/`: `render_frames.py` (test frames, timings, `--no-hud` thumbnail plates), `contact_sheet.py`,
   `thumbnail.py` (channel thumbnail style), `package_gpu.sh` (GPU zip), `setup_env.sh`.
 
@@ -72,6 +77,11 @@ Audio: `/root/bpyenv/bin/python offshore_audio.py events.json out.wav`, then FLA
 - Per-frame cost here is mostly scene sync and sun shadows, not pixels: 25% scale is barely faster than 50%.
   Each EEVEE process needs about 5 GB here, so run at most two in parallel (about 1.7x throughput).
 - Underwater, hide everything above the surface (it is opaque from below); fewer, stronger shafts; cobbles cast no shadow.
+- `bmesh.ops.extrude_face_region` keeps the original face: delete it, or an inset well renders as a solid block.
+- Two-scene compositing: set every scene's `resolution_percentage`, and set the other scenes' `frame_current`
+  before rendering a still (`render_frames.py` and `render_gpu.py` do both); a render of the HUD scene alone
+  ignores `frame_current` unless you call `frame_set`.
+- `tools/preview_driver.sh` takes N, SAMPLES, HEAVY_LO/HEAVY_HI from the environment (defaults: sockeye).
 - Never wait on renders with `pgrep -f render_frames` inside the same shell line: it matches itself and never exits.
 
 ## Rules
