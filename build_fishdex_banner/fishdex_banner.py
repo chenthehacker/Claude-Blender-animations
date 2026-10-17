@@ -10,26 +10,27 @@ collections (Branding, Environment, Marine_Life, Lighting). Render with F12.
 Composition. The camera is a 100 mm lens looking down +Y at the focal plane y = 0, placed so that this plane
 is exactly 25.6 units wide in frame: 1 unit on the plane = 100 pixels of the 2560 x 1440 banner. YouTube's
 safe area (1546 x 423 px, the only part visible on every device) is then the box |x| <= 7.73, |z| <= 2.115 on
-that plane. The emblem and the "FishDex" word are built there, centred on (0, 0, 0), and scaled so that they
-fit inside it with a margin (the script prints the measured pixel box at the end). Marine life sits outside
-it, in the four corners and further back in depth.
+that plane. On a computer YouTube shows only the full-width middle strip (2560 x 423 px, |z| <= 2.115): the
+emblem and the "FishDex" word sit at its centre (68% of its height), and the two animals either side of them,
+inside the strip; TVs show the whole frame.
 
 Water. A volume box (density WATER_DENSITY) fills the water behind the focal plane; the camera sits outside
-it, so the branding stays crisp while distant fish fade into blue. A sun shines straight down through a
-"caustic sheet" near the surface: a procedural pattern that lets light through in bright veins, so the
-sun casts dappled caustics on the seabed and the fish and visible light shafts through the volume. (Real
-refracted caustics in Cycles need the slower MNEE shadow caustics; this projected pattern is the usual
-production shortcut and renders cleanly.)
+it, so the branding stays crisp while the animals fade a little into the blue. A sun shines steeply down
+through a "light sheet" near the surface: broad wavering lanes and fine caustic veins let the light through,
+so it falls as rays through the water. (Real refracted caustics in Cycles need the slower MNEE shadow
+caustics; a projected pattern is the usual production shortcut and renders cleanly.) The branding has its
+own soft spot and rim light, which do not light the water.
 
-Branding: the emblem follows the channel avatar (viewfinder brackets, a white fish whose tail fans out like
-book pages, an open book) inside a rounded square; the word is Playfair Display, "Fish" white and "Dex" gold
-italic like the channel's thumbnails. The fonts are looked up in a 'fonts' folder next to this script first.
+Branding: the channel's own logo image (assets/fishdex_logo.png) on a bevelled rounded square (if the image
+is missing, a geometry version of the emblem is built instead); the word is Playfair Display, "Fish" white
+and "Dex" gold italic like the channel's thumbnails. Fonts and the logo are looked up next to this script.
 
-Fish (low to mid poly, smooth shaded, subdivided once): upper left, freshwater (sockeye salmon in spawning
-colours with the hooked jaw and hump; a king salmon; black sea bass; a channel catfish towards the middle); upper right, pelagic and reef (mahi mahi,
-blue marlin, reef fish); far background, a whale shark; lower left, deep sea (anglerfish with a glowing lure
-and its own point light, lanternfish) with a large arapaima behind; lower right, open ocean (great white shark, a swirling school of tuna). The brief placed the shark both "upper background"
-and "lower right": it is in the lower right quadrant, set back in depth and rising towards the upper right.
+Animals: a whale shark (left) and a blue marlin (right), both swimming towards the logo, about the same
+length on screen with the whale shark a little larger. They are profile-lofted (separate back, belly and
+width curves), subdivided twice, with smooth spline fins, the whale shark's ridges, gill slits and grid of
+pale spots and bars, and the marlin's bill, sail, sickle fins and barred flanks. Builders for other species
+(salmon, bass, catfish, arapaima, mahi mahi, reef fish, great white, anglerfish, tuna) are kept below for
+other layouts.
 """
 
 import math
@@ -51,8 +52,8 @@ SENSOR = 36.0                           # mm, horizontal fit
 PX_PER_UNIT = 100.0                     # on the focal plane y = 0
 CAM_DIST = (RES_X / PX_PER_UNIT) * LENS / SENSOR      # 71.1 units: the plane is 25.6 units wide
 SAMPLES = 256
-WHALE_POS, WHALE_SCALE = (-10.0, 8.0, -0.2), 0.322    # left of the branding, swimming right (about 5.8 units long on screen, bulkier)
-MARLIN_POS, MARLIN_SCALE = (10.2, 8.0, 0.05), 0.756    # right of it, swimming left (about the same length with the bill)
+WHALE_POS, WHALE_SCALE = (-10.05, 8.0, -0.2), 0.328    # left of the branding, swimming right (about 5.8 units long on screen, bulkier)
+MARLIN_POS, MARLIN_SCALE = (10.45, 8.0, 0.05), 0.695    # right of it, swimming left (about the same length with the bill)
 BRAND_HEIGHT = 0.68                     # emblem height as a fraction of the 423 px strip
 WATER_DENSITY = 0.02
 EMBLEM_SHAPE = "rounded_square"         # or "circle" (the channel avatar is a circle)
@@ -516,47 +517,6 @@ def make_catfish(col, M):
     return finish_fish("ChannelCatfish", bm, col, [M["catfish"], M["eye"], M["fin_cat"]], rings)
 
 
-def make_marlin(col, M):
-    """Blue marlin: long spear bill, tall sail-like front dorsal rising right behind the head, deeply forked
-    tail, cobalt back over silver sides."""
-    L, h, w = 6.0, 0.86, 0.5
-    rings = body_rings(L, h, w, peak=0.3, nose=0.55, tail=0.05)
-    bm = bmesh.new()
-    loft(bm, rings, n=24)
-    tube(bm, [(L / 2 - 0.15, 0, 0.12), (L / 2 + 0.8, 0, 0.08), (L / 2 + 1.9, 0, 0.02)], lambda u: 0.09 * (1 - 0.92 * u), mat=0)
-    eyes(bm, L / 2 - 0.5, w * 0.85, 0.16, 0.12, 1)
-    fin(bm, [(L / 2 - 0.85, 0.6), (L / 2 - 1.15, 2.05), (L / 2 - 1.5, 2.1), (L / 2 - 2.0, 1.7), (L / 2 - 2.9, 1.15),
-             (L / 2 - 3.6, 0.85), (L / 2 - 3.7, 0.55)], 0.05, 2)                 # the sail
-    fin(bm, [(-L / 2 + 0.25, 0.12), (-L / 2 - 1.0, 1.9), (-L / 2 - 0.7, 0.0), (-L / 2 - 1.0, -1.9), (-L / 2 + 0.25, -0.12)],
-        0.05, 2)                                                                       # forked tail
-    for s_ in (1, -1):                                                                 # pectoral fins, swept down and back
-        fin(bm, [(L / 2 - 1.1, -0.2), (L / 2 - 2.6, -1.25), (L / 2 - 2.4, -1.05), (L / 2 - 1.5, -0.15)], 0.04, 2,
-            offset=(0, s_ * w * 0.8, 0))
-    fin(bm, [(-0.6, -0.4), (-1.0, -1.25), (-1.6, -0.35)], 0.04, 2)                     # anal fin
-    return finish_fish("BlueMarlin", bm, col, [M["marlin"], M["eye"], M["fin_marlin"]], rings)
-
-
-def make_whale_shark(col, M):
-    """Whale shark: broad flattened head with a wide terminal mouth, a deep body about 6.5 times as long as it
-    is deep, a tall first dorsal, pectorals angled down, a big tail with the upper lobe longer, dark blue-grey
-    back with pale spots over a pale belly."""
-    L, h, w = 18.0, 2.75, 2.9
-    rings = body_rings(L, h, w, peak=0.3, nose=0.28, tail=0.05)
-    rings = [(x, wd * (1.12 if x > L / 4 else 1.0), hh * (0.72 if x > L / 4 else 1.0), zc - (0.25 * h if x > L / 4 else 0.0))
-             for x, wd, hh, zc in rings]
-    bm = bmesh.new()
-    loft(bm, rings, n=30)
-    eyes(bm, L / 2 - 1.2, w * 1.0, -0.2, 0.16, 1)
-    tube(bm, [(L / 2 - 0.05, -1.1, -0.95), (L / 2 + 0.05, 0.0, -1.0), (L / 2 - 0.05, 1.1, -0.95)], 0.09, segs=6, mat=1)   # mouth line
-    fin(bm, [(0.8, 1.5), (-1.0, 5.0), (-1.9, 4.9), (-2.7, 1.4)], 0.3, 0)                                                  # first dorsal
-    fin(bm, [(-L / 2 + 2.0, 0.5), (-L / 2 + 1.2, 1.9), (-L / 2 + 0.6, 0.4)], 0.2, 0)                                      # second dorsal
-    fin(bm, [(-L / 2 + 0.6, 0.35), (-L / 2 - 2.6, 5.4), (-L / 2 - 1.5, 0.1), (-L / 2 - 2.1, -3.6), (-L / 2 + 0.5, -0.35)], 0.25, 0)
-    for s_ in (1, -1):
-        fin(bm, [(L / 2 - 3.8, -1.0), (L / 2 - 6.6, -4.0), (L / 2 - 6.0, -3.7), (L / 2 - 4.8, -0.9)], 0.22, 0,
-            offset=(0, s_ * w * 0.86, 0))
-    return finish_fish("WhaleShark", bm, col, [M["whale_shark"], M["eye"]], rings)
-
-
 def make_arapaima(col, M):
     """Arapaima: long cylindrical Amazon giant, olive-grey front shading to red-edged scales towards the tail,
     with the dorsal and anal fins set far back near the tail."""
@@ -570,6 +530,306 @@ def make_arapaima(col, M):
     fin(bm, [(-L / 2 + 1.9, -0.45), (-L / 2 + 0.9, -0.9), (-L / 2 + 0.4, -0.45)], 0.05, 2)
     fin(bm, [(-L / 2 + 0.2, 0.25), (-L / 2 - 0.9, 0.7), (-L / 2 - 1.05, 0.0), (-L / 2 - 0.9, -0.7), (-L / 2 + 0.2, -0.25)], 0.05, 2)
     return finish_fish("Arapaima", bm, col, [M["arapaima"], M["eye"], M["fin_red"]], rings)
+
+
+# --------------------------------------------------------------------------
+# Hero fish (whale shark, blue marlin): profile-lofted bodies, spline fins, painted patterns
+# --------------------------------------------------------------------------
+def curve(points):
+    """Smooth 1D curve through control points [(u, value)], cosine eased between them."""
+    pts = sorted(points)
+
+    def f(u):
+        if u <= pts[0][0]:
+            return pts[0][1]
+        for (u0, v0), (u1, v1) in zip(pts, pts[1:]):
+            if u <= u1:
+                t = (u - u0) / (u1 - u0)
+                t = 0.5 - 0.5 * math.cos(math.pi * t)
+                return v0 + (v1 - v0) * t
+        return pts[-1][1]
+    return f
+
+
+def spline_outline(ctrl, samples=10):
+    """Closed Catmull-Rom outline through control points [(x, z)], for smooth fin edges."""
+    out = []
+    n = len(ctrl)
+    for i in range(n):
+        p0, p1, p2, p3 = (Vector(ctrl[(i + k) % n]) for k in (-1, 0, 1, 2))
+        for s in range(samples):
+            t = s / samples
+            t2, t3 = t * t, t * t * t
+            p = 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+            out.append((p.x, p.y))
+    return out
+
+
+def loft_profile(bm, L, top, bot, wid, nr=56, na=40, power=2.3, ridge=None, mat=0):
+    """Body from nose (x = +L/2, u = 0) to tail base (u = 1) with separate back (top), belly (bot) and half
+    width (wid) curves; superellipse sections; per-vertex zrel (belly 0 .. back 1) and xrel (tail 0 .. nose 1)."""
+    zl = bm.verts.layers.float.new("zrel")
+    xl = bm.verts.layers.float.new("xrel")
+    rings = []
+    for i in range(nr + 1):
+        u = i / nr
+        x = L / 2 - u * L
+        t, b, w = top(u), bot(u), wid(u)
+        zc, hh = (t + b) / 2, (t - b) / 2
+        ring = []
+        for k in range(na):
+            a = 2 * math.pi * k / na
+            c, s = math.cos(a), math.sin(a)
+            r = 1.0 + (ridge(u, a) if ridge else 0.0)
+            y = w * r * math.copysign(abs(c) ** (2 / power), c)
+            z = zc + hh * r * math.copysign(abs(s) ** (2 / power), s)
+            v = bm.verts.new((x, y, z))
+            v[zl] = min(1.0, max(0.0, (z - b) / max(1e-6, t - b)))
+            v[xl] = 1.0 - u
+            ring.append(v)
+        rings.append(ring)
+    for ra, rb in zip(rings, rings[1:]):
+        for k in range(na):
+            f = bm.faces.new((ra[k], ra[(k + 1) % na], rb[(k + 1) % na], rb[k]))
+            f.material_index, f.smooth = mat, True
+    for ring, x_cap, rev in ((rings[0], L / 2, True), (rings[-1], -L / 2, False)):     # rounded end caps
+        cz = sum(v.co.z for v in ring) / len(ring)
+        tip = bm.verts.new((x_cap + (0.02 * L if rev else -0.005 * L), 0.0, cz))
+        tip[zl], tip[xl] = 0.5, 1.0 if rev else 0.0
+        for k in range(na):
+            vs = (ring[(k + 1) % na], ring[k], tip) if rev else (ring[k], ring[(k + 1) % na], tip)
+            f = bm.faces.new(vs)
+            f.material_index, f.smooth = mat, True
+
+
+def soft_fin(bm, ctrl, thick, mat, plane="XZ", offset=(0, 0, 0), rot=None, samples=8):
+    """Fin from a smooth spline outline, slightly thicker at the base side (first control point)."""
+    outline = spline_outline(ctrl, samples)
+    o = Vector(offset)
+    R = rot.to_matrix() if rot is not None else None
+
+    def P(a, b, d):
+        v = Vector((a, d, b)) if plane == "XZ" else Vector((a, b, d))
+        return o + (R @ v if R is not None else v)
+    top = [bm.verts.new(P(a, b, thick / 2)) for a, b in outline]
+    bot = [bm.verts.new(P(a, b, -thick / 2)) for a, b in outline]
+    fs = [bm.faces.new(top), bm.faces.new(list(reversed(bot)))]
+    n = len(outline)
+    fs += [bm.faces.new((top[i], top[(i + 1) % n], bot[(i + 1) % n], bot[i])) for i in range(n)]
+    for f in fs:
+        f.material_index, f.smooth = mat, True
+
+
+def hero_eye(bm, x, y, z, r, mat_eye, mat_ring):
+    for s in (1, -1):
+        sphere(bm, (x, s * y, z), (r * 1.25, r * 0.5, r * 1.25), mat_ring, subdiv=3)          # eye socket rim
+        sphere(bm, (x, s * (y + r * 0.18), z), (r, r * 0.55, r), mat_eye, subdiv=3)
+
+
+def finish_hero(name, bm, col, mats, levels=2, fins=None):
+    """Body with two levels of subdivision; fins (if given) as a child object without subdivision, so their
+    smooth spline outlines stay clean."""
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for m in mats:
+        me.materials.append(m)
+    ob = link(bpy.data.objects.new(name, me), col)
+    mod = ob.modifiers.new("Subdivision", "SUBSURF")
+    mod.levels = mod.render_levels = levels
+    if fins is not None:
+        bmesh.ops.recalc_face_normals(fins, faces=fins.faces)
+        fm = bpy.data.meshes.new(name + "_Fins")
+        fins.to_mesh(fm)
+        fins.free()
+        for m in mats:
+            fm.materials.append(m)
+        fo = link(bpy.data.objects.new(name + "_Fins", fm), col)
+        fo.parent = ob
+    return ob
+
+
+def make_whale_shark(col, M):
+    """Whale shark: broad flat head with a wide terminal mouth, a deep body (about 6 times as long as it is deep)
+    with three ridges along each side of the back, a tall first dorsal, long pectorals angled down, and a
+    crescent tail with the upper lobe longer."""
+    L, H = 18.0, 1.85
+    top = curve([(0.0, 0.10 * H), (0.04, 0.42 * H), (0.12, 0.70 * H), (0.30, 1.0 * H), (0.48, 0.95 * H), (0.75, 0.48 * H),
+                 (1.0, 0.13 * H)])
+    bot = curve([(0.0, -0.30 * H), (0.05, -0.62 * H), (0.18, -0.80 * H), (0.38, -0.88 * H), (0.62, -0.62 * H), (0.85, -0.25 * H),
+                 (1.0, -0.12 * H)])
+    wid = curve([(0.0, 0.62 * H), (0.04, 0.98 * H), (0.15, 1.12 * H), (0.32, 1.0 * H), (0.6, 0.62 * H), (1.0, 0.11 * H)])
+
+    def ridge(u, a):
+        if u < 0.14 or u > 0.92:
+            return 0.0
+        k = math.sin(math.pi * (u - 0.14) / 0.78) * 0.045
+        return k * sum(math.exp(-((math.atan2(math.sin(a - ai), math.cos(a - ai))) / 0.07) ** 2)
+                       for ai in (math.radians(d) for d in (32, 58, 122, 148)))
+    bm = bmesh.new()
+    fb = bmesh.new()
+    loft_profile(bm, L, top, bot, wid, nr=64, na=44, power=2.4, ridge=ridge)
+    # wide mouth across the front and gill slits behind the head (dark grooves)
+    tube(bm, [(L / 2 - 0.25, -0.85 * H, -0.28 * H), (L / 2 + 0.05, 0.0, -0.30 * H), (L / 2 - 0.25, 0.85 * H, -0.28 * H)],
+         0.06, segs=6, mat=3)
+    for g in range(5):
+        x = L / 2 - 2.2 - g * 0.32
+        for s in (1, -1):
+            tube(bm, [(x, s * 1.02 * H, 0.35 * H), (x - 0.12, s * 1.06 * H, -0.05 * H), (x - 0.18, s * 0.98 * H, -0.45 * H)],
+                 0.035, segs=5, mat=3)
+    hero_eye(bm, L / 2 - 1.0, 0.98 * H, 0.05 * H, 0.13, 1, 3)
+    # fins (side outlines in the XZ plane; first point at the base)
+    xd = L / 2 - 0.47 * L
+    soft_fin(fb, [(xd + 1.1, 0.85 * H), (xd + 0.2, 2.2 * H), (xd - 0.5, 2.85 * H), (xd - 0.9, 2.7 * H), (xd - 1.2, 1.9 * H),
+                  (xd - 1.5, 0.82 * H)], 0.18, 2)
+    xd2 = L / 2 - 0.80 * L
+    soft_fin(fb, [(xd2 + 0.5, 0.42 * H), (xd2 - 0.2, 1.05 * H), (xd2 - 0.55, 0.95 * H), (xd2 - 0.6, 0.38 * H)], 0.1, 2)
+    xt = -L / 2
+    soft_fin(fb, [(xt + 0.5, 0.08 * H), (xt - 0.6, 1.4 * H), (xt - 1.9, 3.2 * H), (xt - 2.35, 3.15 * H), (xt - 1.4, 1.0 * H),
+                  (xt - 1.15, 0.0), (xt - 1.6, -1.0 * H), (xt - 2.0, -2.0 * H), (xt - 1.6, -2.0 * H), (xt + 0.4, -0.12 * H)], 0.16, 2)
+    for s in (1, -1):
+        rot = Euler((s * math.radians(-28), 0.0, 0.0))
+        soft_fin(fb, [(L / 2 - 3.1, -0.15 * H), (L / 2 - 4.4, -1.4 * H), (L / 2 - 5.5, -2.55 * H), (L / 2 - 5.9, -2.6 * H),
+                      (L / 2 - 5.2, -1.2 * H), (L / 2 - 4.6, -0.2 * H)], 0.14, 2, offset=(0, s * 0.85 * H, -0.55 * H), rot=rot)
+    soft_fin(fb, [(-2.8, -0.55 * H), (-3.5, -1.15 * H), (-3.9, -1.1 * H), (-3.9, -0.45 * H)], 0.1, 2)          # pelvic
+    soft_fin(fb, [(-5.6, -0.3 * H), (-6.1, -0.85 * H), (-6.45, -0.8 * H), (-6.4, -0.25 * H)], 0.08, 2)         # anal
+    return finish_hero("WhaleShark", bm, col, [M["whale_shark"], M["eye"], M["fin_whale"], M["groove"]], fins=fb)
+
+
+def make_marlin(col, M):
+    """Blue marlin: long spear bill, a tall sail-like front dorsal that drops away, sickle pectorals, a big
+    crescent tail; cobalt back, silver-white sides crossed by pale blue vertical bars."""
+    L, H = 6.0, 0.62
+    top = curve([(0.0, 0.08 * H), (0.06, 0.45 * H), (0.17, 0.92 * H), (0.32, 1.0 * H), (0.55, 0.78 * H), (0.82, 0.33 * H),
+                 (1.0, 0.10 * H)])
+    bot = curve([(0.0, -0.12 * H), (0.07, -0.55 * H), (0.22, -0.92 * H), (0.38, -0.98 * H), (0.62, -0.7 * H), (0.85, -0.3 * H),
+                 (1.0, -0.10 * H)])
+    wid = curve([(0.0, 0.12 * H), (0.1, 0.42 * H), (0.3, 0.58 * H), (0.6, 0.45 * H), (1.0, 0.08 * H)])
+    bm = bmesh.new()
+    fb = bmesh.new()
+    loft_profile(bm, L, top, bot, wid, nr=56, na=36, power=2.2)
+    # bill (upper jaw spear) and the short lower jaw
+    tube(bm, [(L / 2 - 0.05, 0, 0.02), (L / 2 + 0.6, 0, 0.02), (L / 2 + 1.4, 0, 0.04), (L / 2 + 2.2, 0, 0.06)],
+         lambda u: 0.085 * (1 - 0.93 * u), segs=10, mat=2)
+    tube(bm, [(L / 2 - 0.3, 0, -0.1), (L / 2 + 0.25, 0, -0.07)], lambda u: 0.07 * (1 - 0.6 * u), segs=8, mat=0)
+    hero_eye(bm, L / 2 - 0.45, 0.3 * H, 0.18 * H, 0.085, 1, 3)
+    tube(bm, [(L / 2 - 0.85, 0.42 * H, 0.55 * H), (L / 2 - 1.0, 0.5 * H, 0.0), (L / 2 - 0.9, 0.44 * H, -0.6 * H)], 0.02,
+         segs=5, mat=3)                                                                                     # gill cover edge
+    tube(bm, [(L / 2 - 0.85, -0.42 * H, 0.55 * H), (L / 2 - 1.0, -0.5 * H, 0.0), (L / 2 - 0.9, -0.44 * H, -0.6 * H)], 0.02,
+         segs=5, mat=3)
+    # sail: tall at the front, dropping to a low ridge along the back
+    xs = L / 2 - 0.17 * L
+    soft_fin(fb, [(xs + 0.2, 0.75 * H), (xs - 0.05, 2.6 * H), (xs - 0.35, 3.0 * H), (xs - 0.8, 2.5 * H), (xs - 1.3, 1.25 * H),
+                  (xs - 2.4, 0.95 * H), (xs - 3.0, 0.62 * H), (xs - 2.0, 0.6 * H)], 0.05, 2, samples=10)
+    soft_fin(fb, [(-L / 2 + 0.9, 0.25 * H), (-L / 2 + 0.7, 0.55 * H), (-L / 2 + 0.45, 0.24 * H)], 0.03, 2)            # 2nd dorsal
+    xt = -L / 2
+    soft_fin(fb, [(xt + 0.3, 0.1 * H), (xt - 0.4, 1.2 * H), (xt - 1.15, 2.9 * H), (xt - 1.35, 2.85 * H), (xt - 0.75, 1.0 * H),
+                  (xt - 0.55, 0.0), (xt - 0.75, -1.0 * H), (xt - 1.35, -2.85 * H), (xt - 1.15, -2.9 * H), (xt - 0.4, -1.2 * H),
+                  (xt + 0.3, -0.1 * H)], 0.05, 2, samples=8)
+    for s in (1, -1):
+        rot = Euler((s * math.radians(-18), 0.0, 0.0))
+        soft_fin(fb, [(L / 2 - 1.05, -0.35 * H), (L / 2 - 1.7, -1.1 * H), (L / 2 - 2.6, -1.75 * H), (L / 2 - 2.75, -1.7 * H),
+                      (L / 2 - 1.9, -0.9 * H), (L / 2 - 1.35, -0.3 * H)], 0.035, 2, offset=(0, s * 0.42 * H, 0), rot=rot)
+    soft_fin(fb, [(-0.4, -0.75 * H), (-0.85, -1.9 * H), (-1.05, -1.85 * H), (-1.2, -0.62 * H)], 0.035, 2)              # anal
+    soft_fin(fb, [(-L / 2 + 0.85, -0.25 * H), (-L / 2 + 0.65, -0.55 * H), (-L / 2 + 0.4, -0.22 * H)], 0.03, 2)
+    return finish_hero("BlueMarlin", bm, col, [M["marlin"], M["eye"], M["fin_marlin"], M["groove"]], fins=fb)
+
+
+def whale_shark_mat():
+    """Dark blue-grey back with the whale shark's grid of pale spots between thin pale vertical bars, fading to
+    an off-white belly; a slight sheen."""
+    m, nt, out = new_mat("WhaleShark")
+    z = attr(nt, "zrel")
+    base = ramp(nt, z, [(0.0, srgb(226, 228, 226)), (0.36, srgb(210, 214, 216)), (0.46, srgb(78, 96, 116)),
+                        (0.7, srgb(46, 62, 82)), (1.0, srgb(34, 48, 66))])
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    vo = nt.nodes.new("ShaderNodeTexVoronoi")
+    vo.inputs["Scale"].default_value = 3.6
+    vo.inputs["Randomness"].default_value = 0.6
+    nt.links.new(tc.outputs["Object"], vo.inputs["Vector"])
+    spot = nt.nodes.new("ShaderNodeMapRange")
+    spot.inputs["From Min"].default_value, spot.inputs["From Max"].default_value = 0.24, 0.19
+    nt.links.new(vo.outputs["Distance"], spot.inputs["Value"])
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sep.inputs[0])
+    bar = math_node(nt, "POWER", math_node(nt, "ABSOLUTE", math_node(nt, "SINE", math_node(nt, "MULTIPLY", sep.outputs["X"], 2.1))), 40.0)
+    pattern = math_node(nt, "MAXIMUM", spot.outputs["Result"], math_node(nt, "MULTIPLY", bar, 0.8))
+    on_back = nt.nodes.new("ShaderNodeMapRange")
+    on_back.inputs["From Min"].default_value, on_back.inputs["From Max"].default_value = 0.42, 0.52
+    nt.links.new(z, on_back.inputs["Value"])
+    mask = math_node(nt, "MULTIPLY", pattern, on_back.outputs["Result"])
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    nt.links.new(mask, mix.inputs[0])
+    nt.links.new(base, mix.inputs[6])
+    mix.inputs[7].default_value = (*srgb(214, 222, 228), 1.0)
+    b = principled(nt, mix.outputs[2], rough=0.48, coat=0.25, sss=0.04, sss_scale=0.1)
+    b.inputs["Subsurface Radius"].default_value = (0.5, 0.65, 0.9)
+    nt.links.new(b.outputs[0], out.inputs[0])
+    return m
+
+
+def marlin_mat():
+    """Cobalt back over metallic blue and silver-white sides with pale blue vertical bars; a lateral sheen."""
+    m, nt, out = new_mat("BlueMarlin")
+    z = attr(nt, "zrel")
+    base = ramp(nt, z, [(0.0, srgb(238, 242, 246)), (0.38, srgb(200, 212, 226)), (0.56, srgb(70, 120, 200)),
+                        (0.72, srgb(24, 56, 140)), (1.0, srgb(14, 30, 80))])
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sep.inputs[0])
+    wob = math_node(nt, "MULTIPLY", sep.outputs["Z"], 0.6)
+    bars = math_node(nt, "POWER", math_node(nt, "ABSOLUTE", math_node(nt, "SINE", math_node(
+        nt, "MULTIPLY", math_node(nt, "ADD", sep.outputs["X"], wob), 5.2))), 18.0)
+    band = nt.nodes.new("ShaderNodeMapRange")                    # bars only across the flanks
+    band.interpolation_type = "SMOOTHSTEP"
+    band.inputs["From Min"].default_value, band.inputs["From Max"].default_value = 0.3, 0.5
+    nt.links.new(z, band.inputs["Value"])
+    fade = nt.nodes.new("ShaderNodeMapRange")
+    fade.inputs["From Min"].default_value, fade.inputs["From Max"].default_value = 0.78, 0.6
+    nt.links.new(z, fade.inputs["Value"])
+    xr = nt.nodes.new("ShaderNodeMapRange")                      # not on the head or the tail stalk
+    xr.inputs["From Min"].default_value, xr.inputs["From Max"].default_value = 0.12, 0.3
+    nt.links.new(attr(nt, "xrel"), xr.inputs["Value"])
+    xr2 = nt.nodes.new("ShaderNodeMapRange")
+    xr2.inputs["From Min"].default_value, xr2.inputs["From Max"].default_value = 0.9, 0.75
+    nt.links.new(attr(nt, "xrel"), xr2.inputs["Value"])
+    mask = math_node(nt, "MULTIPLY", math_node(nt, "MULTIPLY", bars, math_node(nt, "MULTIPLY", band.outputs["Result"],
+                                                                                fade.outputs["Result"])),
+                     math_node(nt, "MULTIPLY", xr.outputs["Result"], xr2.outputs["Result"]))
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    nt.links.new(math_node(nt, "MULTIPLY", mask, 0.85), mix.inputs[0])
+    nt.links.new(base, mix.inputs[6])
+    mix.inputs[7].default_value = (*srgb(150, 205, 250), 1.0)
+    metal = math_node(nt, "MULTIPLY", math_node(nt, "SUBTRACT", 1.0, z), 0.55)
+    b = principled(nt, mix.outputs[2], rough=0.28, metal=metal, coat=0.6)
+    nt.links.new(b.outputs[0], out.inputs[0])
+    return m
+
+
+def fin_mat(name, base, tip, rays=26.0):
+    """Fin: darker towards its edge, faint ray striping, a little translucency."""
+    m, nt, out = new_mat(name)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    edge = math_node(nt, "MAXIMUM", math_node(nt, "ABSOLUTE", math_node(nt, "SUBTRACT", sep.outputs["Z"], 0.5)),
+                     math_node(nt, "ABSOLUTE", math_node(nt, "SUBTRACT", sep.outputs["X"], 0.5)))
+    col = ramp(nt, math_node(nt, "MULTIPLY", edge, 2.0), [(0.0, base), (1.0, tip)])
+    sep2 = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sep2.inputs[0])
+    ray = math_node(nt, "POWER", math_node(nt, "ABSOLUTE", math_node(nt, "SINE", math_node(nt, "MULTIPLY", sep2.outputs["X"], rays))), 6.0)
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    nt.links.new(math_node(nt, "MULTIPLY", ray, 0.18), mix.inputs[0])
+    nt.links.new(col, mix.inputs[6])
+    mix.inputs[7].default_value = (0.02, 0.03, 0.05, 1.0)
+    b = principled(nt, mix.outputs[2], rough=0.35, sss=0.12, sss_scale=0.03, coat=0.3)
+    b.inputs["Subsurface Radius"].default_value = (0.5, 0.65, 0.9)     # cool, not the default red scatter
+    nt.links.new(b.outputs[0], out.inputs[0])
+    return m
 
 
 # --------------------------------------------------------------------------
@@ -821,72 +1081,12 @@ def build_world(sc):
 
 
 def build_environment(col, M):
-    rng = random.Random(SEED)
     # water volume: starts just behind the branding, so the camera looks into it from outside
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.LocRotScale(Vector((0, 46, 1.5)), None, Vector((180, 96, 40))))
     vol = mesh_from_bm("WaterVolume", bm, col, [M["water"]], smooth=False)
     vol.visible_shadow = True
-    # seabed: rolling sand, lower towards the back
-    bm = bmesh.new()
-    nx, ny = 90, 50
-    verts = {}
-    for i in range(nx + 1):
-        for j in range(ny + 1):
-            x = -90 + 180 * i / nx
-            y = -6 + 100 * j / ny
-            z = -9.5 - 0.06 * max(0.0, y) + 0.9 * noise.noise(Vector((x * 0.05, y * 0.05, 0.3))) + 0.25 * noise.noise(Vector((x * 0.2, y * 0.2, 1.7)))
-            verts[i, j] = bm.verts.new((x, y, z))
-    for i in range(nx):
-        for j in range(ny):
-            bm.faces.new((verts[i, j], verts[i + 1, j], verts[i + 1, j + 1], verts[i, j + 1]))
-    mesh_from_bm("Seabed", bm, col, [M["sand"]])
-    # rocks
-    bm = bmesh.new()
-    for _ in range(40):
-        x = rng.uniform(-40, 40)
-        y = rng.uniform(4, 60)
-        if abs(x) < 9 and y < 12:
-            continue
-        s = rng.uniform(0.8, 3.0)
-        z = -9.6 - 0.06 * y
-        res = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0,
-                                         matrix=Matrix.LocRotScale(Vector((x, y, z)), Euler((rng.random(), rng.random(), rng.random())),
-                                                                   Vector((s * rng.uniform(1, 1.6), s, s * rng.uniform(0.5, 0.9)))))
-        for v in res["verts"]:
-            v.co += Vector((rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15), rng.uniform(-0.15, 0.15))) * s
-    mesh_from_bm("Rocks", bm, col, [M["rock"]])
-    # kelp and eelgrass on the left (freshwater and shallows), coral heads on the right (reef)
-    bm = bmesh.new()
-    for _ in range(46):
-        x = rng.uniform(-36, -9)
-        y = rng.uniform(2, 40)
-        z0 = -9.6 - 0.06 * y
-        hgt = rng.uniform(4, 11)
-        ph = rng.uniform(0, 6.28)
-        pts = [Vector((x + 0.6 * math.sin(ph + t * 2.5) * t, y, z0 + hgt * t)) for t in [k / 10 for k in range(11)]]
-        tube(bm, pts, lambda u: 0.16 * (1 - 0.7 * u), segs=6)
-    mesh_from_bm("Kelp", bm, col, [M["kelp"]])
-    bm = bmesh.new()
-    for _ in range(30):
-        x = rng.uniform(9, 38)
-        y = rng.uniform(2, 34)
-        z0 = -9.6 - 0.06 * y
-        for _b in range(rng.randint(3, 7)):
-            c = Vector((x + rng.uniform(-1, 1), y + rng.uniform(-1, 1), z0 + rng.uniform(0.2, 1.6)))
-            r = rng.uniform(0.4, 1.1)
-            sphere(bm, c, (r, r, r * rng.uniform(0.7, 1.3)), rng.randint(0, 2))
-    mesh_from_bm("Coral", bm, col, [M["coral_a"], M["coral_b"], M["coral_c"]], subsurf=1)
-    # bubble columns
-    bm = bmesh.new()
-    for cx, cy in ((-12.5, 6.0), (13.0, 9.0), (-20.0, 18.0)):
-        z = -9.0
-        while z < 10:
-            r = rng.uniform(0.04, 0.12)
-            sphere(bm, (cx + rng.uniform(-0.3, 0.3), cy + rng.uniform(-0.3, 0.3), z), (r, r, r), 0, subdiv=1)
-            z += rng.uniform(0.3, 0.9)
-    mesh_from_bm("Bubbles", bm, col, [M["bubble"]])
-    # caustic sheet near the surface (light passes through its bright veins)
+    # light sheet near the surface: lanes and caustic veins let the sun through, making rays in the water
     bm = bmesh.new()
     bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=110, matrix=Matrix.Translation((0, 40, 16)))
     sheet = mesh_from_bm("CausticSheet", bm, col, [M["caustic"]], smooth=False)
@@ -928,8 +1128,6 @@ def build_materials():
     M["page_shade"] = solid_mat("EmblemPageShade", srgb(206, 226, 248), rough=0.25, emission=srgb(206, 226, 248), strength=0.6)
     M["text"] = solid_mat("WordmarkWhite", (0.95, 0.97, 1.0), rough=0.15, coat=1.0, emission=(1.0, 1.0, 1.0), strength=0.6)
     M["gold"] = solid_mat("WordmarkGold", srgb(246, 188, 70), rough=0.2, metal=0.3, coat=1.0, emission=srgb(246, 188, 70), strength=0.45)
-    M["marlin"] = fish_mat("BlueMarlin", [(0.0, srgb(236, 240, 245)), (0.42, srgb(190, 200, 212)), (0.55, srgb(40, 80, 170)),
-                                          (1.0, srgb(14, 34, 96))], metal=0.4)
     M["king"] = fish_mat("KingSalmon", [(0.0, srgb(236, 238, 240)), (0.45, srgb(196, 204, 212)), (0.62, srgb(90, 120, 120)),
                                         (1.0, srgb(50, 80, 86))], spots=(srgb(18, 20, 22), 13.0), metal=0.4)
     M["fin_king"] = solid_mat("FinKing", srgb(70, 90, 96), rough=0.4, sss=0.3)
@@ -939,10 +1137,6 @@ def build_materials():
     M["fin_cat"] = solid_mat("FinCatfish", srgb(70, 72, 66), rough=0.4, sss=0.3)
     M["lanternfish"] = fish_mat("Lanternfish", [(0.0, srgb(120, 140, 170)), (0.4, srgb(40, 50, 80)), (1.0, srgb(14, 18, 34))],
                                 spots=(srgb(120, 230, 255), 14.0), metal=0.4, sss=0.05)
-    M["fin_marlin"] = solid_mat("FinMarlin", srgb(24, 60, 150), rough=0.35, sss=0.3)
-    M["whale_shark"] = fish_mat("WhaleShark", [(0.0, srgb(210, 216, 220)), (0.4, srgb(200, 206, 212)), (0.5, srgb(60, 80, 100)),
-                                               (1.0, srgb(40, 56, 74))], spots=(srgb(220, 228, 235), 2.2), metal=0.0,
-                                sss=0.05, rough=0.55, coat=0.2)
     M["arapaima"] = fish_mat("Arapaima", [(0.0, srgb(200, 170, 140)), (0.5, srgb(110, 112, 90)), (1.0, srgb(60, 66, 54))],
                              along=([(0.0, (1, 1, 1)), (0.35, (1, 1, 1)), (0.6, (0, 0, 0)), (1.0, (0, 0, 0))], srgb(170, 40, 30)),
                              metal=0.1, sss=0.15)
@@ -969,23 +1163,22 @@ def build_materials():
                            metal=0.0, sss=0.1, rough=0.6, coat=0.6)
     M["tuna"] = fish_mat("Tuna", [(0.0, srgb(225, 230, 235)), (0.45, srgb(170, 180, 190)), (0.7, srgb(30, 50, 110)),
                                   (1.0, srgb(15, 25, 60))], metal=0.45, sss=0.05, rough=0.25)
-    M["sand"] = solid_mat("Sand", srgb(150, 140, 110), rough=0.9)
-    M["rock"] = solid_mat("Rock", srgb(60, 66, 70), rough=0.8)
-    M["kelp"] = solid_mat("Kelp", srgb(40, 90, 50), rough=0.5, sss=0.4)
-    M["coral_a"] = solid_mat("CoralPink", srgb(240, 110, 130), rough=0.6, sss=0.4)
-    M["coral_b"] = solid_mat("CoralOrange", srgb(250, 150, 60), rough=0.6, sss=0.4)
-    M["coral_c"] = solid_mat("CoralPurple", srgb(150, 80, 200), rough=0.6, sss=0.4)
-    M["bubble"] = solid_mat("Bubble", (1, 1, 1), rough=0.0, transmission=1.0)
+    M["whale_shark"] = whale_shark_mat()
+    M["marlin"] = marlin_mat()
+    M["fin_whale"] = fin_mat("FinWhaleShark", srgb(56, 72, 92), srgb(30, 40, 54), rays=6.0)
+    M["fin_marlin"] = fin_mat("FinMarlin", srgb(30, 64, 150), srgb(12, 24, 70), rays=30.0)
+    M["groove"] = solid_mat("Groove", srgb(18, 24, 32), rough=0.6)
     # water: absorbing, scattering volume (no surface)
     m, nt, out = new_mat("WaterVolume")
     pv = nt.nodes.new("ShaderNodeVolumePrincipled")
     pv.inputs["Color"].default_value = (0.35, 0.65, 0.9, 1.0)
     pv.inputs["Density"].default_value = WATER_DENSITY
     pv.inputs["Absorption Color"].default_value = (0.02, 0.2, 0.45, 1.0)
-    pv.inputs["Anisotropy"].default_value = 0.6
+    pv.inputs["Anisotropy"].default_value = 0.3
     nt.links.new(pv.outputs[0], out.inputs["Volume"])
     M["water"] = m
-    # caustic sheet: transparent along voronoi cell edges (bright veins), mostly opaque elsewhere
+    # light sheet: transparent in broad wavering lanes (they cast the rays through the water) and along voronoi
+    # cell edges (dappled caustics); mostly opaque elsewhere
     m, nt, out = new_mat("CausticSheet")
     tc = nt.nodes.new("ShaderNodeTexCoord")
     mp = nt.nodes.new("ShaderNodeMapping")
@@ -994,15 +1187,26 @@ def build_materials():
     vo = nt.nodes.new("ShaderNodeTexVoronoi")
     vo.feature = "DISTANCE_TO_EDGE"
     nt.links.new(mp.outputs[0], vo.inputs["Vector"])
-    mr = nt.nodes.new("ShaderNodeMapRange")
-    mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = 0.0, 0.09
-    mr.inputs["To Min"].default_value, mr.inputs["To Max"].default_value = 1.0, 0.04
-    nt.links.new(vo.outputs["Distance"], mr.inputs["Value"])
+    veins = nt.nodes.new("ShaderNodeMapRange")
+    veins.inputs["From Min"].default_value, veins.inputs["From Max"].default_value = 0.0, 0.07
+    veins.inputs["To Min"].default_value, veins.inputs["To Max"].default_value = 0.55, 0.0
+    nt.links.new(vo.outputs["Distance"], veins.inputs["Value"])
+    lanes_map = nt.nodes.new("ShaderNodeMapping")                 # stretched along y: lanes that run front to back
+    lanes_map.inputs["Scale"].default_value = (0.42, 0.04, 1.0)
+    nt.links.new(tc.outputs["Object"], lanes_map.inputs["Vector"])
+    nz = nt.nodes.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = 3.0
+    nz.inputs["Detail"].default_value = 1.0
+    nt.links.new(lanes_map.outputs[0], nz.inputs["Vector"])
+    lanes = nt.nodes.new("ShaderNodeMapRange")
+    lanes.inputs["From Min"].default_value, lanes.inputs["From Max"].default_value = 0.56, 0.66
+    nt.links.new(nz.outputs["Fac"], lanes.inputs["Value"])
+    open_ = math_node(nt, "MINIMUM", math_node(nt, "ADD", lanes.outputs["Result"], veins.outputs["Result"]), 1.0)
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
     hold = nt.nodes.new("ShaderNodeBsdfDiffuse")
     hold.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
     mix = nt.nodes.new("ShaderNodeMixShader")
-    nt.links.new(mr.outputs["Result"], mix.inputs[0])
+    nt.links.new(open_, mix.inputs[0])
     nt.links.new(hold.outputs[0], mix.inputs[1])
     nt.links.new(tr.outputs[0], mix.inputs[2])
     nt.links.new(mix.outputs[0], out.inputs["Surface"])
@@ -1019,7 +1223,7 @@ def build_lights(col, group):
     sd.angle = math.radians(1.5)
     sd.color = (0.92, 0.97, 1.0)
     sun = link(bpy.data.objects.new("Sun", sd), col)
-    sun.rotation_euler = (math.radians(14), math.radians(-10), 0)      # almost straight down, slanting slightly
+    sun.rotation_euler = (math.radians(-12), math.radians(-14), 0)     # steep, slanting left and towards the camera
     # dedicated soft spot on the branding, from in front and above the camera line
     spd = bpy.data.lights.new("BrandingSpot", "SPOT")
     spd.energy = 9000.0
@@ -1031,6 +1235,7 @@ def build_lights(col, group):
     spot.location = (0.0, -26.0, 9.0)
     spot.rotation_mode = "QUATERNION"
     spot.rotation_quaternion = (Vector((0, 0, 0)) - spot.location).to_track_quat("-Z", "Y")
+    spot.visible_volume_scatter = False          # light the branding, not the water behind it
     # soft blue rim from behind the branding
     rd = bpy.data.lights.new("BrandingRim", "AREA")
     rd.energy = 2500.0
@@ -1040,6 +1245,7 @@ def build_lights(col, group):
     rim.location = (0.0, 9.0, 6.0)
     rim.rotation_mode = "QUATERNION"
     rim.rotation_quaternion = (Vector((0, 0, 0)) - rim.location).to_track_quat("-Z", "Y")
+    rim.visible_volume_scatter = False
 
 
 def build_camera(sc, col):
