@@ -21,10 +21,14 @@ sun casts dappled caustics on the seabed and the fish and visible light shafts t
 refracted caustics in Cycles need the slower MNEE shadow caustics; this projected pattern is the usual
 production shortcut and renders cleanly.)
 
+Branding: the emblem follows the channel avatar (viewfinder brackets, a white fish whose tail fans out like
+book pages, an open book) inside a rounded square; the word is Playfair Display, "Fish" white and "Dex" gold
+italic like the channel's thumbnails. The fonts are looked up in a 'fonts' folder next to this script first.
+
 Fish (low to mid poly, smooth shaded, subdivided once): upper left, freshwater (sockeye salmon in spawning
-colours with the hooked jaw and hump; black sea bass); upper right, pelagic and reef (mahi mahi, reef fish);
-lower left, deep sea (anglerfish with a glowing lure and its own point light); lower right, open ocean (great
-white shark in the background, a swirling school of tuna). The brief placed the shark both "upper background"
+colours with the hooked jaw and hump; black sea bass; arapaima); upper right, pelagic and reef (mahi mahi,
+blue marlin, reef fish); far background, a whale shark; lower left, deep sea (anglerfish with a glowing lure
+and its own point light); lower right, open ocean (great white shark, a swirling school of tuna). The brief placed the shark both "upper background"
 and "lower right": it is in the lower right quadrant, set back in depth and rising towards the upper right.
 """
 
@@ -35,7 +39,7 @@ import sys
 
 import bpy
 import bmesh
-from mathutils import Euler, Matrix, Quaternion, Vector, noise
+from mathutils import Euler, Matrix, Vector, noise
 
 # --------------------------------------------------------------------------
 # Settings
@@ -194,6 +198,28 @@ def math_node(nt, op, a, b=None):
         else:
             nt.links.new(v, n.inputs[i])
     return n.outputs[0]
+
+
+def gradient_mat(name, kind, stops, emit=0.0):
+    """Flat logo colour from a ramp: 'vertical' (bottom to top) or 'radial' (centre to edge), on the object's
+    generated coordinates; a little emission keeps it vivid under the water light."""
+    m, nt, out = new_mat(name)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    if kind == "vertical":
+        fac = sep.outputs["Z"]
+    else:
+        dx = math_node(nt, "SUBTRACT", sep.outputs["X"], 0.42)
+        dz = math_node(nt, "SUBTRACT", sep.outputs["Z"], 0.6)
+        fac = math_node(nt, "MULTIPLY", math_node(nt, "SQRT", math_node(nt, "ADD", math_node(nt, "MULTIPLY", dx, dx),
+                                                                         math_node(nt, "MULTIPLY", dz, dz))), 1.5)
+    col = ramp(nt, fac, stops)
+    b = principled(nt, col, rough=0.25, coat=0.7)
+    nt.links.new(col, b.inputs["Emission Color"])
+    b.inputs["Emission Strength"].default_value = emit
+    nt.links.new(b.outputs[0], out.inputs[0])
+    return m
 
 
 def fish_mat(name, stops, along=None, spots=None, metal=0.15, sss=0.15, rough=0.35, coat=0.5):
@@ -444,6 +470,54 @@ def make_tuna(col, M, name="Tuna"):
     return finish_fish(name, bm, col, [M["tuna"], M["eye"]], rings)
 
 
+
+
+def make_marlin(col, M):
+    """Blue marlin: long spear bill, tall sail-like front dorsal, deeply forked tail, cobalt back, silver belly."""
+    L, h, w = 6.0, 0.62, 0.4
+    rings = body_rings(L, h, w, peak=0.3, nose=0.6, tail=0.05)
+    bm = bmesh.new()
+    loft(bm, rings, n=22)
+    tube(bm, [(L / 2 - 0.1, 0, 0.05), (L / 2 + 0.7, 0, 0.03), (L / 2 + 1.7, 0, 0.0)], lambda u: 0.07 * (1 - 0.9 * u), mat=0)
+    eyes(bm, L / 2 - 0.45, w * 0.8, 0.12, 0.1, 1)
+    fin(bm, [(L / 2 - 0.9, 0.5), (L / 2 - 1.2, 1.6), (L / 2 - 1.8, 1.45), (L / 2 - 2.6, 0.9), (L / 2 - 3.4, 0.45)], 0.05, 2)
+    fin(bm, tail_fork(L, 1.5, 1.2), 0.05, 2)
+    for s in (1, -1):
+        fin(bm, [(L / 2 - 1.4, 0.0), (L / 2 - 2.6, s * 1.0), (L / 2 - 2.3, 0.0)], 0.04, 2, plane="XY", offset=(0, s * 0.3, -0.25))
+    return finish_fish("BlueMarlin", bm, col, [M["marlin"], M["eye"], M["fin_marlin"]], rings)
+
+
+def make_whale_shark(col, M):
+    """Whale shark: broad flat head with a wide terminal mouth, ridged dark blue-grey back with pale spots."""
+    L, h, w = 18.0, 1.6, 1.9
+    rings = body_rings(L, h, w, peak=0.25, nose=0.3, tail=0.05)
+    rings = [(x, wd * (1.15 if x > L / 4 else 1.0), hh * (0.8 if x > L / 4 else 1.0), zc) for x, wd, hh, zc in rings]
+    bm = bmesh.new()
+    loft(bm, rings, n=28)
+    eyes(bm, L / 2 - 1.3, w * 1.05, 0.2, 0.14, 1)
+    fin(bm, [(1.2, 1.3), (-0.5, 3.4), (-1.4, 1.2)], 0.25, 0)
+    fin(bm, [(-L / 2 + 0.4, 0.2), (-L / 2 - 2.2, 3.8), (-L / 2 - 1.2, 0.0), (-L / 2 - 1.8, -2.4), (-L / 2 + 0.3, -0.2)], 0.2, 0)
+    for s in (1, -1):
+        fin(bm, [(L / 2 - 3.0, 0.0), (L / 2 - 5.2, s * 3.6), (L / 2 - 5.6, s * 3.2), (L / 2 - 4.4, 0.0)], 0.16, 0, plane="XY",
+            offset=(0, s * 1.2, -0.9))
+    return finish_fish("WhaleShark", bm, col, [M["whale_shark"], M["eye"]], rings)
+
+
+def make_arapaima(col, M):
+    """Arapaima: long cylindrical Amazon giant, olive-grey front shading to red-edged scales towards the tail,
+    with the dorsal and anal fins set far back near the tail."""
+    L, h, w = 6.5, 0.6, 0.5
+    rings = body_rings(L, h, w, peak=0.3, nose=0.45, tail=0.2)
+    rings = [(x, wd, hh * (0.85 if x > 0 else 1.0), zc) for x, wd, hh, zc in rings]
+    bm = bmesh.new()
+    loft(bm, rings, n=22)
+    eyes(bm, L / 2 - 0.45, w * 0.8, 0.16, 0.09, 1)
+    fin(bm, [(-L / 2 + 1.9, 0.45), (-L / 2 + 0.9, 0.95), (-L / 2 + 0.4, 0.45)], 0.05, 2)
+    fin(bm, [(-L / 2 + 1.9, -0.45), (-L / 2 + 0.9, -0.9), (-L / 2 + 0.4, -0.45)], 0.05, 2)
+    fin(bm, [(-L / 2 + 0.2, 0.25), (-L / 2 - 0.9, 0.7), (-L / 2 - 1.05, 0.0), (-L / 2 - 0.9, -0.7), (-L / 2 + 0.2, -0.25)], 0.05, 2)
+    return finish_fish("Arapaima", bm, col, [M["arapaima"], M["eye"], M["fin_red"]], rings)
+
+
 # --------------------------------------------------------------------------
 # Branding: emblem (viewfinder, fish, open book) and the FishDex word
 # --------------------------------------------------------------------------
@@ -476,122 +550,146 @@ def extrude_outline(name, outline, depth, col, mat, z_front=0.0, bevel=0.0, hole
     return ob
 
 
-def fish_outline(s=1.0):
-    """The emblem fish: a lens-shaped body and a forked tail, facing right."""
-    pts = []
-    for i in range(25):
-        t = math.pi * i / 24
-        pts.append((0.55 * s * math.cos(t), 0.36 * s * math.sin(t) ** 0.9))
-    body_top = pts
-    body_bot = [(x, -z) for x, z in reversed(pts)]
-    tail = [(-0.5 * s, 0.0), (-0.85 * s, 0.32 * s), (-0.76 * s, 0.0), (-0.85 * s, -0.32 * s)]
-    return body_top[:-1] + [tail[0], tail[1], tail[2], tail[3]] + body_bot[1:]
+def emblem_fish_outline(S):
+    """The FishDex fish (head left, as in the channel avatar): a smooth lens-shaped body ending in a narrow
+    tail stalk on the right. The tail itself is the fan of 'pages' built separately."""
+    top, bot = [], []
+    for i in range(29):
+        u = i / 28                                         # 0 snout (left) .. 1 tail stalk (right)
+        x = (-0.30 + 0.50 * u) * S
+        h = 0.155 * S * math.sin(math.pi * min(1.0, u * 1.08)) ** 0.75 + 0.012 * S
+        top.append((x, h + 0.01 * S * (1 - u)))
+        bot.append((x, -0.8 * h))
+    return top + list(reversed(bot))
 
 
 def make_emblem(col, M, size):
+    """The FishDex emblem as on the channel avatar, inside a rounded square: a blue gradient plate, light blue
+    viewfinder brackets in the four corners, a white fish (head left, with an eye) whose tail fans out like
+    book pages, over an open book with light blue page edges."""
+    S = size
     root = link(bpy.data.objects.new("FishDex_Emblem", None), col)
-    if EMBLEM_SHAPE == "circle":
-        out = [(size / 2 * math.cos(2 * math.pi * i / 64), size / 2 * math.sin(2 * math.pi * i / 64)) for i in range(64)]
-    else:
-        out = rounded_rect(size, size, size * 0.22)
-    plate = extrude_outline("Emblem_Plate", out, 0.35 * size / 3, col, M["emblem"], bevel=0.06 * size / 3)
+    plate = extrude_outline("Emblem_Plate", rounded_rect(S, S, S * 0.22) if EMBLEM_SHAPE != "circle" else
+                            [(S / 2 * math.cos(2 * math.pi * i / 72), S / 2 * math.sin(2 * math.pi * i / 72)) for i in range(72)],
+                            0.12 * S, col, M["emblem"], bevel=0.02 * S)
     plate.parent = root
     plate.location = (0, 0.02, 0)
-    # viewfinder corner brackets
-    k, t, arm = size * 0.33, size * 0.04, size * 0.16
-    for sx in (1, -1):
-        for sz in (1, -1):
-            L = [(0, 0), (arm, 0), (arm, t), (t, t), (t, arm), (0, arm)]
-            L = [(sx * (-k + x), sz * (k - z)) if False else (sx * (k - x), sz * (k - z)) for x, z in L]
-            if (sx > 0) != (sz > 0):
-                L = list(reversed(L))
-            br = extrude_outline(f"Viewfinder_{sx}_{sz}", L, 0.06, col, M["bracket"])
-            br.parent = root
-            br.location = (0, -0.05, 0)
-    # open book under the fish: two curved page fans
+
+    def part(name, outline, mat, depth=0.03, y=-0.03):
+        ob = extrude_outline(name, outline, depth * S, col, mat)
+        ob.parent = root
+        ob.location = (0, y * S, 0)
+        return ob
+    # viewfinder brackets: thick L shapes with rounded outer corners
+    k, t, arm, r = 0.37 * S, 0.055 * S, 0.17 * S, 0.06 * S
+    arc = []
+    for i in range(9):                                     # rounded outer corner of the top left bracket
+        a = math.radians(90 + 90 * i / 8)
+        arc.append((-k + r + r * math.cos(a), k - r + r * math.sin(a)))
+    base = [(-k + arm, k)] + arc + [(-k, k - arm), (-k + t, k - arm), (-k + t, k - t), (-k + arm, k - t)]
+    for sx, sz in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+        pts = [(-x * sx, z * sz) for x, z in base]         # base is the top left one: mirror it into each corner
+        if sx * sz < 0:
+            pts = list(reversed(pts))
+        part(f"Viewfinder_{sx}_{sz}", pts, M["bracket"])
+    # open book: two pages whose top edges rise from the spine to the outer corners, with page edges below
     for side in (1, -1):
-        for j in range(3):
+        for j, (z0, th, mat) in enumerate(((-0.105, 0.05, M["book"]), (-0.175, 0.026, M["bracket"]), (-0.225, 0.022, M["bracket"]))):
             pts = []
-            for i in range(13):
-                u = i / 12
-                x = side * (0.03 + u * 0.36) * size
-                z = (-0.17 - 0.035 * j) * size + 0.05 * size * math.sin(math.pi * u) - 0.02 * size * u
+            for i in range(17):
+                u = i / 16
+                x = side * (0.012 + u * 0.32) * S
+                z = (z0 + 0.075 * u ** 1.3 - 0.02 * math.sin(math.pi * u)) * S
                 pts.append((x, z))
-            th = 0.022 * size
-            outline = pts + [(x, z - th) for x, z in reversed(pts)]
+            outline = pts + [(x, z - th * S) for x, z in reversed(pts)]
             if side < 0:
                 outline = list(reversed(outline))
-            pg = extrude_outline(f"Book_{side}_{j}", outline, 0.05, col, M["book"] if j else M["bracket"])
-            pg.parent = root
-            pg.location = (0, -0.05, 0)
-    # the fish, with an eye hole cut as a dark disc in front
-    fo = [(x + 0.05 * size, z + 0.05 * size) for x, z in fish_outline(size * 0.42)]
-    fish = extrude_outline("Emblem_Fish", fo, 0.08, col, M["white"], bevel=0.01)
-    fish.parent = root
-    fish.location = (0, -0.07, 0)
+            part(f"Book_{side}_{j}", outline, mat, depth=0.03, y=-0.035)
+    # the fish (white) and its eye
+    part("Emblem_Fish", [(x - 0.03 * S, z + 0.075 * S) for x, z in emblem_fish_outline(S)], M["white"], depth=0.04, y=-0.06)
     bm = bmesh.new()
-    ring = [bm.verts.new((0.05 * size + 0.13 * size + 0.04 * size * math.cos(a), 0.0, 0.05 * size + 0.05 * size + 0.04 * size * math.sin(a)))
-            for a in [2 * math.pi * i / 20 for i in range(20)]]
+    ex, ez, er = -0.215 * S, 0.11 * S, 0.028 * S
+    ring = [bm.verts.new((ex + er * math.cos(2 * math.pi * i / 24), 0.0, ez + er * math.sin(2 * math.pi * i / 24))) for i in range(24)]
     bm.faces.new(ring)
-    eye = mesh_from_bm("Emblem_FishEye", bm, col, [M["emblem"]], smooth=False)
+    eye = mesh_from_bm("Emblem_FishEye", bm, col, [M["emblem_dark"]], smooth=False)
     eye.parent = root
-    eye.location = (0, -0.1, 0)
+    eye.location = (0, -0.061 * S, 0)
+    # the tail: a fan of page-like blades spreading to the right of the tail stalk
+    sx0, sz0 = 0.15 * S, 0.075 * S
+    for i, ang in enumerate((40, 20, 0, -20, -40)):
+        a0, a1 = math.radians(ang - 8), math.radians(ang + 8)
+        L1 = 0.21 * S
+        blade = [(sx0, sz0), (sx0 + L1 * math.cos(a0), sz0 + L1 * math.sin(a0)),
+                 (sx0 + L1 * 1.02 * math.cos((a0 + a1) / 2), sz0 + L1 * 1.02 * math.sin((a0 + a1) / 2)),
+                 (sx0 + L1 * math.cos(a1), sz0 + L1 * math.sin(a1))]
+        part(f"Emblem_TailPage_{i}", blade, M["white"] if i % 2 == 0 else M["page_shade"], depth=0.04, y=-0.06)
     return root
 
 
-def find_bold_font():
-    candidates = [
-        "C:/Windows/Fonts/segoeuib.ttf", "C:/Windows/Fonts/arialbd.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
-        "/usr/share/fonts/opentype/inter/InterDisplay-Bold.otf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-    ]
-    for p in candidates:
-        if os.path.exists(p):
-            try:
-                return bpy.data.fonts.load(p, check_existing=True), True
-            except RuntimeError:
-                pass
-    return bpy.data.fonts.get("Bfont Regular") or bpy.data.fonts.load("<builtin>"), False
+def find_font(names):
+    heres = []
+    if "__file__" in globals() and os.path.exists(str(__file__)):
+        heres.append(os.path.dirname(os.path.abspath(__file__)))
+    if bpy.data.filepath:
+        heres.append(os.path.dirname(bpy.data.filepath))
+    dirs = [d for h in heres for d in (os.path.join(h, "fonts"), h)] + [ os.path.expanduser("~/Library/Fonts"), "/Library/Fonts",
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts"), "C:/Windows/Fonts",
+            os.path.expanduser("~/.fonts"), os.path.expanduser("~/.local/share/fonts"), "/usr/share/fonts/truetype"]
+    for d in dirs:
+        for n in names:
+            p = os.path.join(d, n)
+            if os.path.exists(p):
+                return bpy.data.fonts.load(p, check_existing=True)
+    print(f"WARNING: {names[0]} not found (put it in a 'fonts' folder next to this script); using Blender's font")
+    return bpy.data.fonts.get("Bfont Regular") or bpy.data.fonts.load("<builtin>")
+
+
+def text_object(name, body, font, size, mat, col):
+    cu = bpy.data.curves.new(name, "FONT")
+    cu.body = body
+    cu.font = font
+    cu.size = size
+    cu.align_x, cu.align_y = "LEFT", "CENTER"
+    cu.extrude = size * 0.07
+    cu.bevel_depth = size * 0.012
+    cu.bevel_resolution = 3
+    cu.materials.append(mat)
+    ob = link(bpy.data.objects.new(name, cu), col)
+    ob.rotation_euler = (math.radians(90), 0, 0)          # stand up, facing the camera (-Y)
+    return ob
 
 
 def make_wordmark(col, M, height):
-    font, bold = find_bold_font()
-    cu = bpy.data.curves.new("FishDex_Text", "FONT")
-    cu.body = "FishDex"
-    cu.font = font
-    cu.size = height
-    cu.align_x, cu.align_y = "LEFT", "CENTER"
-    cu.extrude = height * 0.09
-    cu.bevel_depth = height * 0.018
-    cu.bevel_resolution = 3
-    if not bold:
-        cu.offset = height * 0.025          # thicken the built-in font when no bold face is installed
-    cu.materials.append(M["text"])
-    ob = link(bpy.data.objects.new("FishDex_Text", cu), col)
-    ob.rotation_euler = (math.radians(90), 0, 0)          # stand it up, facing the camera (-Y)
-    return ob, font
+    """'Fish' in white Playfair Display SemiBold, 'Dex' in gold Playfair Bold Italic (the thumbnails' style)."""
+    roman = find_font(["PlayfairDisplay-SemiBold.ttf", "PlayfairDisplay-Bold.ttf", "PlayfairDisplay-Regular.ttf"])
+    italic = find_font(["PlayfairDisplay-BoldItalic.ttf", "PlayfairDisplay-SemiBoldItalic.ttf", "PlayfairDisplay-Italic.ttf"])
+    root = link(bpy.data.objects.new("FishDex_Wordmark", None), col)
+    a = text_object("Wordmark_Fish", "Fish", roman, height, M["text"], col)
+    b = text_object("Wordmark_Dex", "Dex", italic, height, M["gold"], col)
+    for ob in (a, b):
+        ob.parent = root
+    bpy.context.view_layer.update()
+    wa = a.dimensions.x
+    b.location.x = wa + height * 0.04
+    bpy.context.view_layer.update()
+    return root, wa + height * 0.04 + b.dimensions.x
 
 
 def build_branding(col, M):
     group = link(bpy.data.objects.new("Branding_Group", None), col)
-    emblem_size = 3.3
+    emblem_size = 3.4
     emblem = make_emblem(col, M, emblem_size)
-    text, _font = make_wordmark(col, M, 2.6)
+    word, tw = make_wordmark(col, M, 2.9)
     emblem.parent = group
-    text.parent = group
-    bpy.context.view_layer.update()
-    tw = text.dimensions.x
-    gap = 0.55
+    word.parent = group
+    gap = 0.6
     total = emblem_size + gap + tw
     emblem.location = (-total / 2 + emblem_size / 2, 0, 0)
-    text.location = (-total / 2 + emblem_size + gap, 0, -0.1)
-    # fit inside the safe area with a 6% margin (it is centred on the origin, the safe area's centre)
-    limit_w = SAFE_W / PX_PER_UNIT * 0.94
-    limit_h = SAFE_H / PX_PER_UNIT * 0.94
-    s = min(1.0, limit_w / total, limit_h / emblem_size)
+    word.location = (-total / 2 + emblem_size + gap, 0, -0.12)
+    # fit inside the safe area with a 6% margin (centred on the origin, the safe area's centre)
+    s = min(1.0, SAFE_W / PX_PER_UNIT * 0.94 / total, SAFE_H / PX_PER_UNIT * 0.94 / emblem_size)
     group.scale = (s, s, s)
-    return group, emblem, text
+    return group, emblem, word
 
 
 # --------------------------------------------------------------------------
@@ -701,47 +799,51 @@ def place(ob, loc, yaw=0.0, pitch=0.0, roll=0.0, scale=1.0):
 
 
 def build_marine_life(col, M, lights_col):
+    """Fish around the branding, outside the safe area (|x| > 7.7 or |z| > 2.1 on the focal plane, scaled up
+    with depth). Positions are (x, depth y, z); y > 0 is behind the branding, inside the water."""
     # upper left: freshwater
-    sock = make_sockeye(col, M)
-    place(sock, (-10.0, 4.0, 4.4), yaw=12, pitch=-4)
-    bass = make_bass(col, M)
-    place(bass, (-15.5, 12.0, 7.6), yaw=-160, pitch=3, scale=1.2)
-    sock2 = make_sockeye(col, M)
-    sock2.name = "SockeyeSalmon_Far"
-    place(sock2, (-21.0, 22.0, 3.0), yaw=20, scale=0.95)
+    place(make_sockeye(col, M), (-10.6, -1.0, 4.9), yaw=8, pitch=-3, scale=1.3)
+    s2 = make_sockeye(col, M)
+    s2.name = "SockeyeSalmon_Back"
+    place(s2, (-7.6, 12.0, 6.6), yaw=-6, scale=1.05)
+    place(make_bass(col, M), (-5.4, 3.0, 4.6), yaw=-172, pitch=2, scale=1.15)
+    place(make_arapaima(col, M), (-14.6, 6.0, 2.7), yaw=4, pitch=2, scale=0.95)
     # upper right: pelagic and reef
-    mahi = make_mahi(col, M)
-    place(mahi, (11.2, 5.0, 4.8), yaw=168, pitch=4)
-    for i, (mat, loc, yaw) in enumerate(((M["reef_yellow"], (16.5, 3.0, 2.5), 170), (M["reef_blue"], (18.0, 6.0, 6.8), -10),
-                                         (M["reef_orange"], (14.5, 9.0, 8.4), 160), (M["reef_yellow"], (21.0, 12.0, 4.2), 175))):
-        rf = make_reef(col, M, f"ReefFish_{i}", mat)
-        place(rf, loc, yaw=yaw, scale=1.1)
+    place(make_mahi(col, M), (10.4, -1.0, 4.1), yaw=176, pitch=3, scale=1.15)
+    place(make_marlin(col, M), (14.8, 12.0, 6.9), yaw=188, pitch=-12, scale=0.9)
+    for i, (mat, loc, yaw, sc) in enumerate(((M["reef_yellow"], (8.6, -1.0, 2.75), 170, 1.1),
+                                             (M["reef_blue"], (6.4, 0.0, 5.6), -12, 1.15),
+                                             (M["reef_orange"], (12.4, 2.0, 2.6), 165, 1.0),
+                                             (M["reef_yellow"], (17.0, 8.0, 3.2), 178, 1.2),
+                                             (M["reef_blue"], (10.2, 6.0, 7.0), 172, 1.0))):
+        place(make_reef(col, M, f"ReefFish_{i}", mat), loc, yaw=yaw, scale=sc)
+    # far background, top: a whale shark gliding across, faded by the water
+    place(make_whale_shark(col, M), (1.0, 34.0, 8.6), yaw=176, pitch=2, scale=0.95)
     # lower left: deep sea
     angler, esca, tip = make_angler(col, M)
-    place(angler, (-12.5, 2.0, -5.0), yaw=18, scale=1.25)
+    place(angler, (-10.4, -1.0, -4.5), yaw=16, scale=1.6)
     bpy.context.view_layer.update()
     ld = bpy.data.lights.new("AnglerLureLight", "POINT")
-    ld.energy = 60.0
+    ld.energy = 80.0
     ld.color = (0.45, 1.0, 0.85)
     ld.shadow_soft_size = 0.1
     lo = link(bpy.data.objects.new("AnglerLureLight", ld), lights_col)
     lo.parent = angler
     lo.location = tip + Vector((0.05, 0, -0.05))
-    # lower right: open ocean apex predators and a tuna school
-    shark = make_shark(col, M)
-    place(shark, (17.0, 26.0, -3.0), yaw=196, pitch=-9, scale=1.0)
+    # lower right: open ocean apex predator and a swirling tuna school
+    place(make_shark(col, M), (15.5, 13.0, -3.3), yaw=192, pitch=-6, scale=0.95)
     proto = make_tuna(col, M)
     proto.hide_render = True
     proto.hide_viewport = True
     rng = random.Random(SEED + 1)
-    center = Vector((12.5, 6.0, -5.2))
-    n = 42
-    for i in range(n):                            # a swirling school: a rising helix that tightens
+    center = Vector((9.6, -1.0, -5.0))
+    n = 46
+    for i in range(n):                            # a rising helix that tightens: the school's swirl
         t = i / n
-        a = 2 * math.pi * 2.2 * t + rng.uniform(-0.15, 0.15)
-        r = 3.6 - 1.8 * t + rng.uniform(-0.25, 0.25)
-        p = center + Vector((r * math.cos(a), 0.6 * r * math.sin(a) + 2.0 * t, -1.2 + 2.6 * t + rng.uniform(-0.2, 0.2)))
-        tangent = Vector((-math.sin(a), 0.6 * math.cos(a), 0.18)).normalized()
+        a = 2 * math.pi * 2.3 * t + rng.uniform(-0.15, 0.15)
+        r = 2.8 - 1.3 * t + rng.uniform(-0.2, 0.2)
+        p = center + Vector((r * math.cos(a), 0.6 * r * math.sin(a) + 1.5 * t, -1.0 + 2.0 * t + rng.uniform(-0.15, 0.15)))
+        tangent = Vector((-math.sin(a), 0.6 * math.cos(a), 0.15)).normalized()
         ob = proto.copy()
         ob.name = f"Tuna_{i:02d}"
         ob.hide_render = False
@@ -750,9 +852,9 @@ def build_marine_life(col, M, lights_col):
         ob.location = p
         ob.rotation_mode = "QUATERNION"
         ob.rotation_quaternion = Vector((1, 0, 0)).rotation_difference(tangent)
-        s = rng.uniform(0.75, 1.0)
+        s = rng.uniform(0.8, 1.05)
         ob.scale = (s, s, s)
-    return dict(sockeye=sock, bass=bass, mahi=mahi, angler=angler, shark=shark)
+    return angler
 
 
 # --------------------------------------------------------------------------
@@ -760,11 +862,24 @@ def build_marine_life(col, M, lights_col):
 # --------------------------------------------------------------------------
 def build_materials():
     M = {}
-    M["emblem"] = solid_mat("EmblemNavy", srgb(14, 70, 150), rough=0.25, coat=0.8)
-    M["bracket"] = solid_mat("EmblemLightBlue", srgb(120, 196, 255), rough=0.2, emission=srgb(120, 196, 255), strength=0.8)
-    M["book"] = solid_mat("EmblemBookBlue", srgb(70, 150, 240), rough=0.25, emission=srgb(70, 150, 240), strength=0.5)
-    M["white"] = solid_mat("EmblemWhite", (0.9, 0.93, 0.96), rough=0.2, coat=0.6, emission=(1, 1, 1), strength=0.35)
-    M["text"] = solid_mat("WordmarkWhite", (0.92, 0.95, 1.0), rough=0.18, coat=1.0, emission=(0.85, 0.92, 1.0), strength=0.25)
+    M["emblem"] = gradient_mat("EmblemBlue", "radial", [(0.0, srgb(44, 132, 222)), (0.55, srgb(22, 88, 176)),
+                                                        (1.0, srgb(10, 50, 112))], emit=0.35)
+    M["emblem_dark"] = solid_mat("EmblemEye", srgb(14, 64, 140), rough=0.3)
+    M["bracket"] = gradient_mat("EmblemLightBlue", "vertical", [(0.0, srgb(70, 150, 240)), (1.0, srgb(150, 215, 255))], emit=0.9)
+    M["book"] = gradient_mat("EmblemBookBlue", "vertical", [(0.0, srgb(60, 130, 230)), (1.0, srgb(130, 200, 255))], emit=0.8)
+    M["white"] = solid_mat("EmblemWhite", (0.95, 0.97, 1.0), rough=0.2, coat=0.6, emission=(1, 1, 1), strength=0.7)
+    M["page_shade"] = solid_mat("EmblemPageShade", srgb(206, 226, 248), rough=0.25, emission=srgb(206, 226, 248), strength=0.6)
+    M["text"] = solid_mat("WordmarkWhite", (0.95, 0.97, 1.0), rough=0.15, coat=1.0, emission=(1.0, 1.0, 1.0), strength=0.6)
+    M["gold"] = solid_mat("WordmarkGold", srgb(246, 188, 70), rough=0.2, metal=0.3, coat=1.0, emission=srgb(246, 188, 70), strength=0.45)
+    M["marlin"] = fish_mat("BlueMarlin", [(0.0, srgb(236, 240, 245)), (0.42, srgb(190, 200, 212)), (0.55, srgb(40, 80, 170)),
+                                          (1.0, srgb(14, 34, 96))], metal=0.4)
+    M["fin_marlin"] = solid_mat("FinMarlin", srgb(24, 60, 150), rough=0.35, sss=0.3)
+    M["whale_shark"] = fish_mat("WhaleShark", [(0.0, srgb(210, 216, 220)), (0.4, srgb(200, 206, 212)), (0.5, srgb(60, 80, 100)),
+                                               (1.0, srgb(40, 56, 74))], spots=(srgb(220, 228, 235), 2.2), metal=0.0,
+                                sss=0.05, rough=0.55, coat=0.2)
+    M["arapaima"] = fish_mat("Arapaima", [(0.0, srgb(200, 170, 140)), (0.5, srgb(110, 112, 90)), (1.0, srgb(60, 66, 54))],
+                             along=([(0.0, (1, 1, 1)), (0.35, (1, 1, 1)), (0.6, (0, 0, 0)), (1.0, (0, 0, 0))], srgb(170, 40, 30)),
+                             metal=0.1, sss=0.15)
     M["eye"] = solid_mat("FishEye", (0.01, 0.01, 0.012), rough=0.05, coat=1.0)
     M["teeth"] = solid_mat("Teeth", (0.85, 0.85, 0.8), rough=0.3, sss=0.3)
     M["lure"] = emission_mat("AnglerLure", (0.45, 1.0, 0.85), 25.0)
@@ -808,14 +923,14 @@ def build_materials():
     m, nt, out = new_mat("CausticSheet")
     tc = nt.nodes.new("ShaderNodeTexCoord")
     mp = nt.nodes.new("ShaderNodeMapping")
-    mp.inputs["Scale"].default_value = (0.35, 0.35, 0.35)
+    mp.inputs["Scale"].default_value = (0.6, 0.6, 0.6)
     nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
     vo = nt.nodes.new("ShaderNodeTexVoronoi")
     vo.feature = "DISTANCE_TO_EDGE"
     nt.links.new(mp.outputs[0], vo.inputs["Vector"])
     mr = nt.nodes.new("ShaderNodeMapRange")
     mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = 0.0, 0.09
-    mr.inputs["To Min"].default_value, mr.inputs["To Max"].default_value = 1.0, 0.12
+    mr.inputs["To Min"].default_value, mr.inputs["To Max"].default_value = 1.0, 0.04
     nt.links.new(vo.outputs["Distance"], mr.inputs["Value"])
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
     hold = nt.nodes.new("ShaderNodeBsdfDiffuse")
@@ -834,7 +949,7 @@ def build_materials():
 # --------------------------------------------------------------------------
 def build_lights(col, group):
     sd = bpy.data.lights.new("Sun", "SUN")
-    sd.energy = 6.0
+    sd.energy = 9.0
     sd.angle = math.radians(1.5)
     sd.color = (0.92, 0.97, 1.0)
     sun = link(bpy.data.objects.new("Sun", sd), col)
@@ -921,8 +1036,8 @@ def setup_render(sc, preview=False):
     sc.cycles.caustics_reflective = False
     sc.cycles.caustics_refractive = False
     try:
-        sc.view_settings.view_transform = "AgX"
-        sc.view_settings.look = "AgX - Punchy"
+        sc.view_settings.view_transform = "Standard"      # keeps the logo blues and the white text exact
+        sc.view_settings.look = "None"
     except TypeError:
         pass
     sc.render.image_settings.file_format = "PNG"
