@@ -15,3 +15,4 @@ build_sockeye_masterclass/test_frames/*.txt
 build_tackle_box_masterclass/test_frames/*.png
 build_tackle_box_masterclass/test_frames/*.log
 build_tackle_box_masterclass/gpu_render/soundtrack.wav
+build_fishdex_banner/render.log
