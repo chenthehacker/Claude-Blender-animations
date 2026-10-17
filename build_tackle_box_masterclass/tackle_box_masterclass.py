@@ -651,6 +651,25 @@ class Hud:
         ys = [v[1] for v in ev.bound_box]
         return min(xs), max(xs), min(ys), max(ys)
 
+    def soft_plate(self, w, h, margin, loc=(0, 0, 0)):
+        """Dark backing whose opacity falls to zero over its outer margin (a per-vertex 'soft' attribute)."""
+        bm = bmesh.new()
+        soft = bm.verts.layers.float.new("soft")
+        outer = [bm.verts.new((x, y, 0.0)) for x, y in self.rounded(w, h, h / 2.5)]
+        inner = [bm.verts.new((x, y, 0.0)) for x, y in self.rounded(w - 2 * margin, h - 2 * margin, max(0.004, h / 2.5 - margin))]
+        for v in outer:
+            v[soft] = 0.0
+        for v in inner:
+            v[soft] = 1.0
+        n = len(outer)
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((outer[i], outer[j], inner[j], inner[i]))
+        bm.faces.new(inner)
+        ob = mesh_object(self._name("plate"), bm, self.col, [self.M.hud_plate], color=WHITE, recalc=False)
+        ob.location = loc
+        return self._link(ob, None)
+
     def group(self, loc=(0, 0, 0)):
         return empty_object(self._name("grp"), self.col, loc=loc, parent=self.root, size=0.01)
 
@@ -817,6 +836,11 @@ class Hud:
             st.color = (*srgb(214, 222, 224), 0.0)
             self.fade([st], f_start + 4, f_end, peak=0.92, dur=5)
             bot -= 0.022
+        top_y = ytop + size * 0.6
+        pw, ph = (x_max - x_min) + 0.12, (top_y - bot) + 0.11
+        plate = self.soft_plate(pw, ph, 0.04, loc=((x_min + x_max) / 2, (top_y + bot) / 2, -0.0004))
+        plate["alpha_scale"] = 0.82
+        self.fade([plate], f_start - 2, f_end, dur=5)
         self.boxes.append((f"caption {text[:22]}", lambda f, a=f_start, b=f_end: (x_min - 0.01, bot - 0.004, x_max + 0.01,
                                                                                 ytop + size * 0.6)
                            if a - 4 <= f <= b + 4 else None))
@@ -1452,7 +1476,9 @@ def build_materials():
     M.worm_pumpkin = soft_plastic("WormGreenPumpkin", srgb(62, 74, 36), (0.15, 0.2, 0.08), 0.8)
     M.worm_black = soft_plastic("WormBlackBlue", srgb(16, 18, 30), (0.2, 0.35, 1.0), 0.9)
     M.worm_water = soft_plastic("WormWatermelon", srgb(70, 96, 52), (0.8, 0.1, 0.1), 0.6)
-    M.cut_inner = soft_plastic("SwimbaitCutFace", srgb(200, 130, 118), (1.0, 1.0, 1.0), 0.3, translucent=0.5)
+    M.cut_inner = new_material("SwimbaitCutFace", lambda nt: psdf(nt, color_ramp(nt, nmath(nt, "ABSOLUTE", nmath(
+        nt, "SUBTRACT", attr(nt, "zrel", "Fac"), 0.5)), [(0.0, srgb(226, 214, 190)), (0.36, srgb(214, 200, 176)),
+        (0.44, srgb(120, 130, 136)), (1.0, srgb(80, 96, 106))]), rough=0.55, sss=0.6, sss_scale=0.003, spec=0.3))
     # junk
     M.bobber_red = solid("BobberRed", srgb(200, 30, 26), rough=0.3, coat=0.8)
     M.bobber_white = solid("BobberWhite", srgb(236, 236, 230), rough=0.3, coat=0.8)
@@ -2432,6 +2458,7 @@ def build_forage_set(col, M):
     bait = make_swimbait("CutawaySwimbait", col, M, M.swim_shad, L=0.105, cutaway=True)
     ob = bait.ob
     ob.location = S4 + Vector((0.0, 0.0, -0.045))          # nose to screen right, the cut face to the camera
+    ob.rotation_euler = (math.radians(28), 0.0, 0.0)        # rolled: the outer skin shows along the back
     fs = shrink_frame()
     for f, s in ((CUT3 - 10, 1.0), (fs, 1.0)):
         ob.scale = (s, s, s)
@@ -2779,7 +2806,21 @@ def hud_materials(M):
     M.hud_white = new_material("HudWhite", emissive_alpha(WHITE), blended=True)
     M.hud_accent = new_material("HudAccent", emissive_alpha(GOLD), blended=True)
     M.hud_shadow = new_material("HudShadow", emissive_alpha(tuple(c * 0.2 for c in INK)), blended=True)
-    for m in (M.hud, M.hud_white, M.hud_accent, M.hud_shadow, M.scrim_top, M.scrim_bot):
+
+    def soft_plate(nt):
+        """Dark backing behind a caption; its opacity comes from the 'soft' vertex attribute (0 at the rim)."""
+        oi = nt.nodes.new("ShaderNodeObjectInfo")
+        k = nmath(nt, "POWER", attr(nt, "soft", "Fac"), 1.2)
+        tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+        em = nt.nodes.new("ShaderNodeEmission")
+        em.inputs["Color"].default_value = (0.0, 0.003, 0.005, 1.0)
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(nmath(nt, "MULTIPLY", oi.outputs["Alpha"], k), mix.inputs[0])
+        nt.links.new(tr.outputs[0], mix.inputs[1])
+        nt.links.new(em.outputs[0], mix.inputs[2])
+        return mix.outputs[0]
+    M.hud_plate = new_material("HudSoftPlate", soft_plate, blended=True)
+    for m in (M.hud, M.hud_white, M.hud_accent, M.hud_shadow, M.scrim_top, M.scrim_bot, M.hud_plate):
         m.use_transparency_overlap = True
 
 
