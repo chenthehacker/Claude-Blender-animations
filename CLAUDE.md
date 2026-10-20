@@ -30,6 +30,13 @@ Blender 5.2 headless, with on-screen callouts, a synthesized soundtrack, a thumb
   of field never blurs text, and BLENDED overlay materials fade cleanly). Higgsfield text to speech voiceover in
   `voiceover/` (CDN downloads are blocked: the user uploads them); `tackle_box_audio.py --measure` writes
   `vo_timing.json`, which the scene reads to time cuts and captions.
+- `build_record_bass_masterclass/` trophy largemouth (55 s): procedural reservoir (shelf, ledge, creek channel), flooded
+  oak, bass with hinged jaw and throat, schools (trout, shad, bluegill), jointed swimbait, then a boat set (CesiumMan
+  angler, bowed rod). Underwater look is all in materials (scene props "under"/"gloom" keyed per frame: fog group,
+  caustics, depth tint). The strike runs on an action clock (`ACT`, an empty "ActionClock" read by GN) for a speed ramp.
+  Pins use `best_anchor` (picks the candidate point that stays in the pin band longest). Voice: Higgsfield "Alexey"
+  read "bass" as the instrument; the user swapped it for "largemouth" in vo2. Kokoro (local, Apache 2.0) works here as
+  a stand-in voice (models from GitHub releases, `/root/ttsenv`), but the user found it not human enough.
 - `tools/`: `render_frames.py` (test frames, timings, `--no-hud` thumbnail plates), `contact_sheet.py`,
   `thumbnail.py` (channel thumbnail style), `package_gpu.sh` (GPU zip), `setup_env.sh`.
 
@@ -83,6 +90,8 @@ Audio: `/root/bpyenv/bin/python offshore_audio.py events.json out.wav`, then FLA
   ignores `frame_current` unless you call `frame_set`.
 - `tools/preview_driver.sh` takes N, SAMPLES, HEAVY_LO/HEAVY_HI from the environment (defaults: sockeye).
 - Never wait on renders with `pgrep -f render_frames` inside the same shell line: it matches itself and never exits.
+- Hugging Face, Microsoft and ElevenLabs hosts are blocked; GitHub release downloads and PyPI work.
+- Text to speech engines often read "bass" (the fish) as the instrument: respell "bas" or use "largemouth".
 
 ## Rules
 

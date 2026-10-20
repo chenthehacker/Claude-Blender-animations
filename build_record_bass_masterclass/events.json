@@ -1,0 +1,232 @@
+{
+ "fps": 24,
+ "frames": 1320,
+ "wipes": [
+  [
+   148,
+   155
+  ],
+  [
+   553,
+   560
+  ],
+  [
+   947,
+   954
+  ],
+  [
+   1053,
+   1060
+  ]
+ ],
+ "cuts": [
+  152,
+  557,
+  951,
+  1057
+ ],
+ "overlays": [
+  [
+   -44,
+   "caption",
+   "Why *most* anglers never land a *10 pound* bass."
+  ],
+  [
+   73,
+   "caption",
+   "Because you're fishing where *small fish* live."
+  ],
+  [
+   142,
+   "wipe",
+   "wipe"
+  ],
+  [
+   156,
+   "caption",
+   "Record bass are a *different animal.*"
+  ],
+  [
+   215,
+   "badge",
+   "DEEP STRUCTURE"
+  ],
+  [
+   276,
+   "caption",
+   "They hold on *deep structure.*"
+  ],
+  [
+   413,
+   "caption",
+   "Ledges, channel bends, *submerged timber.*"
+  ],
+  [
+   415,
+   "pin",
+   "steep ledge"
+  ],
+  [
+   450,
+   "pin",
+   "creek channel"
+  ],
+  [
+   489,
+   "pin",
+   "submerged timber"
+  ],
+  [
+   547,
+   "wipe",
+   "wipe"
+  ],
+  [
+   559,
+   "badge",
+   "MAGNUM PRESENTATION"
+  ],
+  [
+   563,
+   "caption",
+   "Stop throwing *small baits.*"
+  ],
+  [
+   657,
+   "caption",
+   "Trout, shad, bluegill: *big prey.*"
+  ],
+  [
+   663,
+   "pin",
+   "rainbow trout"
+  ],
+  [
+   713,
+   "pin",
+   "gizzard shad"
+  ],
+  [
+   788,
+   "caption",
+   "8 to 10 inch baits, fished *ultra slow.*"
+  ],
+  [
+   804,
+   "pin",
+   "8 INCHES"
+  ],
+  [
+   941,
+   "wipe",
+   "wipe"
+  ],
+  [
+   951,
+   "caption",
+   "When she strikes, it's *not a tap.*"
+  ],
+  [
+   953,
+   "badge",
+   "HEAVY TACKLE"
+  ],
+  [
+   1009,
+   "caption",
+   "It's a *heavy suction.*"
+  ],
+  [
+   1047,
+   "wipe",
+   "wipe"
+  ],
+  [
+   1059,
+   "caption",
+   "Heavy power rod, *20 lb fluorocarbon.*"
+  ],
+  [
+   1061,
+   "pin",
+   "heavy power rod"
+  ],
+  [
+   1096,
+   "pin",
+   "20 lb fluoro"
+  ],
+  [
+   1186,
+   "caption",
+   "Go big. *Fish deep.*"
+  ],
+  [
+   1190,
+   "badge",
+   "DEEP STRUCTURE"
+  ],
+  [
+   1190,
+   "headline",
+   "RECAP"
+  ],
+  [
+   1197,
+   "badge",
+   "MAGNUM PRESENTATION"
+  ],
+  [
+   1204,
+   "badge",
+   "HEAVY TACKLE"
+  ],
+  [
+   1224,
+   "cta",
+   "SUBSCRIBE FOR MORE TROPHY BREAKDOWNS"
+  ]
+ ],
+ "strike": 978,
+ "slowmo": [
+  960,
+  1002
+ ],
+ "surface": 1057,
+ "glide": [
+  557,
+  951
+ ],
+ "pullback": [
+  1186,
+  1220
+ ],
+ "vo_start": {
+  "1": 2,
+  "2": 153,
+  "3": 558,
+  "4": 952,
+  "5": 1187
+ },
+ "vo_len": {
+  "1": 6.191,
+  "2": 16.771,
+  "3": 16.353,
+  "4": 9.718,
+  "5": 4.754
+ },
+ "vo_text": {
+  "1": "Why do most anglers never land a ten pound bass? Because you're fishing where small fish live.",
+  "2": "Double-digit record largemouth aren't just bigger. They're a completely different animal. They rarely roam shallow banks. Instead, they lock onto deep primary structure: steep drop-offs, river channel bends, and submerged timber in fifteen to thirty feet of water.",
+  "3": "To trigger a world-class female, stop throwing small baits. Giant bass feed on high-calorie prey like rainbow trout, gizzard shad, or bluegill. Throw eight to ten inch magnum swimbaits or heavy glide baits, fished ultra-slow right in their strike zone.",
+  "4": "When she strikes, it's not a tap. It's a heavy suction. Heavy-power rods and twenty pound fluorocarbon are non-negotiable if you want to turn her head.",
+  "5": "Go big, fish deep, and hit subscribe for more trophy breakdown guides."
+ },
+ "beats": [
+  1,
+  152,
+  557,
+  951,
+  1186
+ ]
+}

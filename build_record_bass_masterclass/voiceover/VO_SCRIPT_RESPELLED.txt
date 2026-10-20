@@ -1,0 +1,26 @@
+Only vo1, vo2 and vo3 contain the word "bass"; vo4 and vo5 can stay as they are.
+The text to speech engine reads "bass" as the instrument (rhymes with "face"). The fish rhymes with "gas",
+so the respelling below writes it "bas" (like "gas"). Try option A first; if it still sounds wrong, use
+option B, which adds context words that usually steer the engine to the fish.
+
+OPTION A (respelled, same words)
+
+vo1.mp3
+Why do most anglers never land a ten pound bas? Because you're fishing where small fish live.
+
+vo2.mp3
+Double-digit record bas aren't just bigger. They're a completely different animal. They rarely roam shallow banks. Instead, they lock onto deep primary structure: steep drop-offs, river channel bends, and submerged timber in fifteen to thirty feet of water.
+
+vo3.mp3
+To trigger a world-class female, stop throwing small baits. Giant bas feed on high-calorie prey like rainbow trout, gizzard shad, or bluegill. Throw eight to ten inch magnum swimbaits or heavy glide baits, fished ultra-slow right in their strike zone.
+
+OPTION B (fallback: context words; slightly longer, the video re-times itself to the clips)
+
+vo1.mp3
+Why do most anglers never land a ten pound largemouth bass? Because you're fishing where small fish live.
+
+vo2.mp3
+Double-digit record largemouth bass aren't just bigger. They're a completely different animal. They rarely roam shallow banks. Instead, they lock onto deep primary structure: steep drop-offs, river channel bends, and submerged timber in fifteen to thirty feet of water.
+
+vo3.mp3
+To trigger a world-class female, stop throwing small baits. Giant largemouth feed on high-calorie prey like rainbow trout, gizzard shad, or bluegill. Throw eight to ten inch magnum swimbaits or heavy glide baits, fished ultra-slow right in their strike zone.
