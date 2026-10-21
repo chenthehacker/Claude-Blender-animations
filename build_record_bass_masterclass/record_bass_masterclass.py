@@ -2554,10 +2554,10 @@ def make_bass(col, M, clock):
     for p in jm.polygons:
         p.use_smooth = True
     tb = bmesh.new()
-    ellipsoid(tb, (0.0, 0.0, 0.0), (0.052, 0.034, 0.026), subdiv=3, mat=0)
+    ellipsoid(tb, (0.0, 0.0, 0.0), (0.034, 0.024, 0.011), subdiv=3, mat=0)    # stays above the open jaw
     throat = finish("BassThroat", tb, col, [M.throat])
     throat.parent = body
-    throat.location = (L / 2 - 0.05, 0.0, -0.038)
+    throat.location = (L / 2 - 0.06, 0.0, -0.03)
     for ob in (body, fins, jaw, throat, *pects):
         ob.visible_shadow = True
     # rig: root (moved per frame) > body; the beat controller drives the body wave of body and fins
@@ -2781,7 +2781,7 @@ def animate_bass(bass, f_lo, f_hi):
         key(bass["jaw"], "rotation_euler", f)
         sc_ = max(0.02, min(1.0, jaw * 1.4))
         bass["throat"].scale = (1.0, 0.6 + 0.4 * sc_, sc_)
-        bass["throat"].location = (BASS_L / 2 - 0.05, 0.0, -0.038 - 0.012 * jaw)
+        bass["throat"].location = (BASS_L / 2 - 0.06, 0.0, -0.03 - 0.004 * jaw)
         key(bass["throat"], "scale", f)
         key(bass["throat"], "location", f)
         for s_, po in zip((1, -1), bass["pects"]):
