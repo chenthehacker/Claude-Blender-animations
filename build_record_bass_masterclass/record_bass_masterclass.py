@@ -1793,6 +1793,15 @@ def build_materials(atmos):
                            0.85, 1.0)
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", cheek, stripe), nmath(nt, "MULTIPLY", map_range(nt, z, 0.3, 0.5), 0.55)),
                       col, srgb(52, 62, 36))
+        # gill cover: a soft, slightly darker edge curving back behind the cheek, with a faint raised plate
+        ob_ = separate(nt, p)
+        gx, gz = BASS_L / 2 - 0.118, -0.005
+        e = vmath(nt, "LENGTH", combine(nt, nmath(nt, "DIVIDE", nmath(nt, "SUBTRACT", ob_["X"], gx), 0.05), 0.0,
+                                        nmath(nt, "DIVIDE", nmath(nt, "SUBTRACT", ob_["Z"], gz), 0.062)))
+        behind = map_range(nt, ob_["X"], gx + 0.012, gx - 0.004)
+        edge = nmath(nt, "MULTIPLY", map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", e, 1.0)), 0.1, 0.0), behind)
+        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", edge, -0.16, 1.0))
+        plate = nmath(nt, "MAXIMUM", map_range(nt, e, 1.03, 0.97), nmath(nt, "SUBTRACT", 1.0, behind))
         # scales: a staggered voronoi cell grid, used for relief, sheen and a little colour variation
         sc_ = voronoi(nt, vmath(nt, "MULTIPLY", p, (1.0, 1.4, 1.25)), 170.0, out="Distance")
         rim = map_range(nt, sc_, 0.15, 0.45)
@@ -1811,7 +1820,8 @@ def build_materials(atmos):
             nt.links.new(nmath(nt, "MULTIPLY", flank, map_range(nt, noise(nt, p, 30.0, 2.0), 0.3, 0.7, 180.0, 420.0, smooth=False)),
                          b.inputs["Thin Film Thickness"])
             b.inputs["Thin Film IOR"].default_value = 1.38
-        nt.links.new(bump(nt, nmath(nt, "MULTIPLY", rim, -1.0), 0.12, 0.0006), b.inputs["Normal"])
+        height = nmath(nt, "MULTIPLY_ADD", plate, 1.2, nmath(nt, "MULTIPLY", rim, -1.0))
+        nt.links.new(bump(nt, height, 0.12, 0.0006), b.inputs["Normal"])
         return b.outputs[0]
     M.bass = mat("LargemouthBass", bass)
 
@@ -2463,19 +2473,12 @@ def make_bass(col, M, clock):
     top, bot, wid, u_of = bass_curves()
     bm = bmesh.new()
     ring_section(bm, L / 2, -L / 2, top, bot, wid, nr=64, na=40, power=2.25, xr=lambda x: 1.0 - u_of(x))
-    # eyes (iris and pupil, mat 1), gill cover edge and the upper jaw line (mat 3)
+    # eyes (iris and pupil, mat 1) and the upper jaw line (mat 3)
     ex, ez = L / 2 - 0.066, 0.024
     ey = wid(ex) * 0.86
     for s in (1, -1):
         ellipsoid(bm, (ex, s * ey, ez), (0.0112, 0.006, 0.0112), subdiv=3, mat=1)
-    for s in (1, -1):
-        pts = []
-        for i in range(9):
-            a = math.radians(70 - 150 * i / 8)
-            x = L / 2 - 0.135 + 0.03 * math.cos(a) - 0.012
-            z = 0.0 + 0.062 * math.sin(a)
-            pts.append((x, s * (wid(x) * 1.0 + 0.0012), z))
-        tube(bm, pts, 0.0022, segs=5, cap=False, mat=3)
+    for s in (1, -1):                       # the gill cover edge is shaded in the body material, not modelled
         tube(bm, [(L / 2 + 0.004, s * 0.012, -0.012), (L / 2 - 0.04, s * (wid(L / 2 - 0.04) + 0.001), -0.026),
                   (L / 2 - 0.088, s * (wid(L / 2 - 0.088) + 0.001), -0.03)], 0.0026, segs=5, cap=False, mat=3)
     me = fish_mesh("Bass", bm, [M.bass, M.eye, M.bass_fin, M.groove])
@@ -3274,7 +3277,7 @@ def hand_point(f):
     F = ANGLER_FACING
     R = F.cross(Vector((0, 0, 1))).normalized()
     pump = 0.05 * math.sin(f * 0.21) + 0.03 * math.sin(f * 0.53)
-    return A + F * (0.30 - pump) + R * 0.12 + Vector((0, 0, 1.18 + 0.03 * math.sin(f * 0.17)))
+    return A + F * (0.20 - pump) + R * 0.12 + Vector((0, 0, 1.10 + 0.03 * math.sin(f * 0.17)))
 
 
 def rod_pose(f):
@@ -3325,7 +3328,7 @@ def animate_fight(rod, ang, f_lo, f_hi):
         for s, off in (("R", 0.36), ("L", 0.05)):
             ang["hands"][s].location = butt + d * off
             key(ang["hands"][s], "location", f)
-        lean = math.radians(-19 - 5 * math.sin(f * 0.07))
+        lean = math.radians(12 + 4 * math.sin(f * 0.07))       # positive leans back, away from the fish
         key_lean(ang["arm"], f, lean)
     return tips, mids, butts
 
