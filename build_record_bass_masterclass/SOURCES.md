@@ -59,5 +59,11 @@ direct page fetches from this build machine were blocked, so quotes are paraphra
   measured reconstruction.
 - "Heavy power rod, 20 lb fluorocarbon": angler technique. The modelled rod is a generic 7 ft 6 in blank.
 
+## Caption: handling and release
+- "Keep her in the water, hold her horizontally with support, release her quickly, don't hang her by the jaw":
+  Maryland Department of Natural Resources catch and release guidance (written for striped bass; it advises
+  keeping fish in the water when possible, holding them horizontally with support, avoiding lifting them
+  vertically by the jaw or gills, and returning them quickly). https://dnr.maryland.gov/fisheries/Pages/Catch-and-Release.aspx
+
 ## Outro
 - Recap and "Go big. Fish deep.": summary of the above. The call to action is the channel's.
