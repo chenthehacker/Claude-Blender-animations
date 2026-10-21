@@ -1792,8 +1792,17 @@ def build_materials(atmos):
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", band, 0.85), col, srgb(46, 62, 30))
         # faint scale rows along the body
         rows = nmath(nt, "POWER", nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY", ob_["Z"], 260.0))), 8.0)
-        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", rows, -0.05,
-                                                  1.0))
+        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", rows, -0.05, 1.0))
+        # scales: overlapping cells (stretched along the body) with darker rims, strongest on the back and flanks
+        cells = voronoi(nt, vmath(nt, "MULTIPLY", p, (0.75, 1.0, 1.0)), 95.0, out="Distance")
+        rim = map_range(nt, cells, 0.12, 0.42)
+        on_body = nmath(nt, "MULTIPLY", map_range(nt, z, 0.12, 0.35), map_range(nt, x, 0.86, 0.76))
+        rim = nmath(nt, "MULTIPLY", rim, on_body)
+        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", rim, -0.26, 1.06))
+        # soft darker mottling on the upper flanks and back, and a few blotches breaking the band's edge
+        mott = map_range(nt, noise(nt, vmath(nt, "MULTIPLY", p, (1.0, 1.0, 1.6)), 11.0, 3.0, 0.55), 0.52, 0.68)
+        mott = nmath(nt, "MULTIPLY", mott, nmath(nt, "MULTIPLY", map_range(nt, z, 0.5, 0.72), map_range(nt, x, 0.88, 0.75)))
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", mott, 0.55), col, srgb(48, 64, 30))
         # gill cover: a soft darker crease curving back behind the cheek, with a faint raised plate
         gx, gz = BASS_L / 2 - 0.118, -0.005
         e = vmath(nt, "LENGTH", combine(nt, nmath(nt, "DIVIDE", nmath(nt, "SUBTRACT", ob_["X"], gx), 0.05), 0.0,
@@ -1805,7 +1814,6 @@ def build_materials(atmos):
         flank = nmath(nt, "MULTIPLY", map_range(nt, z, 0.15, 0.4), map_range(nt, z, 0.85, 0.6))
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
         nt.links.new(uw_base(nt, col, caustic=0.35), b.inputs["Base Color"])
-        b.inputs["Roughness"].default_value = 0.32
         b.inputs["Specular IOR Level"].default_value = 0.5
         b.inputs["Coat Weight"].default_value = 0.4
         b.inputs["Coat Roughness"].default_value = 0.12
@@ -1815,7 +1823,8 @@ def build_materials(atmos):
         if "Thin Film Thickness" in b.inputs:
             nt.links.new(nmath(nt, "MULTIPLY", flank, 260.0), b.inputs["Thin Film Thickness"])
             b.inputs["Thin Film IOR"].default_value = 1.33
-        nt.links.new(bump(nt, plate, 0.1, 0.0006), b.inputs["Normal"])
+        nt.links.new(bump(nt, nmath(nt, "MULTIPLY_ADD", rim, -0.6, plate), 0.16, 0.0006), b.inputs["Normal"])
+        _feed(nt, b.inputs["Roughness"], nmath(nt, "MULTIPLY_ADD", rim, 0.12, 0.30))
         return b.outputs[0]
     M.bass = mat("LargemouthBass", bass)
 
