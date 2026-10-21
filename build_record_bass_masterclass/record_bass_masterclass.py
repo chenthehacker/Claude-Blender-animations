@@ -1772,70 +1772,65 @@ def build_materials(atmos):
 
     # --- fish -------------------------------------------------------------------------------------
     def bass(nt):
-        """Female largemouth: olive back, pale green flanks with the dark, jagged lateral band of blotches,
-        cream belly; fine scale relief, a faint thin film sheen on the flanks, a little subsurface glow."""
+        """Female largemouth, clean and smooth: a soft gradient from a cream belly through pale green flanks to an
+        olive back, the dark lateral band of joined blotches with soft edges, faint scale rows, a subtle gill
+        cover edge, a light sheen. No noisy relief: the surface reads as one smooth skin."""
         z, x = attr(nt, "zrel", "Fac"), attr(nt, "xrel", "Fac")
         p = tex_coord(nt, "Object")
-        base = color_ramp(nt, z, [(0.0, srgb(226, 218, 186)), (0.26, srgb(206, 202, 164)), (0.42, srgb(176, 180, 120)),
-                                  (0.6, srgb(122, 136, 78)), (0.82, srgb(58, 74, 38)), (1.0, srgb(36, 48, 26))])
-        wob = noise(nt, vmath(nt, "MULTIPLY", p, (1.0, 0.0, 1.0)), 9.0, 3.0, 0.6)
-        band_c = nmath(nt, "ADD", 0.47, nmath(nt, "MULTIPLY", nmath(nt, "SUBTRACT", wob, 0.5), 0.16))
-        dz = nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", z, band_c))
-        blot = map_range(nt, voronoi(nt, vmath(nt, "MULTIPLY", p, (1.0, 0.3, 1.6)), 16.0), 0.55, 0.15)
-        band = nmath(nt, "MULTIPLY", map_range(nt, dz, 0.12, 0.04), nmath(nt, "MULTIPLY_ADD", blot, 0.45, 0.55))
-        band = nmath(nt, "MULTIPLY", band, nmath(nt, "MULTIPLY", map_range(nt, x, 0.02, 0.12), map_range(nt, x, 0.86, 0.74)))
-        mott = nmath(nt, "MULTIPLY", map_range(nt, noise(nt, p, 14.0, 4.0, 0.6), 0.5, 0.68), map_range(nt, z, 0.55, 0.75))
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", band, 0.92), base, srgb(28, 34, 18))
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", mott, 0.5), col, srgb(40, 52, 26))
-        # cheek stripes behind the eye
-        cheek = nmath(nt, "MULTIPLY", map_range(nt, x, 0.72, 0.8), map_range(nt, x, 0.93, 0.88))
-        stripe = map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY_ADD", z, 34.0, nmath(nt, "MULTIPLY", x, 10.0)))),
-                           0.85, 1.0)
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", cheek, stripe), nmath(nt, "MULTIPLY", map_range(nt, z, 0.3, 0.5), 0.55)),
-                      col, srgb(52, 62, 36))
-        # gill cover: a soft, slightly darker edge curving back behind the cheek, with a faint raised plate
         ob_ = separate(nt, p)
+        col = color_ramp(nt, z, [(0.0, srgb(232, 234, 204)), (0.24, srgb(214, 220, 178)), (0.40, srgb(178, 194, 124)),
+                                 (0.58, srgb(132, 158, 86)), (0.78, srgb(86, 112, 56)), (1.0, srgb(58, 80, 40))])
+        # lateral band: centre wanders gently, thickness pulses into blotches along the body
+        along = combine(nt, nmath(nt, "MULTIPLY", ob_["X"], 1.0), 0.0, 0.0)
+        wob = noise(nt, along, 6.0, 1.0, 0.4)
+        blo = noise(nt, combine(nt, nmath(nt, "MULTIPLY", ob_["X"], 1.0), 3.7, 0.0), 14.0, 2.0, 0.5)
+        zc = nmath(nt, "MULTIPLY_ADD", nmath(nt, "SUBTRACT", wob, 0.5), 0.10, 0.50)
+        half = nmath(nt, "MULTIPLY_ADD", map_range(nt, blo, 0.35, 0.65), 0.07, 0.025)
+        dz = nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", z, zc))
+        band = map_range(nt, nmath(nt, "SUBTRACT", dz, half), 0.02, -0.01)
+        band = nmath(nt, "MULTIPLY", band, nmath(nt, "MULTIPLY", map_range(nt, x, 0.03, 0.12), map_range(nt, x, 0.80, 0.70)))
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", band, 0.85), col, srgb(46, 62, 30))
+        # faint scale rows along the body
+        rows = nmath(nt, "POWER", nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY", ob_["Z"], 260.0))), 8.0)
+        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", rows, -0.05,
+                                                  1.0))
+        # gill cover: a soft darker crease curving back behind the cheek, with a faint raised plate
         gx, gz = BASS_L / 2 - 0.118, -0.005
         e = vmath(nt, "LENGTH", combine(nt, nmath(nt, "DIVIDE", nmath(nt, "SUBTRACT", ob_["X"], gx), 0.05), 0.0,
                                         nmath(nt, "DIVIDE", nmath(nt, "SUBTRACT", ob_["Z"], gz), 0.062)))
         behind = map_range(nt, ob_["X"], gx + 0.012, gx - 0.004)
-        edge = nmath(nt, "MULTIPLY", map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", e, 1.0)), 0.1, 0.0), behind)
-        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", edge, -0.16, 1.0))
+        edge = nmath(nt, "MULTIPLY", map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", e, 1.0)), 0.09, 0.0), behind)
+        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", edge, -0.22, 1.0))
         plate = nmath(nt, "MAXIMUM", map_range(nt, e, 1.03, 0.97), nmath(nt, "SUBTRACT", 1.0, behind))
-        # scales: a staggered voronoi cell grid, used for relief, sheen and a little colour variation
-        sc_ = voronoi(nt, vmath(nt, "MULTIPLY", p, (1.0, 1.4, 1.25)), 170.0, out="Distance")
-        rim = map_range(nt, sc_, 0.15, 0.45)
-        col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", rim, -0.12, 1.06))
         flank = nmath(nt, "MULTIPLY", map_range(nt, z, 0.15, 0.4), map_range(nt, z, 0.85, 0.6))
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
-        nt.links.new(uw_base(nt, col, caustic=0.45), b.inputs["Base Color"])
-        _feed(nt, b.inputs["Roughness"], map_range(nt, rim, 0.0, 1.0, 0.24, 0.42, smooth=False))
-        b.inputs["Specular IOR Level"].default_value = 0.55
-        b.inputs["Coat Weight"].default_value = 0.35
-        b.inputs["Coat Roughness"].default_value = 0.08
-        b.inputs["Subsurface Weight"].default_value = 0.12
+        nt.links.new(uw_base(nt, col, caustic=0.35), b.inputs["Base Color"])
+        b.inputs["Roughness"].default_value = 0.32
+        b.inputs["Specular IOR Level"].default_value = 0.5
+        b.inputs["Coat Weight"].default_value = 0.4
+        b.inputs["Coat Roughness"].default_value = 0.12
+        b.inputs["Subsurface Weight"].default_value = 0.1
         b.inputs["Subsurface Scale"].default_value = 0.006
-        b.inputs["Subsurface Radius"].default_value = (0.9, 0.7, 0.45)
+        b.inputs["Subsurface Radius"].default_value = (0.9, 0.75, 0.5)
         if "Thin Film Thickness" in b.inputs:
-            nt.links.new(nmath(nt, "MULTIPLY", flank, map_range(nt, noise(nt, p, 30.0, 2.0), 0.3, 0.7, 180.0, 420.0, smooth=False)),
-                         b.inputs["Thin Film Thickness"])
-            b.inputs["Thin Film IOR"].default_value = 1.38
-        height = nmath(nt, "MULTIPLY_ADD", plate, 1.2, nmath(nt, "MULTIPLY", rim, -1.0))
-        nt.links.new(bump(nt, height, 0.12, 0.0006), b.inputs["Normal"])
+            nt.links.new(nmath(nt, "MULTIPLY", flank, 260.0), b.inputs["Thin Film Thickness"])
+            b.inputs["Thin Film IOR"].default_value = 1.33
+        nt.links.new(bump(nt, plate, 0.1, 0.0006), b.inputs["Normal"])
         return b.outputs[0]
     M.bass = mat("LargemouthBass", bass)
 
-    def fin(name, base, tip, rays=140.0, alpha=0.92):
+    def fin(name, base, tip, rays=140.0, alpha=0.92, axis="X", ray_k=0.25):
         def build(nt):
             g = separate(nt, tex_coord(nt, "Generated"))
             edge = nmath(nt, "MAXIMUM", nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", g["Z"], 0.5)),
                          nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", g["X"], 0.5)))
             col = color_ramp(nt, nmath(nt, "MULTIPLY", edge, 2.0), [(0.0, base), (1.0, tip)])
             o = separate(nt, tex_coord(nt, "Object"))
-            ray = nmath(nt, "POWER", nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY", o["X"], rays))), 5.0)
-            col = mix_rgb(nt, nmath(nt, "MULTIPLY", ray, 0.25), col, srgb(20, 24, 14))
+            ray = nmath(nt, "POWER", nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY", o[axis], rays))), 5.0)
+            col = mix_rgb(nt, nmath(nt, "MULTIPLY", ray, ray_k), col, srgb(40, 48, 26))
             base_c = uw_base(nt, col, caustic=0.3)
-            b = psdf(nt, base_c, rough=0.35, sss=0.2, sss_scale=0.01, coat=0.2, alpha=alpha)
+            b = psdf(nt, base_c, rough=0.35, sss=0.2, sss_scale=0.01, coat=0.2, alpha=alpha, emission=base_c,
+                     emission_strength=0.12)                             # a faint glow: light through the membrane
             b.node.inputs["Subsurface Radius"].default_value = (0.6, 0.8, 0.5)
             tl = nt.nodes.new("ShaderNodeBsdfTranslucent")          # light comes through the membrane
             nt.links.new(base_c, tl.inputs["Color"])
@@ -1845,7 +1840,9 @@ def build_materials(atmos):
             nt.links.new(tl.outputs[0], mix.inputs[2])
             return mix.outputs[0]
         return mat(name, build)
-    M.bass_fin = fin("BassFin", srgb(150, 150, 96), srgb(96, 98, 62), alpha=1.0)
+    M.bass_fin = fin("BassFin", srgb(176, 182, 120), srgb(120, 128, 78), alpha=1.0, rays=260.0, ray_k=0.3)
+    M.bass_fin_h = fin("BassFinRaysAcross", srgb(176, 182, 120), srgb(120, 128, 78), alpha=1.0, rays=260.0, axis="Z",
+                       ray_k=0.3)
 
     def eye(nt):
         g = separate(nt, tex_coord(nt, "Object"))
@@ -1856,7 +1853,7 @@ def build_materials(atmos):
     M.eye = mat("FishEye", eye)
     M.groove = mat("BassGroove", lambda nt: psdf(nt, uw_base(nt, srgb(40, 46, 26), caustic=0.0), rough=0.5))
     M.mouth = mat("MouthInside", lambda nt: psdf(nt, srgb(60, 30, 30), rough=0.4, sss=0.3, sss_scale=0.01))
-    M.throat = mat("Throat", lambda nt: psdf(nt, srgb(8, 6, 6), rough=0.6))
+    M.throat = mat("Throat", lambda nt: psdf(nt, srgb(96, 62, 58), rough=0.55, sss=0.3, sss_scale=0.01))
 
     def trout(nt, bait=False):
         """Rainbow trout: olive back with black spots, a pink-red band, silver sides, white belly."""
@@ -2473,14 +2470,11 @@ def make_bass(col, M, clock):
     top, bot, wid, u_of = bass_curves()
     bm = bmesh.new()
     ring_section(bm, L / 2, -L / 2, top, bot, wid, nr=64, na=40, power=2.25, xr=lambda x: 1.0 - u_of(x))
-    # eyes (iris and pupil, mat 1) and the upper jaw line (mat 3)
+    # eyes (mat 1); the gill cover edge and the mouth are shaded, not modelled as lines
     ex, ez = L / 2 - 0.066, 0.024
     ey = wid(ex) * 0.86
     for s in (1, -1):
-        ellipsoid(bm, (ex, s * ey, ez), (0.0112, 0.006, 0.0112), subdiv=3, mat=1)
-    for s in (1, -1):                       # the gill cover edge is shaded in the body material, not modelled
-        tube(bm, [(L / 2 + 0.004, s * 0.012, -0.012), (L / 2 - 0.04, s * (wid(L / 2 - 0.04) + 0.001), -0.026),
-                  (L / 2 - 0.088, s * (wid(L / 2 - 0.088) + 0.001), -0.03)], 0.0026, segs=5, cap=False, mat=3)
+        ellipsoid(bm, (ex, s * ey, ez), (0.0138, 0.0072, 0.0138), subdiv=3, mat=1)
     me = fish_mesh("Bass", bm, [M.bass, M.eye, M.bass_fin, M.groove])
     body = bpy.data.objects.new("Bass", me)
     col.objects.link(body)
@@ -2504,7 +2498,7 @@ def make_bass(col, M, clock):
              0.0015, 2, samples=8)
     xt = -L / 2
     soft_fin(fb, [(xt + 0.02, 0.028), (xt - 0.05, 0.078), (xt - 0.13, 0.098), (xt - 0.148, 0.074), (xt - 0.122, 0.002),
-                  (xt - 0.148, -0.072), (xt - 0.13, -0.096), (xt - 0.05, -0.076), (xt + 0.02, -0.026)], 0.0017, 2, samples=8)
+                  (xt - 0.148, -0.072), (xt - 0.13, -0.096), (xt - 0.05, -0.076), (xt + 0.02, -0.026)], 0.0017, 4, samples=8)
     xa = -0.075
     soft_fin(fb, [fin_base(bot, xa), (xa - 0.012, bot(xa) - 0.045), (xa - 0.05, bot(xa - 0.05) - 0.05),
                   (xa - 0.085, bot(xa - 0.085) - 0.03), fin_base(bot, xa - 0.095)], 0.0015, 2, samples=8)
@@ -2513,7 +2507,7 @@ def make_bass(col, M, clock):
         xp = 0.07
         soft_fin(fb, [(xp + 0.02, bot(xp) + 0.012), (xp, bot(xp) - 0.045), (xp - 0.035, bot(xp) - 0.06),
                       (xp - 0.045, bot(xp) - 0.035), (xp - 0.02, bot(xp) + 0.01)], 0.0014, 2, offset=(0, s * 0.022, 0), rot=rot)
-    fbe = fish_mesh("BassFins", fb, [M.bass, M.eye, M.bass_fin, M.groove])
+    fbe = fish_mesh("BassFins", fb, [M.bass, M.eye, M.bass_fin, M.groove, M.bass_fin_h])
     fins = bpy.data.objects.new("BassFins", fbe)
     col.objects.link(fins)
     fins.parent = body
@@ -2521,9 +2515,9 @@ def make_bass(col, M, clock):
     pects = []
     for s in (1, -1):
         pb = bmesh.new()
-        soft_fin(pb, [(0.004, 0.0), (-0.03, 0.014), (-0.072, 0.0), (-0.086, -0.022), (-0.062, -0.036), (-0.01, -0.016)],
+        soft_fin(pb, [(0.004, 0.0), (-0.026, 0.012), (-0.062, 0.002), (-0.076, -0.018), (-0.055, -0.03), (-0.01, -0.014)],
                  0.0013, 0, samples=8)
-        pm = fish_mesh(f"BassPectoral{'L' if s > 0 else 'R'}", pb, [M.bass_fin])
+        pm = fish_mesh(f"BassPectoral{'L' if s > 0 else 'R'}", pb, [M.bass_fin_h])
         po = bpy.data.objects.new(pm.name, pm)
         col.objects.link(po)
         po.parent = body
@@ -2534,15 +2528,15 @@ def make_bass(col, M, clock):
     jb = bmesh.new()
 
     def jtop(x):
-        u = (x - (-0.012)) / (L / 2 + 0.014 - JAW_HINGE.x + 0.012)
+        u = (x - (-0.012)) / (L / 2 + 0.006 - JAW_HINGE.x + 0.012)
         return 0.0 + 0.026 * u
     hx = JAW_HINGE.x
-    ring_section(jb, L / 2 + 0.014 - hx, -0.012, lambda x: jtop(x) + 0.002,
-                 lambda x: -0.026 + 0.022 * min(1.0, max(0.0, x / (L / 2 + 0.014 - hx))) ** 0.8,
-                 lambda x: 0.016 + 0.024 * (1 - min(1.0, max(0.0, x / (L / 2 + 0.014 - hx)))) ** 0.7, nr=14, na=24, power=2.4,
+    ring_section(jb, L / 2 + 0.006 - hx, -0.012, lambda x: jtop(x) + 0.002,
+                 lambda x: -0.026 + 0.022 * min(1.0, max(0.0, x / (L / 2 + 0.006 - hx))) ** 0.8,
+                 lambda x: 0.014 + 0.022 * (1 - min(1.0, max(0.0, x / (L / 2 + 0.006 - hx)))) ** 0.7, nr=14, na=24, power=2.2,
                  xr=lambda x: 0.95)
     for v in jb.verts:
-        v[jb.verts.layers.float["zrel"]] *= 0.25            # the jaw is belly coloured
+        v[jb.verts.layers.float["zrel"]] *= 0.5             # pale underneath, shading into the cheek colour
     jm = fish_mesh("BassJaw", jb, [M.bass])
     jaw = bpy.data.objects.new("BassJaw", jm)
     col.objects.link(jaw)
