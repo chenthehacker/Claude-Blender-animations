@@ -2091,12 +2091,12 @@ def build_logjam(col, M, keep_clear=(), frame_path=None):
             p0 = pts[rng.randint(2, 8)]
             dd = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.3, 0.8))).normalized()
             br = bent_path(p0, dd, rng.uniform(0.8, 2.0), 5, rng, 0.2)
-            if any(seg_dist(cp, br[0], br[-1]) < cr + 0.1 for cp, cr in clear):
+            if any(seg_dist(cp, a, b) < cr + 0.1 for cp, cr in clear for a, b in zip(br, br[1:])):
                 continue
             tube(bm, br, lambda t: 0.07 * (1 - 0.8 * t), segs=6)
             LOGS.append((br, 0.07))
-        if len(roots) < 2 and r > 0.3:
-            roots.append((pts[0], -d))
+        if len(roots) < 2 and r > 0.3 and all((cp - pts[0]).length > cr + 1.4 for cp, cr in clear[1:]):
+            roots.append((pts[0], -d))              # a root ball spreads about 1.7 m: none next to a camera path
         placed += 1
     for a, axis in roots:
         root_ball(bm, a, axis, rng, radius=1.7)
@@ -2489,7 +2489,7 @@ def fh_curves():
                    (0.55, 0.091), (0.7, 0.079), (0.85, 0.064), (1.0, 0.052)])
     bot_u = curve([(0.0, -0.036), (0.06, -0.052), (0.15, -0.068), (0.25, -0.086), (0.35, -0.102), (0.45, -0.108),
                    (0.55, -0.098), (0.68, -0.080), (0.85, -0.058), (1.0, -0.046)])
-    wid_u = curve([(0.0, 0.040), (0.05, 0.072), (0.10, 0.100), (0.16, 0.122), (0.22, 0.128), (0.30, 0.118),
+    wid_u = curve([(0.0, 0.088), (0.05, 0.116), (0.14, 0.136), (0.22, 0.130), (0.30, 0.118),
                    (0.42, 0.108), (0.55, 0.088), (0.7, 0.060), (0.85, 0.034), (0.93, 0.022), (1.0, 0.007)])
     dk, wk = 1.1, 1.0                   # depth and width factors (a heavy fish)
     return (lambda x: dk * top_u(u_of(x))), (lambda x: dk * bot_u(u_of(x))), (lambda x: wk * wid_u(u_of(x))), u_of
@@ -2514,7 +2514,7 @@ def fh_surface(x, y, upper=True):
     """Height of the skin above (or below) the point (x, y), matching the loft in make_flathead."""
     top, bot, wid, u_of = fh_curves()
     u = u_of(x)
-    gw, gh = fh_round(u, 2.0), fh_round(u, 2.0)
+    gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
     zc, hh, w = (top(x) + bot(x)) / 2, (top(x) - bot(x)) / 2 * gh, wid(x) * gw
     c = min(1.0, abs(y) / max(w, 1e-6))
     p = fh_pow(u, upper)
@@ -2558,6 +2558,49 @@ def jaw_group(ctrl):
     return ng
 
 
+def lip_path(upper):
+    """Centre line of the rounded lip roll along the mouth: from one corner round the snout to the other, sitting on
+    the lip edge (the skin's section at the seam height), moved with the lower jaw and the lip swelling, and lifted
+    toward its own side of the seam."""
+    L = FH_L
+    top, bot, wid, u_of = fh_curves()
+
+    def edge_y(x):
+        u = u_of(x)
+        gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
+        zc, hh, w = (top(x) + bot(x)) / 2, (top(x) - bot(x)) / 2 * gh, wid(x) * gw
+        dzv = mouth_z(x) - zc
+        if hh <= abs(dzv):
+            return None
+        p = fh_pow(u, dzv >= 0.0)
+        sa = (abs(dzv) / hh) ** (p / 2)
+        return w * max(0.0, 1.0 - sa * sa) ** (1.0 / p)
+    lo, hi = FH_HINGE.x, L / 2                 # the snout tip on the seam: the last x with a section there
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if edge_y(mid) is not None and edge_y(mid) > 1e-4 else (lo, mid)
+    x_tip = lo
+    side = []
+    m = 40
+    for i in range(m + 1):
+        t = i / m
+        x = FH_HINGE.x + 0.004 + (x_tip - FH_HINGE.x - 0.004) * math.sin(t * math.pi / 2)
+        side.append((x, edge_y(x) or 0.0))
+    raw = [(x, -y) for x, y in side] + [(x, y) for x, y in reversed(side[:-1])]
+    out = []
+    r = 0.006
+    for x, y in raw:
+        z = mouth_z(x)
+        if not upper:
+            jut = smoothstep(FH_HINGE.x, FH_HINGE.x + 0.07, x)
+            x, y = x + 0.018 * jut, y * (1.0 + 0.03 * jut)
+        p = Vector((x, y, z))
+        o = p - Vector((min(x, L / 2 - 0.06), 0.0, z))
+        o = o.normalized() if o.length > 1e-6 else Vector((1.0, 0.0, 0.0))
+        out.append(p + o * (0.006 - 0.85 * r) + Vector((0.0, 0.0, 0.5 * r if upper else -0.5 * r)))
+    return out
+
+
 def flathead_mesh(M):
     """One closed skin for head and body with a real mouth: the row of faces across the lip line (in front of the
     mouth corners) is cut away, the lips are closed onto the seam and the cut is extruded inward into a mouth cavity
@@ -2576,7 +2619,7 @@ def flathead_mesh(M):
             fine += [a + (b - a) / 3, a + 2 * (b - a) / 3]
     for u in fine:
         x = L / 2 - u * L
-        gw, gh = fh_round(u, 2.0), fh_round(u, 2.0)
+        gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
         t, b = top(x), bot(x)
         zc, hh, w = (t + b) / 2, (t - b) / 2 * gh, wid(x) * gw
         ring = []
@@ -2644,7 +2687,7 @@ def flathead_mesh(M):
         v[bl] = 1.0
     for v in bm.verts:                            # big, fleshy lips all round the mouth, fading out at the corners
         dd = abs(dz(v))
-        w = math.exp(-(dd / 0.013) ** 2) * smoothstep(FH_HINGE.x - 0.01, FH_HINGE.x + 0.05, v.co.x)
+        w = math.exp(-(dd / 0.01) ** 2) * smoothstep(FH_HINGE.x - 0.01, FH_HINGE.x + 0.05, v.co.x)
         v[ll] = w
     for v in bm.verts:
         v[jl] = 0.0 if dz(v) >= 0.0 else fw(v.co.x)
@@ -2692,10 +2735,18 @@ def flathead_mesh(M):
             continue
         out = v.co - Vector((min(v.co.x, L / 2 - 0.06), 0.0, mouth_z(min(v.co.x, L / 2))))
         if out.length > 1e-6:
-            v.co += out.normalized() * 0.012 * v[ll]
+            v.co += out.normalized() * 0.006 * v[ll]
     for f in bm.faces:
         f.smooth = True
         f.material_index = 2 if any(v in cav for v in f.verts) and all(v in cav or v in lips for v in f.verts) else 0
+    for up in (True, False):                      # rounded fish lips: a soft roll along each lip edge
+        pts = lip_path(up)
+        n = len(pts) - 1
+        before = set(bm.verts)
+        tube(bm, pts, lambda t: 0.003 + 0.0055 * math.sin(math.pi * t) ** 0.6, segs=10)
+        for v in set(bm.verts) - before:
+            v[ll], v[zl], v[xl] = 0.5, 0.5, (L / 2 - v.co.x) / L
+            v[jl] = 0.0 if up else fw(v.co.x - 0.018 * smoothstep(FH_HINGE.x, FH_HINGE.x + 0.07, v.co.x))
     ex = L / 2 - 0.085
     er = bm.verts.layers.float.new("eyer")    # angle from the eye's axis (0 pupil centre, 1 at 90 degrees)
     for s in (1, -1):
@@ -2783,7 +2834,7 @@ def make_flathead(col, M):
     bb = bmesh.new()                                    # maxillary barbels at the mouth corners, tiny nasal ones
     for s in (1, -1):
         xm = FH_HINGE.x + 0.018
-        p0 = Vector((xm, s * (wid(xm) * fh_round(u_of(xm), 2.0) - 0.005), mouth_z(xm) + 0.005))
+        p0 = Vector((xm, s * (wid(xm) * fh_round(u_of(xm), 2.6) - 0.005), mouth_z(xm) + 0.005))
         soft_tube(bb, [p0, p0 + Vector((-0.01, s * 0.032, -0.004)), p0 + Vector((-0.04, s * 0.068, -0.014)),
                        p0 + Vector((-0.085, s * 0.09, -0.03)), p0 + Vector((-0.13, s * 0.095, -0.05)),
                        p0 + Vector((-0.16, s * 0.085, -0.058))], 0.0044, 0.0011)
@@ -3643,23 +3694,29 @@ def camera_frames():
         lens = 38.0 - 8.0 * wide + 3.0 * macro - 2.0 * rigv
         frames[f] = (p, t, look_at(p, t, Z), lens)
         fstop[f] = 2.8 + 1.4 * wide
-    # 4 the strike: low and side on between the wood and the bait; then follows her back to cover
-    b0 = bait_centre(CUT3)
-    side = Vector((-1.0, 0.25, 0.0)).normalized()                 # the channel side, looking towards the bank
-    mid = b0.lerp(FH_HOLD, 0.45)
+    # 4 the strike: a low angle from just ahead of the bait and to the side, looking slightly up as she comes out of
+    # the wood mouth first; then it rises and follows her back to cover
+    to = E_STRIKE - FH_HOLD
+    to.z *= 0.6
+    to = to.normalized()
+    ahead = Vector((to.x, to.y, 0.0)).normalized()
+    side = ahead.cross(Z).normalized()
+    if side.dot(Vector((-1.0, 0.25, 0.0))) < 0:
+        side = -side                                             # the channel side, away from the bank
     for f in range(CUT3, SURF):
         a = act(f)
         s = a - A_STRIKE
         push = smoothstep(-60, -4, s)
-        p = mid + side * (1.6 - 0.25 * push) + Vector((0, 0, 0.4))
-        t = mid.lerp(E_STRIKE, 0.4 + 0.3 * push)
+        p = E_STRIKE + ahead * (0.95 - 0.15 * push) + side * 0.8
+        p.z = max(E_STRIKE.z - 0.16, ground_z(p.x, p.y) + 0.28)
+        t = E_STRIKE.lerp(FH_HOLD, 0.35 - 0.25 * push) + Vector((0, 0, 0.02))
         jolt = math.exp(-max(0.0, s) / 4.0) * (s > 0) * 0.03
         p += Vector((math.sin(f * 2.1), math.cos(f * 1.7), math.sin(f * 1.3))) * jolt
         if s > 4:
             k = smoothstep(4, 50, s)
             pos, *_ = fh_state(a)
             t = t.lerp(pos + Vector((0, 0, 0.1)), k)
-            p = p + Vector((0, 0, 0.35 * k)) + side * (0.3 * k)
+            p = p + Vector((0, 0, 0.45 * k)) + side * (0.5 * k)
         frames[f] = (p, t, look_at(p, t, Z), 24.0)
         fstop[f] = 4.0
     return frames, fstop
@@ -3963,10 +4020,11 @@ def run_checks(frames, st):
     sc = bpy.data.scenes["Main"]
     print("\n=== CAMERA REPORT ===")
     from mathutils import kdtree
-    pts = []
+    pts, owner = [], []
     for nm in ("Logjam", "RootBallClay", "UndercutLip", "UndercutRoots", "BankTrunks", "BankCanopy"):
         ob = bpy.data.objects[nm]
         pts += [ob.matrix_world @ v.co for v in ob.data.vertices]
+        owner += [nm] * len(ob.data.vertices)
     kd = kdtree.KDTree(len(pts))
     for i, p in enumerate(pts):
         kd.insert(p, i)
@@ -4003,6 +4061,8 @@ def run_checks(frames, st):
             upd("angler/rod", min(d - 0.15, (ANGLER_AT + Vector((0, 0, 1.0)) - p).length - 0.6), f)
     for k, v in worst.items():
         print(f"closest {k}: {round(v[0], 3)} m at frame {v[1]} (negative = inside)")
+    wf = worst["wood, bank, trees"][1]
+    print("  (nearest wood, bank or tree at that frame:", owner[kd.find(frames[wf][0])[1]] + ")")
     acc, turn = (0.0, 0), (0.0, 0)
     cuts = [CUT1, CUT2, CUT3, DIVE, SURF]
     for f in range(3, FRAME_END):
@@ -4102,7 +4162,7 @@ def build_scene():
     clock = build_clock(c_fx)
     frames, fstop = camera_frames()
     terrain = build_terrain(c_env, M)
-    keep = [(frames[f][0], 0.5) for f in range(1, SURF, 3) if under_at(f)]
+    keep = [(frames[f][0], 0.6) for f in range(1, SURF, 2) if under_at(f)]
     keep += [(bait_state(act(f))[0], 0.35) for f in range(CUT2, STRIKE, 6)]
     keep += [(fh_state(act(f))[0], 0.45) for f in range(CUT3, SURF, 4)]
     hook_path = [frames[f][0] for f in range(1, CUT1)]
