@@ -1,0 +1,252 @@
+{
+ "fps": 24,
+ "frames": 1320,
+ "wipes": [
+  [
+   167,
+   174
+  ],
+  [
+   302,
+   309
+  ],
+  [
+   521,
+   528
+  ],
+  [
+   845,
+   852
+  ],
+  [
+   963,
+   970
+  ]
+ ],
+ "cuts": [
+  171,
+  525,
+  849,
+  306,
+  967
+ ],
+ "overlays": [
+  [
+   -44,
+   "caption",
+   "Stop throwing *dead stink bait* on the bottom for flatheads."
+  ],
+  [
+   96,
+   "caption",
+   "You're catching *channel cats,* not river monsters."
+  ],
+  [
+   161,
+   "wipe",
+   "wipe"
+  ],
+  [
+   175,
+   "caption",
+   "Flatheads aren't scavengers. They're *apex predators.*"
+  ],
+  [
+   224,
+   "badge",
+   "APEX AMBUSH LAIR"
+  ],
+  [
+   296,
+   "wipe",
+   "wipe"
+  ],
+  [
+   308,
+   "caption",
+   "By day they hide in *heavy cover.*"
+  ],
+  [
+   398,
+   "caption",
+   "Root balls, logjams, *undercut banks.*"
+  ],
+  [
+   400,
+   "pin",
+   "root ball"
+  ],
+  [
+   412,
+   "pin",
+   "20 ft scour hole"
+  ],
+  [
+   429,
+   "pin",
+   "logjam"
+  ],
+  [
+   461,
+   "pin",
+   "undercut bank"
+  ],
+  [
+   515,
+   "wipe",
+   "wipe"
+  ],
+  [
+   527,
+   "badge",
+   "LIVE BAIT ONLY"
+  ],
+  [
+   531,
+   "caption",
+   "At dusk they *leave the wood* to hunt."
+  ],
+  [
+   605,
+   "caption",
+   "Use *live, struggling* bait."
+  ],
+  [
+   690,
+   "caption",
+   "6 to 8 inch bluegill, *8/0 circle hook.*"
+  ],
+  [
+   696,
+   "pin",
+   "8/0 circle hook"
+  ],
+  [
+   704,
+   "pin",
+   "6 TO 8 IN"
+  ],
+  [
+   778,
+   "pin",
+   "egg sinker"
+  ],
+  [
+   839,
+   "wipe",
+   "wipe"
+  ],
+  [
+   849,
+   "caption",
+   "The vibrations *draw them out.*"
+  ],
+  [
+   851,
+   "badge",
+   "STRUCTURAL HOLD"
+  ],
+  [
+   957,
+   "wipe",
+   "wipe"
+  ],
+  [
+   967,
+   "caption",
+   "Let the rod *load completely.*"
+  ],
+  [
+   971,
+   "pin",
+   "rod fully loaded"
+  ],
+  [
+   1026,
+   "caption",
+   "A bony mouth needs *maximum pressure.*"
+  ],
+  [
+   1028,
+   "pin",
+   "drag locked down"
+  ],
+  [
+   1117,
+   "caption",
+   "Ditch the dead bait. *Target heavy wood.*"
+  ],
+  [
+   1121,
+   "badge",
+   "APEX AMBUSH LAIR"
+  ],
+  [
+   1121,
+   "headline",
+   "RECAP"
+  ],
+  [
+   1128,
+   "badge",
+   "LIVE BAIT ONLY"
+  ],
+  [
+   1135,
+   "badge",
+   "STRUCTURAL HOLD"
+  ],
+  [
+   1170,
+   "cta",
+   "SUBSCRIBE FOR MORE TROPHY BREAKDOWNS"
+  ]
+ ],
+ "strike": 923,
+ "slowmo": [
+  905,
+  947
+ ],
+ "surface": 967,
+ "dive": 306,
+ "aerial": [
+  171,
+  306
+ ],
+ "kicks": [
+  525,
+  923
+ ],
+ "pullback": [
+  1117,
+  1151
+ ],
+ "vo_start": {
+  "1": 2,
+  "2": 172,
+  "3": 526,
+  "4": 850,
+  "5": 1118
+ },
+ "vo_len": {
+  "1": 7.001,
+  "2": 14.681,
+  "3": 13.401,
+  "4": 11.076,
+  "5": 5.721
+ },
+ "vo_text": {
+  "1": "Stop throwing dead stink bait on the bottom if you want flatheads. You're catching channel cats, not river monsters.",
+  "2": "Flathead catfish aren't scavengers. They are apex solitary predators. During the day, they lock themselves deep inside heavy cover: root balls, logjams, and undercut clay banks in deep river scour holes.",
+  "3": "When the sun goes down, they leave the wood to hunt. To catch them, you must use live, struggling bait. Rig a six to eight inch live bluegill or bullhead on an eight aught circle hook with a heavy slip sinker rig.",
+  "4": "The vibrations drive them wild. When a flathead hits, let the rod load completely before locking down your drag. Their massive, bony mouth requires maximum pressure.",
+  "5": "Ditch the dead bait, target heavy wood, and hit subscribe for more trophy breakdown guides."
+ },
+ "beats": [
+  1,
+  171,
+  525,
+  849,
+  1117
+ ]
+}
