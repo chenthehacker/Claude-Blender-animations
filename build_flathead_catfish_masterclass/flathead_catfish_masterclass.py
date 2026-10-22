@@ -1789,17 +1789,19 @@ def build_materials(atmos):
         mot1 = map_range(nt, noise(nt, vmath(nt, "MULTIPLY", p, (0.8, 1.0, 1.2)), 7.0, 3.0, 0.55), 0.5, 0.64)
         mot2 = map_range(nt, voronoi(nt, vmath(nt, "MULTIPLY", p, (0.7, 1.0, 1.0)), 9.0), 0.5, 0.2)
         mott = nmath(nt, "MULTIPLY", nmath(nt, "MAXIMUM", mot1, nmath(nt, "MULTIPLY", mot2, 0.7)), map_range(nt, z, 0.32, 0.55))
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", mott, 0.75), base, srgb(44, 34, 20))
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", mott, 0.9), base, srgb(36, 28, 16))
         yel = nmath(nt, "MULTIPLY", map_range(nt, noise(nt, p, 4.0, 2.0, 0.5), 0.55, 0.7), map_range(nt, z, 0.3, 0.5))
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", yel, 0.35), col, srgb(176, 150, 66))
         pores = map_range(nt, noise(nt, p, 160.0, 2.0, 0.5), 0.45, 0.75)
         col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", pores, -0.05, 1.02))
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "jawW", "Fac"), 0.35), col, srgb(222, 206, 166))  # paler lower lip
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "band", "Fac"), 0.55), col, srgb(70, 50, 38))   # lip edges
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
-        nt.links.new(uw_base(nt, col, caustic=0.3), b.inputs["Base Color"])
-        _feed(nt, b.inputs["Roughness"], map_range(nt, pores, 0.0, 1.0, 0.24, 0.36, smooth=False))
-        b.inputs["Specular IOR Level"].default_value = 0.55
-        b.inputs["Coat Weight"].default_value = 0.55
-        b.inputs["Coat Roughness"].default_value = 0.1
+        nt.links.new(uw_base(nt, col, caustic=0.15), b.inputs["Base Color"])
+        _feed(nt, b.inputs["Roughness"], map_range(nt, pores, 0.0, 1.0, 0.34, 0.48, smooth=False))
+        b.inputs["Specular IOR Level"].default_value = 0.45
+        b.inputs["Coat Weight"].default_value = 0.3
+        b.inputs["Coat Roughness"].default_value = 0.18
         b.inputs["Subsurface Weight"].default_value = 0.18
         b.inputs["Subsurface Scale"].default_value = 0.012
         b.inputs["Subsurface Radius"].default_value = (1.0, 0.65, 0.4)
@@ -1835,15 +1837,18 @@ def build_materials(atmos):
                                                                        [(0.0, srgb(70, 56, 34)), (1.0, srgb(150, 126, 84))]),
                                                          caustic=0.2), rough=0.35, sss=0.3, sss_scale=0.006, coat=0.4))
 
-    def eye(nt):
+    def eye(nt, glow=True):
         g = separate(nt, tex_coord(nt, "Object"))
         r = vmath(nt, "LENGTH", combine(nt, g["X"], 0.0, g["Z"]))
         col = color_ramp(nt, r, [(0.0, srgb(4, 4, 4)), (0.42, srgb(4, 4, 4)), (0.47, srgb(150, 104, 30)),
                                  (0.8, srgb(196, 150, 60)), (1.0, srgb(40, 34, 20))])
         shine = map_range(nt, r, 0.40, 0.2)                       # a faint warm eyeshine in the pupil
+        if not glow:
+            return psdf(nt, col, rough=0.05, coat=1.0, coat_rough=0.02, spec=0.8)
         return psdf(nt, col, rough=0.05, coat=1.0, coat_rough=0.02, spec=0.8, emission=srgb(255, 190, 90),
                     emission_strength=nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", shine, scene_attr(nt, "eyeshine")), 3.0))
     M.eye = mat("FishEye", eye)
+    M.small_eye = mat("SmallFishEye", lambda nt: eye(nt, glow=False))      # only the flathead's eyes shine
     M.mouth = mat("MouthInside", lambda nt: psdf(nt, srgb(60, 30, 30), rough=0.4, sss=0.3, sss_scale=0.01))
     M.throat = mat("Throat", lambda nt: psdf(nt, srgb(150, 120, 104), rough=0.55, sss=0.3, sss_scale=0.01))
 
@@ -2467,39 +2472,191 @@ def ctrl_swim_group(ctrl, L, name="FlatheadSwim"):
 
 FH_L = 1.0                          # modelled length nose to tail base (m): about 1.17 m to the tail tip
 FH_SCALE = 1.0                      # an illustrative 40+ lb flathead
-FH_JAW_HINGE = Vector((FH_L / 2 - 0.145, 0.0, -0.034))
+FH_HINGE = Vector((FH_L / 2 - 0.13, 0.0, -0.016))     # the corners of the mouth (the jaw's hinge line)
 
 
 def fh_curves():
+    """Profile of the flathead (x: nose +L/2 to tail base -L/2): top, bottom and half width, before the snout is
+    rounded off (fh_round)."""
     L = FH_L
 
     def u_of(x):
         return (L / 2 - x) / L
-    top_u = curve([(0.0, 0.010), (0.05, 0.034), (0.12, 0.060), (0.25, 0.090), (0.40, 0.104), (0.6, 0.094),
+    top_u = curve([(0.0, 0.012), (0.05, 0.030), (0.12, 0.048), (0.25, 0.078), (0.40, 0.096), (0.6, 0.090),
                    (0.8, 0.066), (1.0, 0.046)])
-    bot_u = curve([(0.0, -0.016), (0.07, -0.028), (0.14, -0.038), (0.2, -0.066), (0.32, -0.088), (0.47, -0.094),
-                   (0.66, -0.078), (0.85, -0.052), (1.0, -0.040)])
-    wid_u = curve([(0.0, 0.062), (0.05, 0.100), (0.12, 0.126), (0.22, 0.121), (0.36, 0.102), (0.56, 0.078),
+    bot_u = curve([(0.0, -0.030), (0.06, -0.046), (0.15, -0.058), (0.3, -0.082), (0.47, -0.090), (0.66, -0.076),
+                   (0.85, -0.052), (1.0, -0.040)])
+    wid_u = curve([(0.0, 0.088), (0.05, 0.112), (0.12, 0.128), (0.22, 0.124), (0.36, 0.104), (0.56, 0.078),
                    (0.8, 0.046), (1.0, 0.024)])
-    return (lambda x: top_u(u_of(x))), (lambda x: bot_u(u_of(x))), (lambda x: wid_u(u_of(x))), u_of
+    dk, wk = 1.15, 1.06                 # depth and width factors (a heavier, thicker fish)
+    return (lambda x: dk * top_u(u_of(x))), (lambda x: dk * bot_u(u_of(x))), (lambda x: wk * wid_u(u_of(x))), u_of
+
+
+FH_NOSE = 0.05          # length of the rounded snout (m): sections shrink to the nose tip over this distance
+
+
+def fh_round(u, p):
+    """Snout rounding: 0 at the nose tip, 1 from FH_NOSE back (a superellipse quarter, so the snout is broad)."""
+    a = max(0.0, 1.0 - min(u, FH_NOSE) / FH_NOSE)
+    return max(0.0, 1.0 - a ** p) ** (1.0 / p)
+
+
+def mouth_z(x):
+    """Height of the mouth seam along the head: a little above the middle at the snout, dropping to the corners."""
+    u = max(0.0, min(1.0, (FH_L / 2 - x) / (FH_L / 2 - FH_HINGE.x)))
+    return -0.004 - 0.012 * u
+
+
+def fh_surface(x, y, upper=True):
+    """Height of the skin above (or below) the point (x, y), matching the loft in make_flathead."""
+    top, bot, wid, u_of = fh_curves()
+    u = u_of(x)
+    gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
+    zc, hh, w = (top(x) + bot(x)) / 2, (top(x) - bot(x)) / 2 * gh, wid(x) * gw
+    c = min(1.0, abs(y) / max(w, 1e-6))
+    s = max(0.0, 1.0 - c ** FH_POW) ** (1.0 / FH_POW)
+    return zc + (hh if upper else -hh) * s
+
+
+FH_POW = 2.6            # superellipse power of the sections (flat, broad flanks)
 
 
 def fin_base(fn, x, inset=0.01):
     return (x, fn(x) - inset if fn(x) > 0 else fn(x) + inset)
 
 
-def make_flathead(col, M):
-    """Flathead catfish: a broad, flattened head with small eyes set high, the lower jaw jutting past the upper,
-    eight barbels (two long maxillary, four chin, two short nasal), a long fleshy adipose fin, a small dorsal,
-    a long rounded anal fin and a broad, barely notched tail. Smooth scaleless skin."""
+def jaw_group(ctrl):
+    """Opens the mouth by bending the skin: every vertex below the mouth seam and in front of the hinge turns down
+    about the hinge line by (jaw weight x angle); the controller's x scale holds the angle in radians. The seam
+    faces stretch into the open mouth and are shaded as its dark interior."""
+    ng, gi, go = new_group("FlatheadJaw", "GeometryNodeTree", [("Geometry", "NodeSocketGeometry")],
+                           [("Geometry", "NodeSocketGeometry")])
+    oi = ng.nodes.new("GeometryNodeObjectInfo")
+    oi.inputs["Object"].default_value = ctrl
+    ang = separate(ng, oi.outputs["Scale"])["X"]
+    w = ng.nodes.new("GeometryNodeInputNamedAttribute")
+    w.data_type = "FLOAT"
+    w.inputs["Name"].default_value = "jawW"
+    th = nmath(ng, "MULTIPLY", w.outputs[0], ang)
+    x, y, z = gn_xyz(ng)
+    dx, dz = nmath(ng, "SUBTRACT", x, FH_HINGE.x), nmath(ng, "SUBTRACT", z, FH_HINGE.z)
+    c, s = nmath(ng, "COSINE", th), nmath(ng, "SINE", th)
+    nx = nmath(ng, "ADD", FH_HINGE.x, nmath(ng, "ADD", nmath(ng, "MULTIPLY", dx, c), nmath(ng, "MULTIPLY", dz, s)))
+    nz = nmath(ng, "ADD", FH_HINGE.z, nmath(ng, "SUBTRACT", nmath(ng, "MULTIPLY", dz, c), nmath(ng, "MULTIPLY", dx, s)))
+    sp = ng.nodes.new("GeometryNodeSetPosition")
+    ng.links.new(gi.outputs["Geometry"], sp.inputs["Geometry"])
+    ng.links.new(combine(ng, nx, y, nz),
+                 sp.inputs["Position"])
+    ng.links.new(sp.outputs[0], go.inputs["Geometry"])
+    return ng
+
+
+def flathead_mesh(M):
+    """One closed skin for head and body with a real mouth: the row of faces across the lip line (in front of the
+    mouth corners) is cut away, the lips are closed onto the seam and the cut is extruded inward into a mouth cavity
+    that runs back to the throat. "jawW" marks what turns with the lower jaw, "band" the lip edges."""
     L = FH_L
     top, bot, wid, u_of = fh_curves()
     bm = bmesh.new()
-    ring_section(bm, L / 2, -L / 2, top, bot, wid, nr=70, na=44, power=2.5, xr=lambda x: 1.0 - u_of(x))
+    zl, xl = bm.verts.layers.float.new("zrel"), bm.verts.layers.float.new("xrel")
+    nr, na = 110, 72
+    rings = []
+    for i in range(1, nr + 1):
+        u = (i / nr) ** 1.6                       # rings bunch up toward the nose, where the shape turns fastest
+        x = L / 2 - u * L
+        gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
+        t, b = top(x), bot(x)
+        zc, hh, w = (t + b) / 2, (t - b) / 2 * gh, wid(x) * gw
+        ring = []
+        for k in range(na):
+            a = 2 * math.pi * k / na
+            c, s = math.cos(a), math.sin(a)
+            v = bm.verts.new((x, w * math.copysign(abs(c) ** (2 / FH_POW), c),
+                              zc + hh * math.copysign(abs(s) ** (2 / FH_POW), s)))
+            v[zl] = min(1.0, max(0.0, (v.co.z - b) / max(1e-6, t - b)))
+            v[xl] = u
+            ring.append(v)
+        rings.append(ring)
+    for ra, rb in zip(rings, rings[1:]):
+        for k in range(na):
+            bm.faces.new((ra[k], ra[(k + 1) % na], rb[(k + 1) % na], rb[k]))
+    zt = (top(L / 2) + bot(L / 2)) / 2
+    tip = bm.verts.new((L / 2, 0.0, zt))
+    tip[zl], tip[xl] = (zt - bot(L / 2)) / (top(L / 2) - bot(L / 2)), 0.0
+    for k in range(na):
+        bm.faces.new((rings[0][(k + 1) % na], rings[0][k], tip))
+    xe = -L / 2
+    tail = bm.verts.new((xe - 0.006, 0.0, (top(xe) + bot(xe)) / 2))
+    tail[zl], tail[xl] = 0.5, 1.0
+    for k in range(na):
+        bm.faces.new((rings[-1][k], rings[-1][(k + 1) % na], tail))
+
+    def dz(v):
+        return v.co.z - mouth_z(v.co.x)
+    cut = [f for f in bm.faces if min(v.co.x for v in f.verts) > FH_HINGE.x
+           and min(dz(v) for v in f.verts) < 0.0 < max(dz(v) for v in f.verts)]
+    bmesh.ops.delete(bm, geom=cut, context="FACES")
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context="VERTS")
+    jl, bl = bm.verts.layers.float.new("jawW"), bm.verts.layers.float.new("band")
+
+    def fw(x):
+        return smoothstep(FH_HINGE.x - 0.012, FH_HINGE.x + 0.03, x)
+    lips = [v for v in bm.verts if v.is_boundary]
+    upper = {v: dz(v) >= 0.0 for v in lips}
+    for v in lips:                                # close the lips onto the seam
+        v.co.z = mouth_z(v.co.x) + (0.0006 if upper[v] else -0.0006)
+        v[bl] = 1.0
+    for v in bm.verts:
+        v[jl] = 0.0 if dz(v) >= 0.0 else fw(v.co.x)
+        v.co.x += 0.012 * v[jl] * smoothstep(L / 2 - 0.06, L / 2, v.co.x)     # the lower jaw juts past the upper
+    # mouth cavity: three loops inward from the lips toward the throat, then a cap
+    xt = FH_HINGE.x - 0.015
+    edges = [e for e in bm.edges if e.is_boundary]
+    origin = {v: v for v in lips}
+    loop_verts = list(lips)
+    for k in (0.28, 0.58, 0.88):
+        res = bmesh.ops.extrude_edge_only(bm, edges=edges)
+        new_v = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
+        edges = [g for g in res["geom"] if isinstance(g, bmesh.types.BMEdge) and g.is_boundary]
+        new_set = set(new_v)
+        for v in new_v:
+            src = None
+            for e in v.link_edges:
+                o = e.other_vert(v)
+                if o in origin and o not in new_set:
+                    src = o
+                    break
+            p0 = origin[src]
+            origin[v] = p0
+            up = upper[p0]
+            x0, y0 = p0.co.x, p0.co.y
+            z0 = mouth_z(min(x0, L / 2))
+            nx = x0 + (xt - x0) * k
+            dome = 0.011 * math.sin(math.pi * k) * min(1.0, abs(y0) / 0.04 + 0.4)
+            v.co = Vector((nx, y0 * (1.0 - k), z0 + (mouth_z(xt) - z0) * k + (dome if up else -dome)))
+            v[jl] = 0.0 if up else fw(nx)
+            v[bl], v[zl], v[xl] = 0.0, 0.5, p0[xl]
+    bmesh.ops.holes_fill(bm, edges=edges, sides=0)
+    cav = {v for v in origin if v not in lips}
+    for f in bm.faces:
+        f.smooth = True
+        f.material_index = 2 if any(v in cav for v in f.verts) and all(v in cav or v in lips for v in f.verts) else 0
     ex = L / 2 - 0.085
     for s in (1, -1):
-        ellipsoid(bm, (ex, s * wid(ex) * 0.74, top(ex) * 0.72), (0.0095, 0.0055, 0.0085), subdiv=3, mat=1)
-    me = fish_mesh("Flathead", bm, [M.flathead, M.eye])
+        y = s * wid(ex) * 0.62
+        ellipsoid(bm, (ex, y, fh_surface(ex, y) - 0.003), (0.012, 0.0072, 0.0106), subdiv=3, mat=1)
+    return fish_mesh("Flathead", bm, [M.flathead, M.eye, M.throat])
+
+
+def make_flathead(col, M):
+    """Flathead catfish: a broad, flat head in one smooth skin, the lower jaw jutting a little past the upper and
+    the mouth as a fine lip line around the rounded snout; small eyes set high; two maxillary barbels at the mouth
+    corners, four short chin barbels and two tiny nasal ones; a small dorsal, a long fleshy adipose fin, a long
+    rounded anal fin and a broad, barely notched tail."""
+    L = FH_L
+    top, bot, wid, u_of = fh_curves()
+    me = flathead_mesh(M)
     body = bpy.data.objects.new("Flathead", me)
     col.objects.link(body)
     for p in me.polygons:
@@ -2540,62 +2697,72 @@ def make_flathead(col, M):
         po.location = (xq, s * (wid(xq) - 0.008), bot(xq) * 0.45)
         po.rotation_euler = (s * math.radians(-6), math.radians(4), s * math.radians(-30))
         pects.append(po)
-    # barbels on the head: two long maxillary (mouth corners) and two short nasal ones
-    bb = bmesh.new()
+    def soft_tube(bm, pts, r0, r1, n=12):
+        """A barbel: a smooth curve through pts (Catmull-Rom), tapering from r0 to r1 with a rounded tip."""
+        pts = [Vector(p) for p in pts]
+        ext = [pts[0] * 2 - pts[1], *pts, pts[-1] * 2 - pts[-2]]
+        path = []
+        for i in range(1, len(ext) - 2):
+            p0, p1, p2, p3 = ext[i - 1], ext[i], ext[i + 1], ext[i + 2]
+            for j in range(n):
+                t = j / n
+                path.append(0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t
+                                   + (3 * p1 - p0 - 3 * p2 + p3) * t ** 3))
+        path.append(pts[-1])
+        tube(bm, path, lambda t: (r0 + (r1 - r0) * t) * (1.0 if t < 0.92 else math.sqrt(max(0.15, (1 - t) / 0.08))),
+             segs=8)
+
+    bb = bmesh.new()                                    # maxillary barbels at the mouth corners, tiny nasal ones
     for s in (1, -1):
-        p0 = Vector((L / 2 - 0.035, s * (wid(L / 2 - 0.035) - 0.004), -0.012))
-        pts = [p0 + Vector((-0.02 * i, s * 0.028 * i, -0.004 * i * i)) for i in range(7)]
-        tube(bb, pts, lambda t: 0.0045 * (1 - 0.85 * t), segs=6)
-        n0 = Vector((L / 2 - 0.03, s * 0.035, top(L / 2 - 0.03) - 0.004))
-        tube(bb, [n0, n0 + Vector((0.008, s * 0.006, 0.016)), n0 + Vector((0.01, s * 0.01, 0.026))],
-             lambda t: 0.002 * (1 - 0.6 * t), segs=5)
+        xm = FH_HINGE.x + 0.018
+        p0 = Vector((xm, s * (wid(xm) * fh_round(u_of(xm), 2.6) - 0.005), mouth_z(xm) + 0.005))
+        soft_tube(bb, [p0, p0 + Vector((-0.012, s * 0.03, -0.004)), p0 + Vector((-0.04, s * 0.062, -0.014)),
+                       p0 + Vector((-0.08, s * 0.082, -0.03)), p0 + Vector((-0.12, s * 0.088, -0.05))], 0.0042, 0.0011)
+        xn = L / 2 - 0.022
+        yn = s * 0.04
+        n0 = Vector((xn, yn, fh_surface(xn, yn) - 0.001))
+        soft_tube(bb, [n0, n0 + Vector((0.004, s * 0.002, 0.006)), n0 + Vector((0.006, s * 0.004, 0.011))],
+                  0.0016, 0.0008, n=6)
     barbels = finish("FlatheadBarbels", bb, col, [M.barbel])
     barbels.parent = body
     for p in barbels.data.polygons:
         p.use_smooth = True
-    # lower jaw (hinged, jutting past the upper) with the four chin barbels; the pale mouth behind it
-    jb = bmesh.new()
-    hx = FH_JAW_HINGE.x
-    jl = L / 2 + 0.024 - hx
-
-    def jtop(x):
-        return 0.002 + 0.024 * max(0.0, (x + 0.015) / (jl + 0.015))
-    ring_section(jb, jl, -0.015, jtop,
-                 lambda x: -0.03 + 0.02 * min(1.0, max(0.0, x / jl)) ** 0.8,
-                 lambda x: 0.11 - 0.035 * min(1.0, max(0.0, x / jl)) ** 1.5, nr=16, na=28, power=2.6, xr=lambda x: 0.95)
-    for v in jb.verts:
-        v[jb.verts.layers.float["zrel"]] *= 0.45
+    pivot = empty_object("FlatheadJawPivot", col, size=0.02, parent=body)      # carries the chin barbels
+    pivot.location = FH_HINGE
+    cb = bmesh.new()
     for s in (1, -1):
-        for k in (0.03, 0.065):
-            c0 = Vector((jl - 0.035, s * k, -0.026))
-            tube(jb, [c0, c0 + Vector((0.006, s * 0.006, -0.022)), c0 + Vector((-0.004, s * 0.012, -0.044))],
-                 lambda t: 0.0028 * (1 - 0.7 * t), segs=5, mat=1)
-    jm = fish_mesh("FlatheadJaw", jb, [M.flathead, M.barbel])
-    jaw = bpy.data.objects.new("FlatheadJaw", jm)
-    col.objects.link(jaw)
-    jaw.parent = body
-    jaw.location = FH_JAW_HINGE
-    for p in jm.polygons:
-        p.use_smooth = True
+        for xc, yc in ((L / 2 - 0.022, 0.022), (L / 2 - 0.04, 0.052)):
+            xj = xc + 0.012 * smoothstep(L / 2 - 0.06, L / 2, xc)
+            c0 = Vector((xj, s * yc, fh_surface(xc, yc, upper=False) + 0.002)) - FH_HINGE
+            soft_tube(cb, [c0, c0 + Vector((-0.002, s * 0.002, -0.012)), c0 + Vector((-0.014, s * 0.006, -0.026)),
+                           c0 + Vector((-0.03, s * 0.01, -0.034))], 0.0026, 0.001, n=8)
+    chin = finish("FlatheadChinBarbels", cb, col, [M.barbel])
+    chin.parent = pivot
+    for ob in (barbels, chin):
+        for p in ob.data.polygons:
+            p.use_smooth = True
+        sb = ob.modifiers.new("Subdivision", "SUBSURF")
+        sb.levels, sb.render_levels = 0, 1
     tb = bmesh.new()
-    ellipsoid(tb, (0.0, 0.0, 0.0), (0.07, 0.085, 0.016), subdiv=3, mat=0)
+    ellipsoid(tb, (0.0, 0.0, 0.0), (0.06, 0.08, 0.014), subdiv=3, mat=0)
     throat = finish("FlatheadMouth", tb, col, [M.throat])
     throat.parent = body
-    throat.location = (L / 2 - 0.085, 0.0, -0.028)
+    throat.location = (L / 2 - 0.07, 0.0, mouth_z(L / 2 - 0.07) - 0.006)
+    throat.hide_render = throat.hide_viewport = True     # the mouth cavity is part of the skin now
     root = empty_object("FlatheadRig", col, size=0.3)
     root.rotation_mode = "QUATERNION"
     root.scale = (FH_SCALE,) * 3
     body.parent = root
     beat = empty_object("FlatheadBeat", col, size=0.05)
+    beat.scale = (0.0, 1.0, 1.0)
+    body.modifiers.new("Jaw", "NODES").node_group = jaw_group(beat)
     ng = ctrl_swim_group(beat, L)
     for ob in (body, fins):
         ob.modifiers.new("Swim", "NODES").node_group = ng
     sub = body.modifiers.new("Subdivision", "SUBSURF")
     sub.levels = 1
     sub.render_levels = 2
-    jsub = jaw.modifiers.new("Subdivision", "SUBSURF")
-    jsub.levels = jsub.render_levels = 1
-    return dict(root=root, body=body, fins=fins, jaw=jaw, throat=throat, pects=pects, beat=beat, barbels=barbels)
+    return dict(root=root, body=body, fins=fins, jaw=pivot, throat=throat, pects=pects, beat=beat, barbels=barbels)
 
 
 def small_fish(name, M, mat, fin_m, L, top_u, bot_u, wid_u, fins_spec, nr=26, na=16):
@@ -2610,7 +2777,7 @@ def small_fish(name, M, mat, fin_m, L, top_u, bot_u, wid_u, fins_spec, nr=26, na
         ellipsoid(bm, (ex, s * wid(ex) * 0.85, top(ex) * 0.35), (0.032 * L, 0.016 * L, 0.032 * L), subdiv=2, mat=1)
     for ctrl in fins_spec(L, top, bot):
         soft_fin(bm, ctrl, 0.012 * L, 2, samples=5)
-    return fish_mesh(name, bm, [mat, M.eye, fin_m])
+    return fish_mesh(name, bm, [mat, M.small_eye, fin_m])
 
 
 def bluegill_mesh(M):
@@ -2682,7 +2849,7 @@ def fh_state(a):
     pos = FH_HOLD + Vector((0, 0, 0.01 * math.sin(a * 0.04)))
     fwd = F0.copy()
     amp, rate, bnd = 0.004, 2.6, 0.0
-    jaw = 0.08 + 0.06 * max(0.0, math.sin(a * 0.09))       # slow breathing
+    jaw = 0.03 + 0.04 * max(0.0, math.sin(a * 0.09))       # slow breathing
     to = (E_STRIKE - FH_HOLD)
     to.z *= 0.6
     to = to.normalized()
@@ -2731,11 +2898,14 @@ def animate_flathead(fh, f_lo, f_hi):
         key(root, "rotation_quaternion", f)
         beat.location = (phase, amp / FH_SCALE, bnd)
         key(beat, "location", f)
-        fh["jaw"].rotation_euler = (0.0, math.radians(38) * jaw, 0.0)
+        ang = math.radians(30) * jaw
+        beat.scale = (ang, 1.0, 1.0)
+        key(beat, "scale", f, index=0)
+        fh["jaw"].rotation_euler = (0.0, ang, 0.0)
         key(fh["jaw"], "rotation_euler", f)
         sc_ = max(0.05, min(1.0, jaw * 1.3))
-        fh["throat"].scale = (1.0, 0.7 + 0.3 * sc_, sc_)
-        fh["throat"].location = (FH_L / 2 - 0.085, 0.0, -0.028 - 0.006 * jaw)
+        fh["throat"].scale = (1.0, 0.7 + 0.3 * sc_, 0.3 + 0.7 * sc_)
+        fh["throat"].location = (FH_L / 2 - 0.07, 0.0, mouth_z(FH_L / 2 - 0.07) - 0.006 - 0.02 * jaw)
         key(fh["throat"], "scale", f)
         key(fh["throat"], "location", f)
         for s_, po in zip((1, -1), fh["pects"]):
@@ -3393,13 +3563,15 @@ def camera_frames():
         b = base[f]
         u = (f - CUT2) / max(1, CUT3 - 1 - CUT2)
         wide = smoothstep(s1 - 16, s1 + 14, f) * (1 - smoothstep(s2 - 14, s2 + 16, f))
-        macro = smoothstep(s2 - 14, s2 + 16, f)
+        sm_ = s2 + int((CUT3 - s2) * 0.5)
+        macro = smoothstep(s2 - 14, s2 + 16, f) * (1 - smoothstep(sm_ - 10, sm_ + 14, f))   # close on the hook
+        rigv = smoothstep(sm_ - 10, sm_ + 14, f)                                          # back out for the rig
         th = math.radians(-112 + 40 * ease(u))                  # side on to the bait, from the channel side
-        r = 0.85 + 0.6 * wide + 0.4 * macro
+        r = 0.85 + 0.6 * wide - 0.12 * macro + 0.45 * rigv
         p = b + Vector((r * math.sin(th), -r * math.cos(th), 0.12 + 0.1 * wide))
-        t = b.lerp(FH_HOLD + Vector((0, 0, 0.1)), 0.18 * wide).lerp(SWIVEL, 0.45 * macro)
+        t = b.lerp(FH_HOLD + Vector((0, 0, 0.1)), 0.18 * wide).lerp(SWIVEL, 0.45 * rigv) + Vector((0, 0, -0.07 * macro))
         p.z = max(p.z, ground_z(p.x, p.y) + 0.35)
-        lens = 38.0 - 8.0 * wide - 2.0 * macro
+        lens = 38.0 - 8.0 * wide + 3.0 * macro - 2.0 * rigv
         frames[f] = (p, t, look_at(p, t, Z), lens)
         fstop[f] = 2.8 + 1.4 * wide
     # 4 the strike: low and side on between the wood and the bait; then follows her back to cover
@@ -3410,7 +3582,7 @@ def camera_frames():
         a = act(f)
         s = a - A_STRIKE
         push = smoothstep(-60, -4, s)
-        p = mid + side * (1.9 - 0.3 * push) + Vector((0, 0, 0.45))
+        p = mid + side * (1.6 - 0.25 * push) + Vector((0, 0, 0.4))
         t = mid.lerp(E_STRIKE, 0.4 + 0.3 * push)
         jolt = math.exp(-max(0.0, s) / 4.0) * (s > 0) * 0.03
         p += Vector((math.sin(f * 2.1), math.cos(f * 1.7), math.sin(f * 1.3))) * jolt
@@ -3523,7 +3695,7 @@ def key_scene_state(sc, world_vals, sun, rim, key_l):
         sun.keyframe_insert("rotation_quaternion", frame=f)
         rim.data.energy = 14.0 if f < CUT1 else 0.0
         rim.data.keyframe_insert("energy", frame=f)
-        key_l.data.energy = 30.0 if f < CUT1 else 0.0
+        key_l.data.energy = 20.0 if f < CUT1 else 0.0
         key_l.data.keyframe_insert("energy", frame=f)
     set_constant(sc)
     set_constant(sc.world.node_tree)
@@ -3645,8 +3817,8 @@ def build_overlays(hud, st):
     rig = st["rig"]
     s2 = P(3, 2)
     hud.pin(lambda f: (bpy.context.scene.frame_set(f), rig["hook"].matrix_world.translation.copy())[1],
-            "8/0 circle hook", s2 + 8, s2 + int((CUT3 - s2) * 0.62), dot_color=GOLD, side=-0.06)
-    hud.pin(SINKER + Vector((0, 0, 0.02)), "egg sinker", s2 + int((CUT3 - s2) * 0.4), CUT3 - 10, dot_color=GOLD,
+            "8/0 circle hook", s2 + 8, s2 + int((CUT3 - s2) * 0.75), dot_color=GOLD, side=-0.06)
+    hud.pin(SINKER + Vector((0, 0, 0.02)), "egg sinker", s2 + int((CUT3 - s2) * 0.55), CUT3 - 10, dot_color=GOLD,
             side=0.07, y_band=(-0.32, 0.3))
 
     def gill_end(which):
@@ -3655,7 +3827,7 @@ def build_overlays(hud, st):
             m = rig["gill"].matrix_world
             return m @ Vector((rig["len"] / 2 if which == 0 else -rig["len"] / 2, 0.0, 0.0))
         return fn
-    hud.dimension(gill_end(0), gill_end(1), "6 TO 8 IN", s2 + 16, s2 + int((CUT3 - s2) * 0.9), drop=0.09)
+    hud.dimension(gill_end(0), gill_end(1), "6 TO 8 IN", s2 + 16, s2 + int((CUT3 - s2) * 0.5), drop=0.06)
     # 4 the strike, then the rod
     hud.badge(3, "STRUCTURAL HOLD", "let it load, then lock the drag", CUT3 + 8, CUT4 - 8)
     hud.serif("The vibrations *draw them out.*", CUT3 + 4, P(4, 1) - 6, src="LATERAL LINE: MINNESOTA DNR",
