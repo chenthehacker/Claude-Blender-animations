@@ -49,6 +49,7 @@ import bmesh
 import numpy as np
 from mathutils import Euler, Matrix, Quaternion, Vector
 from mathutils import noise as mnoise
+from mathutils.kdtree import KDTree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(HERE, "fonts")
@@ -1795,7 +1796,8 @@ def build_materials(atmos):
         pores = map_range(nt, noise(nt, p, 160.0, 2.0, 0.5), 0.45, 0.75)
         col = vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", pores, -0.05, 1.02))
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "jawW", "Fac"), 0.35), col, srgb(222, 206, 166))  # paler lower lip
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "band", "Fac"), 0.55), col, srgb(70, 50, 38))   # lip edges
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "gill", "Fac"), 0.75), col, srgb(46, 34, 22))     # gill slit
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "lip", "Fac"), 0.7), col, srgb(206, 188, 150))  # pale lips
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
         nt.links.new(uw_base(nt, col, caustic=0.15), b.inputs["Base Color"])
         _feed(nt, b.inputs["Roughness"], map_range(nt, pores, 0.0, 1.0, 0.34, 0.48, smooth=False))
@@ -1838,11 +1840,10 @@ def build_materials(atmos):
                                                          caustic=0.2), rough=0.35, sss=0.3, sss_scale=0.006, coat=0.4))
 
     def eye(nt, glow=True):
-        g = separate(nt, tex_coord(nt, "Object"))
-        r = vmath(nt, "LENGTH", combine(nt, g["X"], 0.0, g["Z"]))
-        col = color_ramp(nt, r, [(0.0, srgb(4, 4, 4)), (0.42, srgb(4, 4, 4)), (0.47, srgb(150, 104, 30)),
-                                 (0.8, srgb(196, 150, 60)), (1.0, srgb(40, 34, 20))])
-        shine = map_range(nt, r, 0.40, 0.2)                       # a faint warm eyeshine in the pupil
+        r = attr(nt, "eyer", "Fac")                                # angle from the eye's axis, set on the mesh
+        col = color_ramp(nt, r, [(0.0, srgb(4, 4, 4)), (0.3, srgb(4, 4, 4)), (0.36, srgb(150, 120, 60)),
+                                 (0.62, srgb(176, 146, 76)), (0.75, srgb(70, 58, 34)), (1.0, srgb(40, 34, 20))])
+        shine = map_range(nt, r, 0.30, 0.12)                      # a faint warm eyeshine in the pupil
         if not glow:
             return psdf(nt, col, rough=0.05, coat=1.0, coat_rough=0.02, spec=0.8)
         return psdf(nt, col, rough=0.05, coat=1.0, coat_rough=0.02, spec=0.8, emission=srgb(255, 190, 90),
@@ -2472,7 +2473,7 @@ def ctrl_swim_group(ctrl, L, name="FlatheadSwim"):
 
 FH_L = 1.0                          # modelled length nose to tail base (m): about 1.17 m to the tail tip
 FH_SCALE = 1.0                      # an illustrative 40+ lb flathead
-FH_HINGE = Vector((FH_L / 2 - 0.13, 0.0, -0.016))     # the corners of the mouth (the jaw's hinge line)
+FH_HINGE = Vector((FH_L / 2 - 0.13, 0.0, -0.018))     # the corners of the mouth (the jaw's hinge line)
 
 
 def fh_curves():
@@ -2482,13 +2483,15 @@ def fh_curves():
 
     def u_of(x):
         return (L / 2 - x) / L
-    top_u = curve([(0.0, 0.012), (0.05, 0.030), (0.12, 0.048), (0.25, 0.078), (0.40, 0.096), (0.6, 0.090),
-                   (0.8, 0.066), (1.0, 0.046)])
-    bot_u = curve([(0.0, -0.030), (0.06, -0.046), (0.15, -0.058), (0.3, -0.082), (0.47, -0.090), (0.66, -0.076),
-                   (0.85, -0.052), (1.0, -0.040)])
-    wid_u = curve([(0.0, 0.088), (0.05, 0.112), (0.12, 0.128), (0.22, 0.124), (0.36, 0.104), (0.56, 0.078),
-                   (0.8, 0.046), (1.0, 0.024)])
-    dk, wk = 1.15, 1.06                 # depth and width factors (a heavier, thicker fish)
+    # proportions after photographs of large flatheads: a long, low, shovel head (about a quarter of the length),
+    # the back rising behind it to the dorsal fin, a deep sagging belly, and a tall, narrow tail stock
+    top_u = curve([(0.0, 0.022), (0.05, 0.040), (0.12, 0.056), (0.22, 0.070), (0.32, 0.082), (0.42, 0.091),
+                   (0.55, 0.091), (0.7, 0.079), (0.85, 0.064), (1.0, 0.052)])
+    bot_u = curve([(0.0, -0.036), (0.06, -0.052), (0.15, -0.068), (0.25, -0.086), (0.35, -0.102), (0.45, -0.108),
+                   (0.55, -0.098), (0.68, -0.080), (0.85, -0.058), (1.0, -0.046)])
+    wid_u = curve([(0.0, 0.040), (0.05, 0.072), (0.10, 0.100), (0.16, 0.122), (0.22, 0.128), (0.30, 0.118),
+                   (0.42, 0.108), (0.55, 0.088), (0.7, 0.060), (0.85, 0.034), (0.93, 0.022), (1.0, 0.007)])
+    dk, wk = 1.1, 1.0                   # depth and width factors (a heavy fish)
     return (lambda x: dk * top_u(u_of(x))), (lambda x: dk * bot_u(u_of(x))), (lambda x: wk * wid_u(u_of(x))), u_of
 
 
@@ -2502,23 +2505,27 @@ def fh_round(u, p):
 
 
 def mouth_z(x):
-    """Height of the mouth seam along the head: a little above the middle at the snout, dropping to the corners."""
+    """Height of the mouth seam along the head: at the middle of the snout, dropping a little to the corners."""
     u = max(0.0, min(1.0, (FH_L / 2 - x) / (FH_L / 2 - FH_HINGE.x)))
-    return -0.004 - 0.012 * u
+    return -0.009 - 0.009 * u
 
 
 def fh_surface(x, y, upper=True):
     """Height of the skin above (or below) the point (x, y), matching the loft in make_flathead."""
     top, bot, wid, u_of = fh_curves()
     u = u_of(x)
-    gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
+    gw, gh = fh_round(u, 2.0), fh_round(u, 2.0)
     zc, hh, w = (top(x) + bot(x)) / 2, (top(x) - bot(x)) / 2 * gh, wid(x) * gw
     c = min(1.0, abs(y) / max(w, 1e-6))
-    s = max(0.0, 1.0 - c ** FH_POW) ** (1.0 / FH_POW)
+    p = fh_pow(u, upper)
+    s = max(0.0, 1.0 - c ** p) ** (1.0 / p)
     return zc + (hh if upper else -hh) * s
 
 
-FH_POW = 2.6            # superellipse power of the sections (flat, broad flanks)
+def fh_pow(u, upper):
+    """Superellipse power of the sections: a flat head (flatter still underneath), a rounder back and belly behind."""
+    t = smoothstep(0.15, 0.35, u)
+    return (2.5 + (2.2 - 2.5) * t) if upper else (2.7 + (2.0 - 2.7) * t)
 
 
 def fin_base(fn, x, inset=0.01):
@@ -2561,18 +2568,24 @@ def flathead_mesh(M):
     zl, xl = bm.verts.layers.float.new("zrel"), bm.verts.layers.float.new("xrel")
     nr, na = 110, 72
     rings = []
-    for i in range(1, nr + 1):
-        u = (i / nr) ** 1.6                       # rings bunch up toward the nose, where the shape turns fastest
+    us = [(i / nr) ** 1.6 for i in range(1, nr + 1)]      # rings bunch up toward the nose, where the shape turns fastest
+    fine = []
+    for a, b in zip(us, us[1:] + [None]):
+        fine.append(a)
+        if b is not None and 0.19 < a < 0.37:            # and around the gill opening, so its fine edge holds
+            fine += [a + (b - a) / 3, a + 2 * (b - a) / 3]
+    for u in fine:
         x = L / 2 - u * L
-        gw, gh = fh_round(u, 2.6), fh_round(u, 2.0)
+        gw, gh = fh_round(u, 2.0), fh_round(u, 2.0)
         t, b = top(x), bot(x)
         zc, hh, w = (t + b) / 2, (t - b) / 2 * gh, wid(x) * gw
         ring = []
         for k in range(na):
             a = 2 * math.pi * k / na
             c, s = math.cos(a), math.sin(a)
-            v = bm.verts.new((x, w * math.copysign(abs(c) ** (2 / FH_POW), c),
-                              zc + hh * math.copysign(abs(s) ** (2 / FH_POW), s)))
+            pw = fh_pow(u, s >= 0.0)
+            v = bm.verts.new((x, w * math.copysign(abs(c) ** (2 / pw), c),
+                              zc + hh * math.copysign(abs(s) ** (2 / pw), s)))
             v[zl] = min(1.0, max(0.0, (v.co.z - b) / max(1e-6, t - b)))
             v[xl] = u
             ring.append(v)
@@ -2591,6 +2604,27 @@ def flathead_mesh(M):
     for k in range(na):
         bm.faces.new((rings[-1][k], rings[-1][(k + 1) % na], tail))
 
+    # gills: the gill cover (operculum) ends in a curved free edge, bowed back at mid height, over a dark slit that
+    # runs from above the pectoral fin down and forward under the throat; the cover stands a little proud of the body
+    xg = L / 2 - 0.27
+    gl = bm.verts.layers.float.new("gill")
+    for v in bm.verts:
+        if not (xg - 0.05 < v.co.x < xg + 0.13):
+            continue
+        zr = v[zl]
+        top_w = smoothstep(0.78, 0.6, zr)                      # the slit ends high on the side, above the pectoral
+        xs = xg + 0.045 * (1.0 - zr) ** 2 - 0.026 * math.sin(math.pi * min(1.0, zr / 0.78))
+        d = v.co.x - xs
+        cz = (top(v.co.x) + bot(v.co.x)) / 2
+        rad = Vector((0.0, v.co.y, v.co.z - cz))
+        if rad.length < 1e-6:
+            continue
+        rad.normalize()
+        cover = 0.0035 * smoothstep(0.0, 0.006, d) * smoothstep(0.075, 0.03, d)   # the cover, ahead of its free edge
+        slit = -0.006 * math.exp(-((d + 0.001) / 0.0045) ** 2)                  # the groove itself
+        v.co += rad * ((cover + slit) * top_w)
+        v[gl] = math.exp(-((d - 0.001) / 0.005) ** 2) * top_w
+
     def dz(v):
         return v.co.z - mouth_z(v.co.x)
     cut = [f for f in bm.faces if min(v.co.x for v in f.verts) > FH_HINGE.x
@@ -2599,6 +2633,7 @@ def flathead_mesh(M):
     loose = [v for v in bm.verts if not v.link_faces]
     bmesh.ops.delete(bm, geom=loose, context="VERTS")
     jl, bl = bm.verts.layers.float.new("jawW"), bm.verts.layers.float.new("band")
+    ll = bm.verts.layers.float.new("lip")         # (all layers before any vertex lists: a new layer invalidates them)
 
     def fw(x):
         return smoothstep(FH_HINGE.x - 0.012, FH_HINGE.x + 0.03, x)
@@ -2607,9 +2642,15 @@ def flathead_mesh(M):
     for v in lips:                                # close the lips onto the seam
         v.co.z = mouth_z(v.co.x) + (0.0006 if upper[v] else -0.0006)
         v[bl] = 1.0
+    for v in bm.verts:                            # big, fleshy lips all round the mouth, fading out at the corners
+        dd = abs(dz(v))
+        w = math.exp(-(dd / 0.013) ** 2) * smoothstep(FH_HINGE.x - 0.01, FH_HINGE.x + 0.05, v.co.x)
+        v[ll] = w
     for v in bm.verts:
         v[jl] = 0.0 if dz(v) >= 0.0 else fw(v.co.x)
-        v.co.x += 0.012 * v[jl] * smoothstep(L / 2 - 0.06, L / 2, v.co.x)     # the lower jaw juts past the upper
+        jut = v[jl] * smoothstep(FH_HINGE.x, FH_HINGE.x + 0.07, v.co.x)     # the whole lower jaw slides forward
+        v.co.x += 0.018 * jut                 # the lower jaw juts past the upper, and is a little broader
+        v.co.y *= 1.0 + 0.03 * jut
     # mouth cavity: three loops inward from the lips toward the throat, then a cap
     xt = FH_HINGE.x - 0.015
     edges = [e for e in bm.edges if e.is_boundary]
@@ -2620,6 +2661,11 @@ def flathead_mesh(M):
         new_v = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
         edges = [g for g in res["geom"] if isinstance(g, bmesh.types.BMEdge) and g.is_boundary]
         new_set = set(new_v)
+        prev = [p for p in origin if p not in new_set]
+        kd = KDTree(len(prev))
+        for i, p in enumerate(prev):
+            kd.insert(p.co, i)
+        kd.balance()
         for v in new_v:
             src = None
             for e in v.link_edges:
@@ -2627,6 +2673,8 @@ def flathead_mesh(M):
                 if o in origin and o not in new_set:
                     src = o
                     break
+            if src is None:                       # where the lip loop pinches at the snout tip: the nearest one
+                src = prev[kd.find(v.co)[1]]
             p0 = origin[src]
             origin[v] = p0
             up = upper[p0]
@@ -2639,13 +2687,26 @@ def flathead_mesh(M):
             v[bl], v[zl], v[xl] = 0.0, 0.5, p0[xl]
     bmesh.ops.holes_fill(bm, edges=edges, sides=0)
     cav = {v for v in origin if v not in lips}
+    for v in bm.verts:                            # the lips swell outward from a point inside the snout
+        if v in cav or v[ll] < 1e-4:
+            continue
+        out = v.co - Vector((min(v.co.x, L / 2 - 0.06), 0.0, mouth_z(min(v.co.x, L / 2))))
+        if out.length > 1e-6:
+            v.co += out.normalized() * 0.012 * v[ll]
     for f in bm.faces:
         f.smooth = True
         f.material_index = 2 if any(v in cav for v in f.verts) and all(v in cav or v in lips for v in f.verts) else 0
     ex = L / 2 - 0.085
+    er = bm.verts.layers.float.new("eyer")    # angle from the eye's axis (0 pupil centre, 1 at 90 degrees)
     for s in (1, -1):
         y = s * wid(ex) * 0.62
-        ellipsoid(bm, (ex, y, fh_surface(ex, y) - 0.003), (0.012, 0.0072, 0.0106), subdiv=3, mat=1)
+        c = Vector((ex, y, fh_surface(ex, y) - 0.003))
+        before = set(bm.verts)
+        ellipsoid(bm, c, (0.012, 0.0072, 0.0106), subdiv=3, mat=1)
+        axis = Vector((0.15, s * 0.75, 0.65)).normalized()            # small eyes looking up and out
+        for v in set(bm.verts) - before:
+            d = (v.co - c).normalized()
+            v[er] = math.acos(max(-1.0, min(1.0, d.dot(axis)))) / (math.pi / 2)
     return fish_mesh("Flathead", bm, [M.flathead, M.eye, M.throat])
 
 
@@ -2662,23 +2723,29 @@ def make_flathead(col, M):
     for p in me.polygons:
         p.use_smooth = True
     fb = bmesh.new()
-    xd = L / 2 - 0.36                                   # small rounded dorsal with a stout first ray
-    soft_fin(fb, [fin_base(top, xd), (xd - 0.005, top(xd) + 0.07), (xd - 0.04, top(xd - 0.04) + 0.075),
-                  (xd - 0.085, top(xd - 0.085) + 0.04), fin_base(top, xd - 0.1)], 0.003, 2, samples=8)
-    xa = -0.24                                          # long, low, fleshy adipose fin
-    soft_fin(fb, [fin_base(top, xa, 0.006), (xa - 0.02, top(xa - 0.02) + 0.03), (xa - 0.12, top(xa - 0.12) + 0.036),
-                  (xa - 0.19, top(xa - 0.19) + 0.022), fin_base(top, xa - 0.21, 0.006)], 0.006, 2, samples=8)
-    xt = -L / 2                                         # broad tail, nearly square with a shallow notch
-    soft_fin(fb, [(xt + 0.03, 0.036), (xt - 0.06, 0.085), (xt - 0.165, 0.098), (xt - 0.18, 0.06), (xt - 0.17, 0.004),
-                  (xt - 0.18, -0.055), (xt - 0.165, -0.092), (xt - 0.06, -0.08), (xt + 0.03, -0.032)], 0.003, 4, samples=8)
-    xn = -0.1                                           # long rounded anal fin
-    soft_fin(fb, [fin_base(bot, xn), (xn - 0.02, bot(xn) - 0.05), (xn - 0.12, bot(xn - 0.12) - 0.06),
-                  (xn - 0.22, bot(xn - 0.22) - 0.04), fin_base(bot, xn - 0.24)], 0.003, 2, samples=8)
-    for s in (1, -1):                                   # pelvic fins
-        rot = Euler((s * math.radians(20), 0.0, 0.0))
-        xp = -0.02
-        soft_fin(fb, [(xp + 0.02, bot(xp) + 0.012), (xp, bot(xp) - 0.05), (xp - 0.05, bot(xp) - 0.06),
-                      (xp - 0.06, bot(xp) - 0.03), (xp - 0.03, bot(xp) + 0.01)], 0.003, 2, offset=(0, s * 0.04, 0), rot=rot)
+    # fin placement and size after photographs of large flatheads (fractions of the total length, about 1.17 m)
+    xd = 0.11                                           # small rounded dorsal at a third of the length
+    soft_fin(fb, [fin_base(top, xd), (xd - 0.004, top(xd) + 0.085), (xd - 0.035, top(xd - 0.035) + 0.095),
+                  (xd - 0.075, top(xd - 0.075) + 0.07), (xd - 0.095, top(xd - 0.095) + 0.03), fin_base(top, xd - 0.1)],
+             0.003, 2, samples=8)
+    xa = -0.22                                          # long, fleshy adipose fin over the rear of the anal fin
+    soft_fin(fb, [fin_base(top, xa, 0.006), (xa - 0.025, top(xa - 0.025) + 0.03), (xa - 0.1, top(xa - 0.1) + 0.04),
+                  (xa - 0.17, top(xa - 0.17) + 0.03), fin_base(top, xa - 0.2, 0.006)], 0.007, 2, samples=8)
+    xt = -L / 2                                         # broad, square tail with a shallow notch and rounded corners
+    zt = 1.1 * (0.052 - 0.046) / 2                      # the root spans the whole tail stock, so the body runs into it
+    soft_fin(fb, [(xt + 0.05, zt + 0.05), (xt - 0.04, zt + 0.1), (xt - 0.14, zt + 0.124), (xt - 0.178, zt + 0.108),
+                  (xt - 0.184, zt + 0.05), (xt - 0.175, zt + 0.004), (xt - 0.184, zt - 0.046), (xt - 0.178, zt - 0.104),
+                  (xt - 0.14, zt - 0.118), (xt - 0.04, zt - 0.094), (xt + 0.05, zt - 0.046)], 0.004, 4, samples=8)
+    xn = -0.15                                          # long, rounded anal fin
+    soft_fin(fb, [fin_base(bot, xn), (xn - 0.02, bot(xn - 0.02) - 0.055), (xn - 0.1, bot(xn - 0.1) - 0.07),
+                  (xn - 0.19, bot(xn - 0.19) - 0.06), (xn - 0.24, bot(xn - 0.24) - 0.03), fin_base(bot, xn - 0.25)],
+             0.003, 2, samples=8)
+    for s in (1, -1):                                   # broad, rounded pelvic fins at mid belly
+        rot = Euler((s * math.radians(22), 0.0, 0.0))
+        xp = -0.06
+        soft_fin(fb, [(xp + 0.02, bot(xp) + 0.012), (xp, bot(xp) - 0.06), (xp - 0.05, bot(xp) - 0.075),
+                      (xp - 0.085, bot(xp) - 0.05), (xp - 0.07, bot(xp) - 0.01), (xp - 0.03, bot(xp) + 0.01)],
+                 0.003, 2, offset=(0, s * 0.05, 0), rot=rot)
     fbe = fish_mesh("FlatheadFins", fb, [M.flathead, M.eye, M.fh_fin, M.fh_fin, M.fh_fin_h])
     fins = bpy.data.objects.new("FlatheadFins", fbe)
     col.objects.link(fins)
@@ -2686,15 +2753,16 @@ def make_flathead(col, M):
     pects = []
     for s in (1, -1):                                   # pectorals with a stiff leading spine; they scull
         pb = bmesh.new()
-        soft_fin(pb, [(0.006, 0.0), (-0.04, 0.016), (-0.1, 0.004), (-0.118, -0.022), (-0.085, -0.04), (-0.015, -0.018)],
+        soft_fin(pb, [(0.008, 0.0), (-0.05, 0.022), (-0.13, 0.01), (-0.158, -0.025), (-0.12, -0.055), (-0.02, -0.024)],
                  0.0025, 0, samples=8)
-        tube(pb, [(0.006, 0.0, 0.0), (-0.05, 0.0, 0.012), (-0.1, 0.0, 0.004)], lambda t: 0.004 * (1 - 0.7 * t), segs=6, mat=0)
+        tube(pb, [(0.008, 0.0, 0.0), (-0.065, 0.0, 0.017), (-0.13, 0.0, 0.007)], lambda t: 0.0048 * (1 - 0.7 * t),
+             segs=8, mat=0)
         pm = fish_mesh(f"FlatheadPectoral{'L' if s > 0 else 'R'}", pb, [M.fh_fin_h])
         po = bpy.data.objects.new(pm.name, pm)
         col.objects.link(po)
         po.parent = body
-        xq = L / 2 - 0.2
-        po.location = (xq, s * (wid(xq) - 0.008), bot(xq) * 0.45)
+        xq = L / 2 - 0.28                               # low on the side, just behind the gill opening
+        po.location = (xq, s * (wid(xq) - 0.01), bot(xq) * 0.55)
         po.rotation_euler = (s * math.radians(-6), math.radians(4), s * math.radians(-30))
         pects.append(po)
     def soft_tube(bm, pts, r0, r1, n=12):
@@ -2715,9 +2783,10 @@ def make_flathead(col, M):
     bb = bmesh.new()                                    # maxillary barbels at the mouth corners, tiny nasal ones
     for s in (1, -1):
         xm = FH_HINGE.x + 0.018
-        p0 = Vector((xm, s * (wid(xm) * fh_round(u_of(xm), 2.6) - 0.005), mouth_z(xm) + 0.005))
-        soft_tube(bb, [p0, p0 + Vector((-0.012, s * 0.03, -0.004)), p0 + Vector((-0.04, s * 0.062, -0.014)),
-                       p0 + Vector((-0.08, s * 0.082, -0.03)), p0 + Vector((-0.12, s * 0.088, -0.05))], 0.0042, 0.0011)
+        p0 = Vector((xm, s * (wid(xm) * fh_round(u_of(xm), 2.0) - 0.005), mouth_z(xm) + 0.005))
+        soft_tube(bb, [p0, p0 + Vector((-0.01, s * 0.032, -0.004)), p0 + Vector((-0.04, s * 0.068, -0.014)),
+                       p0 + Vector((-0.085, s * 0.09, -0.03)), p0 + Vector((-0.13, s * 0.095, -0.05)),
+                       p0 + Vector((-0.16, s * 0.085, -0.058))], 0.0044, 0.0011)
         xn = L / 2 - 0.022
         yn = s * 0.04
         n0 = Vector((xn, yn, fh_surface(xn, yn) - 0.001))
@@ -2732,8 +2801,8 @@ def make_flathead(col, M):
     cb = bmesh.new()
     for s in (1, -1):
         for xc, yc in ((L / 2 - 0.022, 0.022), (L / 2 - 0.04, 0.052)):
-            xj = xc + 0.012 * smoothstep(L / 2 - 0.06, L / 2, xc)
-            c0 = Vector((xj, s * yc, fh_surface(xc, yc, upper=False) + 0.002)) - FH_HINGE
+            jut = smoothstep(FH_HINGE.x, FH_HINGE.x + 0.07, xc)
+            c0 = Vector((xc + 0.018 * jut, s * yc * (1 + 0.03 * jut), fh_surface(xc, yc, upper=False) + 0.002)) - FH_HINGE
             soft_tube(cb, [c0, c0 + Vector((-0.002, s * 0.002, -0.012)), c0 + Vector((-0.014, s * 0.006, -0.026)),
                            c0 + Vector((-0.03, s * 0.01, -0.034))], 0.0026, 0.001, n=8)
     chin = finish("FlatheadChinBarbels", cb, col, [M.barbel])
