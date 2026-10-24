@@ -1,0 +1,216 @@
+{
+ "fps": 24,
+ "frames": 1320,
+ "loop": true,
+ "cuts": [
+  7,
+  261,
+  570,
+  928,
+  1185
+ ],
+ "whips": [
+  [
+   1,
+   7
+  ],
+  [
+   1181,
+   1191
+  ]
+ ],
+ "overlays": [
+  [
+   5,
+   "caption",
+   "In 1979, Ken Fraser landed a *1,496 pound* bluefin."
+  ],
+  [
+   31,
+   "pin",
+   "heavy line"
+  ],
+  [
+   141,
+   "caption",
+   "A record untouched for *over 40 years.*"
+  ],
+  [
+   145,
+   "pin",
+   "128.5 in, fraser's fish"
+  ],
+  [
+   263,
+   "badge",
+   "HEAVY TROLLING RIG"
+  ],
+  [
+   263,
+   "caption",
+   "Average gear will *snap in seconds.*"
+  ],
+  [
+   265,
+   "pin",
+   "fighting chair"
+  ],
+  [
+   307,
+   "pin",
+   "14/0 reel"
+  ],
+  [
+   322,
+   "pin",
+   "roller guides"
+  ],
+  [
+   360,
+   "caption",
+   "*130 lb class* line on a *14/0 reel.*"
+  ],
+  [
+   423,
+   "pin",
+   "130 lb mono"
+  ],
+  [
+   473,
+   "caption",
+   "Troll fresh *mackerel or herring.*"
+  ],
+  [
+   479,
+   "pin",
+   "fresh mackerel"
+  ],
+  [
+   572,
+   "badge",
+   "THERMOCLINE DEPTH"
+  ],
+  [
+   572,
+   "caption",
+   "Giant bluefin *track temperature breaks.*"
+  ],
+  [
+   578,
+   "pin",
+   "warm surface water"
+  ],
+  [
+   594,
+   "pin",
+   "thermocline"
+  ],
+  [
+   683,
+   "pin",
+   "cold deep water"
+  ],
+  [
+   685,
+   "caption",
+   "Their dives *follow the thermocline.*"
+  ],
+  [
+   847,
+   "caption",
+   "They can dive past *3,000 feet.*"
+  ],
+  [
+   857,
+   "pin",
+   "dives past 3,000 ft"
+  ],
+  [
+   928,
+   "badge",
+   "BACK DOWN HARD"
+  ],
+  [
+   928,
+   "caption",
+   "The angler *doesn't fight alone.*"
+  ],
+  [
+   938,
+   "pin",
+   "backing down"
+  ],
+  [
+   1020,
+   "caption",
+   "The captain *backs down hard.*"
+  ],
+  [
+   1048,
+   "pin",
+   "rod doubled over"
+  ],
+  [
+   1108,
+   "caption",
+   "Line on the spool. *Heavy drag.*"
+  ],
+  [
+   1189,
+   "caption",
+   "The ultimate *apex predator* of the sea."
+  ],
+  [
+   1279,
+   "caption",
+   "And it all started *when...*"
+  ]
+ ],
+ "under": [
+  [
+   7,
+   261
+  ],
+  [
+   570,
+   928
+  ]
+ ],
+ "dive": 851,
+ "fight": [
+  928,
+  1185
+ ],
+ "troll": [
+  261,
+  570
+ ],
+ "vo_start": {
+  "1": 1,
+  "2": 265,
+  "3": 575,
+  "4": 933,
+  "5": 1191
+ },
+ "vo_len": {
+  "1": 10.684,
+  "2": 12.48,
+  "3": 14.48,
+  "4": 9.52,
+  "5": 5.407
+ },
+ "vo_text": {
+  "1": "In 1979, Ken Fraser hooked a 1,496 pound bluefin tuna off Nova Scotia. A record that hasn't been touched in over 40 years.",
+  "2": "To target fish this size, average gear will snap in seconds. You need 130 pound class monofilament, spooled on a massive fourteen aught reel, trolling fresh mackerel or herring deep behind the boat.",
+  "3": "Giant bluefin don't just swim anywhere; they track temperature breaks. Tagging studies show their dives follow the thermocline, the boundary between warm surface water and the cold water below. And they can dive past three thousand feet.",
+  "4": "When a half ton fish hits, the angler doesn't fight alone. The captain must back the boat down hard to keep line on the spool, while the angler holds heavy drag.",
+  "5": "That's how you conquer the ultimate apex predator of the sea. And it all started when..."
+ },
+ "beats": [
+  1,
+  261,
+  570,
+  928,
+  1185
+ ]
+}

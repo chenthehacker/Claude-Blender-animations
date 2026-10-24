@@ -3355,7 +3355,7 @@ def camera_frames():
         cy = -4.6 + 1.2 * u
         h = sea_height(cx, cy, t)
         cam = Vector((cx, cy, max(h + 0.75, 0.55 + 0.4 * h)))
-        cam += Vector((0.0, 0.03 * math.sin(f * 1.7), 0.04 * math.sin(f * 1.1)))
+        cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
         tgt = Vector((bx + 2.0, 0.2, 2.1 + 0.25 * h))
         q = look_at(cam, tgt, Z)
         if f >= CUT4 - 3:                                          # whip out
@@ -3761,7 +3761,7 @@ def build_overlays(hud, st):
     hud.pin(lambda f: mouth_corner_world(st["tuna"], f, *hook_fish(f)[:2]) + Vector((-2.0, -0.2, 1.3)), "heavy line",
             WHIP_IN + 30, p1 - 8, dot_color=GOLD, side=0.05, y_band=(-0.15, 0.3))
     # 2 gear
-    hud.badge(1, "HEAVY TROLLING RIG", "130 lb class line, 14/0 lever drag", CUT1 + 8, CUT2 - 8)
+    hud.badge(1, "HEAVY TROLLING RIG", "130 lb class line, 14/0 reel", CUT1 + 8, CUT2 - 8)
     s1, s2 = P(2, 0), P(2, 1)
     s3 = s2 + int((CUT2 - s2) * 0.55)
     hud.serif("Average gear will *snap in seconds.*", max(CUT1 + 6, s1), s2 - 9, lines=["Average gear will", "*snap in seconds.*"])
@@ -3785,17 +3785,24 @@ def build_overlays(hud, st):
         return rod["ctrl"]["Mid"].matrix_world.translation.lerp(rod["ctrl"]["Tip"].matrix_world.translation, 0.6)
     span = CUT2 - CUT1
     hud.pin(chair_pt, "fighting chair", CUT1 + 10, CUT1 + int(span * 0.15), dot_color=GOLD, side=0.07)
-    hud.pin(reel_pt, "14/0 reel", CUT1 + int(span * 0.17), CUT1 + int(span * 0.36), dot_color=GOLD, side=-0.08, rise=0.1)
+    hud.pin(reel_pt, "14/0 reel", CUT1 + int(span * 0.195), CUT1 + int(span * 0.36), dot_color=GOLD, side=-0.08, rise=0.1)
     hud.pin(guide_pt, "roller guides", CUT1 + int(span * 0.22), CUT1 + int(span * 0.42), dot_color=GOLD, side=0.08)
 
     def line_pt(f):
+        """The point of the line (tip, entry, bait) just ahead of the camera's ground point, so the pin rides along."""
         sc.frame_set(f)
-        return st["troll_entry"].matrix_world.translation.lerp(rod["ctrl"]["Tip"].matrix_world.translation, 0.35)
-    hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1 + int(span * 0.7), dot_color=GOLD, side=-0.07)
+        pts = [rod["ctrl"]["Tip"].matrix_world.translation.copy(), st["troll_entry"].matrix_world.translation.copy(),
+               bait_pos(f)]
+        cx = min(pts[0].x, max(pts[2].x, frames_pos(st, f).x + 0.8))
+        for a, b in zip(pts, pts[1:]):
+            if b.x <= cx <= a.x:
+                return a.lerp(b, (a.x - cx) / max(1e-6, a.x - b.x))
+        return pts[-1]
+    hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1 + int(span * 0.68), dot_color=GOLD, side=-0.07)
     hud.pin(lambda f: bait_pos(f) + Vector((0.0, 0.0, 0.15)), "fresh mackerel", CUT1 + int(span * 0.7), CUT2 - 8,
             dot_color=GOLD, side=0.08, y_band=(-0.17, 0.3))
-    hud.pin(lambda f: Vector((bait_pos(f).x + 2.5, BREAK_Y - 0.6, 0.2)), "temperature break", CUT1 + int(span * 0.76), CUT2 - 8,
-            dot_color=srgb(120, 210, 220), side=-0.08, rise=0.12, y_band=(-0.2, 0.3))
+    hud.pin(lambda f: Vector((bait_pos(f).x - 1.5, BREAK_Y - 0.3, 0.15)), "temperature break", CUT1 + int(span * 0.76),
+            CUT2 - 8, dot_color=srgb(120, 210, 220), side=0.02, rise=0.06, y_band=(-0.22, 0.3))
     # 3 the water column
     hud.badge(2, "THERMOCLINE DEPTH", "where their dives level off", CUT2 + 8, CUT3 - 8)
     t1, t2, t3 = P(3, 0), P(3, 2), DIVE_F
@@ -3813,7 +3820,7 @@ def build_overlays(hud, st):
             dot_color=srgb(120, 210, 200), side=0.04, y_band=(-0.2, 0.33))
     hud.pin(lambda f: Vector((cam_x(f) + 4.5, 4.0, THERMO_Z)), "thermocline", CUT2 + 30, t3 - 4,
             dot_color=srgb(120, 220, 230), side=-0.05, rise=0.05, y_band=(-0.25, 0.33))
-    hud.pin(lambda f: Vector((cam_x(f) - 1.0, 6.0, THERMO_Z - 4.5)), "cold deep water", t2, t3 + 30,
+    hud.pin(lambda f: Vector((cam_x(f) - 1.0, 6.0, THERMO_Z - 4.5)), "cold deep water", t2, t3 - 4,
             dot_color=srgb(60, 110, 200), side=0.05, rise=0.05, y_band=(-0.25, 0.33))
     hud.pin(lambda f: thermo_fish(0, f)[0], "dives past 3,000 ft", t3 + 12, CUT3 - 10, dot_color=GOLD, side=0.06,
             y_band=(-0.25, 0.33))
