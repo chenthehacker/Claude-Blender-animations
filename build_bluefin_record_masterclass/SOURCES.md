@@ -3,7 +3,7 @@
 Every on-screen fact and every claim in the voiceover and caption, with where it comes from. Lines marked "angler
 technique" are common angling advice, not research. The fish (modelled at 2.85 m), the boat, the depths in the cross
 section (the thermocline is drawn at 28 m and the diagram is not to scale), the bioluminescent trails (stylised), the
-temperature break, the strike and the fight are simulated and illustrative.
+temperature break, the skipping bait and the fight are simulated and illustrative.
 
 Note on access: the pages below were read through web search results (excerpts) on 23 October 2026; direct page
 fetches from this build machine failed, so the notes below paraphrase those excerpts.
@@ -68,5 +68,5 @@ fetches from this build machine failed, so the notes below paraphrase those exce
 
 ## What is simulated
 The whole film is computer generated: the fish, its swimming, the line, the boat and the angler, the sea, the
-plankton glow (stylised bioluminescence), the depths, the cross section diagram, the strike and the fight. It is not
+plankton glow (stylised bioluminescence), the depths, the cross section diagram and the fight. It is not
 footage of Fraser's fish or of any real catch.
