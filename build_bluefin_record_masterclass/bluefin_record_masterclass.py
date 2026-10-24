@@ -890,7 +890,7 @@ class Hud:
         halo["alpha_scale"] = 0.7
         lead = self.shape([(-0.0008, 0), (0.0008, 0), (0.0008, 1), (-0.0008, 1)], WHITE, g, loc=(0, 0, 0.0004))
         boxes = {}
-        span = list(range(max(1, f_in - 8), min(FRAME_END, f_out + 8) + 1))
+        span = list(range(max(1, f_lo, f_in - 8), min(FRAME_END, f_hi, f_out + 8) + 1))   # never across a cut
         dots, labs = {}, {}
         for f in span:
             s = self.project(f, anchor(f) if callable(anchor) else anchor) or Vector((0, -2))
@@ -3403,7 +3403,8 @@ def camera_frames():
                  * math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11)) / wsum
         # low, level with the boat's waterline + 2.1 m (under the angler's eye line, just over the coaming), and never
         # closer than 0.9 m to the swell under the lens
-        cam = Vector((cx, cy, max(hb + 2.1, h + 0.9)))
+        a_, b_ = hb + 2.1, h + 1.0
+        cam = Vector((cx, cy, 0.5 * (a_ + b_ + math.sqrt((a_ - b_) ** 2 + 0.8 ** 2))))     # smooth maximum (no kinks)
         cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
         tgt = Vector((bx + 2.0, 0.2, hb + 2.0))
         q = look_at(cam, tgt, Z)
@@ -4258,7 +4259,7 @@ def build_scene():
             q = bp + Vector((rng_b.uniform(-0.35, 0.05), rng_b.uniform(-0.06, 0.06), 0.0))
             q.z = surface_z(q.x, q.y, t_of(f)) + 0.01
             bubbles.emit(t_of(f), q, (rng_b.uniform(-0.1, 0.1), rng_b.uniform(-0.12, 0.12), 0.0), rng_b.uniform(0.35, 0.8),
-                         rng_b.uniform(0.012, 0.03))
+                         rng_b.uniform(0.006, 0.016))
     bait_foam = bubbles.build("BaitFoam", c_boat, M.spray)
     spray = transom_spray(fight_boat_x, CUT3 - 2, CUT4 + 1).build("TransomSpray", c_boat, M.spray, streak=True)
     # open water (the hook)
