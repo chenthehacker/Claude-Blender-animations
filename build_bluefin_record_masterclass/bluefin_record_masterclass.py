@@ -1745,6 +1745,15 @@ def sea_point(x, y, t):
     return Vector((x + dx, y + dy, h))
 
 
+def surface_z(x, y, t):
+    """Height of the displaced (Gerstner) surface over world (x, y): find the rest point that lands there."""
+    x0, y0 = x, y
+    for _ in range(5):
+        p = sea_point(x0, y0, t)
+        x0, y0 = x0 + (x - p.x), y0 + (y - p.y)
+    return sea_point(x0, y0, t).z
+
+
 def sea_normal(x, y, t):
     e = 0.3
     p0, px, py = sea_point(x, y, t), sea_point(x + e, y, t), sea_point(x, y + e, t)
@@ -1952,7 +1961,7 @@ def build_materials(atmos):
         """The temperature break: a ragged scum line of weed and foam, greener water on its far side (alpha)."""
         p = attr(nt, "rest", "Vector")
         o = separate(nt, p)
-        wob = nmath(nt, "MULTIPLY", noise(nt, vmath(nt, "MULTIPLY", p, (0.05, 0.05, 1.0)), 1.0, 3.0), 2.0)
+        wob = nmath(nt, "MULTIPLY", nmath(nt, "SUBTRACT", noise(nt, vmath(nt, "MULTIPLY", p, (0.05, 0.05, 1.0)), 1.0, 3.0), 0.5), 1.2)
         dy = nmath(nt, "SUBTRACT", nmath(nt, "SUBTRACT", BREAK_Y, o["Y"]), wob)
         line = nmath(nt, "MULTIPLY", map_range(nt, dy, 0.0, 0.35), map_range(nt, dy, 1.4, 0.5))
         weed = map_range(nt, noise(nt, vmath(nt, "MULTIPLY", p, (0.5, 2.0, 1.0)), 2.5, 6.0, 0.65), 0.36, 0.55)
@@ -2150,6 +2159,24 @@ def build_materials(atmos):
     M.white = mat("BoatWhite", lambda nt: psdf(nt, srgb(228, 230, 228), rough=0.25, coat=0.6, coat_rough=0.08))
     M.nonskid = mat("NonSkid", lambda nt: psdf(nt, srgb(214, 212, 204), rough=0.8,
                                                normal=bump(nt, noise(nt, tex_coord(nt), 120.0, 2.0), 0.4)))
+    def sole(nt):
+        """Cockpit sole seen from above: non skid panels, smooth gelcoat margins, flush fish box hatches with dark
+        seams and a few scuffs (so the top down shot has something to read)."""
+        o = separate(nt, tex_coord(nt, "Object"))
+        x, y = o["X"], o["Y"]
+        seam = None
+        for cx, cy, hx, hy in ((0.95, 0.0, 0.55, 0.8), (3.55, -0.75, 0.45, 0.45), (3.55, 0.75, 0.45, 0.45)):
+            d = nmath(nt, "MAXIMUM", nmath(nt, "SUBTRACT", nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", x, cx)), hx),
+                      nmath(nt, "SUBTRACT", nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", y, cy)), hy))
+            e = map_range(nt, nmath(nt, "ABSOLUTE", d), 0.014, 0.005)
+            seam = e if seam is None else nmath(nt, "MAXIMUM", seam, e)
+        margin = map_range(nt, nmath(nt, "ABSOLUTE", y), 1.75, 1.8)
+        col = mix_rgb(nt, margin, srgb(196, 196, 190), srgb(230, 232, 230))
+        scuff = map_range(nt, noise(nt, tex_coord(nt, "Object"), 1.6, 6.0, 0.6), 0.55, 0.75)
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", scuff, 0.25), col, srgb(120, 118, 110))
+        col = mix_rgb(nt, seam, col, srgb(40, 42, 44))
+        return psdf(nt, col, rough=0.75, normal=bump(nt, noise(nt, tex_coord(nt), 120.0, 2.0), 0.35))
+    M.sole = mat("CockpitSole", sole)
     M.teak = mat("Teak", lambda nt: psdf(nt, color_ramp(nt, noise(nt, vmath(nt, "MULTIPLY", tex_coord(nt), (1.0, 18.0, 1.0)), 6.0),
                                                         [(0.3, srgb(120, 80, 44)), (0.7, srgb(160, 112, 64))]), rough=0.5, coat=0.4))
     M.glass = mat("TintedGlass", lambda nt: psdf(nt, srgb(8, 14, 18), rough=0.03, coat=1.0, coat_rough=0.01, spec=0.9))
@@ -2785,7 +2812,7 @@ def build_boat(col, M):
         yb = hull_section(xb / BOAT_LEN)[1][-1][0] - 0.25
         bm.faces.new([bm.verts.new((xa, -ya, COCKPIT_SOLE)), bm.verts.new((xb, -yb, COCKPIT_SOLE)),
                       bm.verts.new((xb, yb, COCKPIT_SOLE)), bm.verts.new((xa, ya, COCKPIT_SOLE))])
-    sole = finish("CockpitSole", bm, col, [M.nonskid], parent=root)
+    sole = finish("CockpitSole", bm, col, [M.sole], parent=root)
     bm = bmesh.new()
     for s in (1, -1):                                         # covering boards along the cockpit, teak capped
         pts = []
@@ -3296,7 +3323,7 @@ def bait_pos(f):
     t = t_of(f)
     x = gear_boat_x(f) - BAIT_BACK
     y = -0.35 + 0.25 * math.sin(t * 2.1)
-    return Vector((x, y, sea_height(x, y, t) + 0.01))            # skipping in the surface film, as trolled baits do
+    return Vector((x, y, surface_z(x, y, t) + 0.015))            # skipping in the surface film, as trolled baits do
 
 
 # --------------------------------------------------------------------------
@@ -3335,11 +3362,11 @@ def camera_frames():
     for f in range(ga, gb):
         u = (f - ga) / span
         bx = gear_boat_x(f)
-        k = ease(smoothstep(0.24, 0.9, u))
+        k = ease(smoothstep(0.2, 0.93, u))
         over_chair = Vector((bx + CHAIR_AT.x - 0.3, 0.15, 6.4))
-        over_bait = Vector((bait_pos(f).x - 0.6, -1.2, 4.2))
+        over_bait = Vector((bait_pos(f).x - 0.6, -1.6, 4.2))
         cam = over_chair.lerp(over_bait, k)
-        cam.z += 8.0 * math.sin(math.pi * k)                       # climbs while it travels (less blur)
+        cam.z += 11.0 * math.sin(math.pi * k)                      # climbs while it travels (less blur)
         tgt = Vector((cam.x - 0.6, cam.y - 0.05, 0.6 * (1 - k)))
         q = look_at(cam, tgt, Vector((1, 0, 0)))
         frames[f] = (cam, tgt, q, 30.0 - 2.0 * k)
@@ -3366,8 +3393,9 @@ def camera_frames():
         bx = fight_boat_x(f)
         cx = bx - 7.6 + 1.6 * u                                    # off the quarter, so the bent rod reads side on
         cy = -7.6 + 1.0 * u
-        h = sea_height(cx, cy, t)
-        cam = Vector((cx, cy, max(h + 1.25, 0.95 + 0.4 * h)))     # low, but high enough to see the chair and rod
+        h = sum(sea_height(cx, cy, t + k / FPS) * math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11)) / \
+            sum(math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11))            # rides the swell, smoothed
+        cam = Vector((cx, cy, h + 1.3))                            # low, but high enough to see the chair and rod
         cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
         tgt = Vector((bx + 2.3, 0.2, 2.3 + 0.25 * h))
         q = look_at(cam, tgt, Z)
@@ -3669,12 +3697,12 @@ def build_lines_above(col, M, rod, tips, f_lo, f_hi, mode):
         tip = tips[f]
         if mode == "troll":
             ex = tip.x - 13.0
-            entry.location = Vector((ex, -0.3, sea_height(ex, -0.3, t) + 0.02))
+            entry.location = Vector((ex, -0.3, surface_z(ex, -0.3, t) + 0.02))
             sag.location = tip.lerp(entry.location, 0.5) + Vector((0, 0, -1.2))
             under_end.location = bait_pos(f) + Vector((0.16, 0.0, 0.0))
         else:
             ex = tip.x - 6.5
-            entry.location = Vector((ex, -0.6 + 0.4 * math.sin(t * 0.7), sea_height(ex, -0.6, t)))
+            entry.location = Vector((ex, -0.6 + 0.4 * math.sin(t * 0.7), surface_z(ex, -0.6, t)))
             sag.location = tip.lerp(entry.location, 0.5)
             under_end.location = entry.location + Vector((-8.0, -1.0, -14.0))
         for ob in (entry, sag, under_end):
@@ -3876,7 +3904,7 @@ def build_overlays(hud, st):
     hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1 + int(span * 0.68), dot_color=GOLD, side=-0.07)
     hud.pin(lambda f: bait_pos(f) + Vector((0.0, 0.0, 0.15)), "fresh mackerel", CUT1 + int(span * 0.7), CUT2 - 8,
             dot_color=GOLD, side=0.08, y_band=(-0.17, 0.3))
-    hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.3, 0.15)), "temperature break", CUT1 + int(span * 0.76),
+    hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.8, 0.15)), "temperature break", CUT1 + int(span * 0.76),
             CUT2 - 8, dot_color=srgb(120, 210, 220), side=0.02, rise=0.06, y_band=(-0.22, 0.3))
     # 3 the water column
     hud.badge(2, "THERMOCLINE DEPTH", "where their dives level off", CUT2 + 8, CUT3 - 8)
@@ -3893,8 +3921,8 @@ def build_overlays(hud, st):
         return frames_pos(st, f).x
     hud.pin(lambda f: Vector((cam_x(f) + 0.5, 0.0, THERMO_Z + 5.5)), "warm surface water", CUT2 + 14, t2 - 4,
             dot_color=srgb(120, 210, 200), side=0.04, y_band=(-0.2, 0.33))
-    hud.pin(lambda f: Vector((cam_x(f) + 4.5, 4.0, THERMO_Z)), "thermocline", CUT2 + 30, t3 - 4,
-            dot_color=srgb(120, 220, 230), side=-0.05, rise=0.05, y_band=(-0.25, 0.33))
+    hud.pin(lambda f: Vector((cam_x(f) + 5.5, 4.0, THERMO_Z)), "thermocline", CUT2 + 30, t3 - 4,
+            dot_color=srgb(120, 220, 230), side=0.0, rise=0.11, y_band=(-0.25, 0.33))
     hud.pin(lambda f: Vector((cam_x(f) - 1.0, 6.0, THERMO_Z - 4.5)), "cold deep water", t2, t3 - 4,
             dot_color=srgb(60, 110, 200), side=0.05, rise=0.05, y_band=(-0.25, 0.33))
     hud.pin(lambda f: thermo_fish(0, f)[0], "dives past 3,000 ft", t3 + 12, CUT3 - 10, dot_color=GOLD, side=0.06,
@@ -4191,6 +4219,17 @@ def build_scene():
         mk.rotation_quaternion = heading_quat(Vector((1.0, 0.15 * math.cos(t_of(f) * 2.1), 0.0)), 0.3 * math.sin(t_of(f) * 9.0))
         key(mk, "location", f)
         key(mk, "rotation_quaternion", f)
+    mk.scale = (1.3, 1.3, 1.3)
+    rng_b = random.Random(12)
+    bubbles = Particles()                                  # the skipping bait leaves a short trail of white water
+    for f in range(CUT1 - 30, CUT2 + 2):
+        bp = bait_pos(f)
+        for _ in range(6):
+            q = bp + Vector((rng_b.uniform(-0.25, 0.05), rng_b.uniform(-0.06, 0.06), 0.0))
+            q.z = surface_z(q.x, q.y, t_of(f)) + 0.01
+            bubbles.emit(t_of(f), q, (rng_b.uniform(-0.1, 0.1), rng_b.uniform(-0.15, 0.15), 0.0), rng_b.uniform(0.6, 1.4),
+                         rng_b.uniform(0.008, 0.02))
+    bait_foam = bubbles.build("BaitFoam", c_boat, M.spray)
     spray = transom_spray(fight_boat_x, CUT3 - 2, CUT4 + 1).build("TransomSpray", c_boat, M.spray, streak=True)
     # open water (the hook)
     tuna = make_tuna(c_uw1, M, "Bluefin")
@@ -4224,10 +4263,10 @@ def build_scene():
     above_spans = [(1, WHIP_IN - 1), (CUT1, CUT2 - 1), (CUT3, FRAME_END)]
     boat_spans = [(CUT1, CUT2 - 1), (CUT3, CUT4 - 1)]
     key_visibility([sea], above_spans)
-    own = {o.name for o in [wake, wash, brk, mk, spray] + lines_t + lines_f}       # keyed below for one span only (keys add up)
+    own = {o.name for o in [wake, wash, brk, mk, bait_foam, spray] + lines_t + lines_f}       # keyed below for one span only (keys add up)
     key_visibility([o for o in c_boat.all_objects if o.type in ("MESH", "CURVE") and o.name not in own
                     and o.name != "RollerGuide"], boat_spans)
-    key_visibility([wake, brk, mk] + lines_t, [(CUT1, CUT2 - 1)])
+    key_visibility([wake, brk, mk, bait_foam] + lines_t, [(CUT1, CUT2 - 1)])
     key_visibility(lines_f + [spray, wash], [(CUT3, CUT4 - 1)])
     key_visibility([o for o in c_uw1.all_objects if o.type in ("MESH", "CURVE")], [(WHIP_IN, CUT1 - 1)])
     key_visibility([o for o in c_uw2.all_objects if o.type in ("MESH", "CURVE") and o.name != "SchoolFish"], [(CUT2, CUT3 - 1)])
