@@ -243,6 +243,8 @@ def build(ev):
     for c in (c1, c2, c3):
         place(fx, filt(noise_burst(0.18, 80, 2500, 0.06), "lowpass", 3000), ft(c) - 0.02, 0.07)
         place(fx, chirp(90, 35, 0.4, 0.12), ft(c) - 0.01, 0.1)
+    for c in ev.get("hard_cuts", []):                        # the cut inside the gear beat: a lighter tick
+        place(fx, filt(noise_burst(0.12, 300, 4000, 0.04), "lowpass", 4000), ft(c) - 0.02, 0.04)
     # overlay pops
     for frame, kind, _label in ev["overlays"]:
         t0 = ft(frame)

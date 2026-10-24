@@ -154,7 +154,8 @@ CUT1 = (vo_end(1) + VO_START[2]) // 2            # match cut: towed line -> the 
 CUT2 = (vo_end(2) + VO_START[3]) // 2            # jump cut to the water column cross section
 CUT3 = (vo_end(3) + VO_START[4]) // 2            # rapid cut to the fight at the transom
 CUT4 = VO_START[5] - 6                           # whip pan back to the horizon (the loop's join)
-CUTS = [WHIP_IN, CUT1, CUT2, CUT3, CUT4]
+CUT1B = P(2, 1) + int((CUT2 - P(2, 1)) * 0.55)  # hard cut inside the gear beat: cockpit -> the bait far astern
+CUTS = [WHIP_IN, CUT1, CUT1B, CUT2, CUT3, CUT4]
 SEGMENTS = [(1, CUT1 - 1), (CUT1, CUT2 - 1), (CUT2, CUT3 - 1), (CUT3, CUT4 - 1), (CUT4, FRAME_END)]
 LOOP_HOLD = 26                       # the last frames hold the horizon shot that frame 1 opens on
 
@@ -2096,17 +2097,17 @@ def build_materials(atmos):
         """Fish eye: a pale silvery outer ring (the sclera the viewer reads), a thin gold iris and a large black
         pupil, under a clear glossy cornea. "eyer" is the angle from the eye's axis (0 at the pupil's centre)."""
         r = attr(nt, "eyer", "Fac")
-        col = color_ramp(nt, r, [(0.0, srgb(2, 2, 3)), (0.39, srgb(2, 2, 3)), (0.415, srgb(150, 118, 52)),
-                                 (0.445, srgb(196, 160, 84)), (0.47, srgb(214, 216, 210)), (0.6, srgb(232, 234, 230)),
-                                 (0.66, srgb(150, 156, 162)), (0.74, srgb(40, 44, 52)), (1.0, srgb(24, 28, 34))])
+        col = color_ramp(nt, r, [(0.0, srgb(2, 2, 3)), (0.54, srgb(2, 2, 3)), (0.555, srgb(150, 118, 52)),
+                                 (0.575, srgb(196, 160, 84)), (0.595, srgb(214, 216, 210)), (0.68, srgb(232, 234, 230)),
+                                 (0.73, srgb(150, 156, 162)), (0.79, srgb(40, 44, 52)), (1.0, srgb(24, 28, 34))])
         return psdf(nt, col, rough=0.04, metal=0.1, coat=1.0, coat_rough=0.02, spec=0.8)
     M.eye = mat("FishEye", eye)
 
     def small_eye(nt):
         """Small fish eye: silvery white sclera around a black pupil."""
         r = attr(nt, "eyer", "Fac")
-        col = color_ramp(nt, r, [(0.0, srgb(2, 2, 3)), (0.5, srgb(2, 2, 3)), (0.54, srgb(200, 170, 96)),
-                                 (0.58, srgb(226, 228, 224)), (0.8, srgb(214, 218, 216)), (1.0, srgb(120, 126, 130))])
+        col = color_ramp(nt, r, [(0.0, srgb(2, 2, 3)), (0.66, srgb(2, 2, 3)), (0.69, srgb(200, 170, 96)),
+                                 (0.72, srgb(226, 228, 224)), (0.87, srgb(214, 218, 216)), (1.0, srgb(120, 126, 130))])
         return psdf(nt, col, rough=0.05, coat=1.0, coat_rough=0.02, spec=0.8)
     M.small_eye = mat("SmallFishEye", small_eye)
 
@@ -3263,7 +3264,7 @@ THERMO_Z = -28.0                     # the drawn thermocline in the cross sectio
 TROLL_SPEED = 3.0                    # m/s
 BACK_SPEED = 1.8                     # m/s, backing down
 BAIT_BACK = 38.0                     # the mackerel trails this far astern
-BREAK_Y = -1.6                       # the temperature break runs along the boat's track, just to port of the bait
+BREAK_Y = -1.0                       # the temperature break runs along the boat's track, just to port of the bait
 DIVE_F = P(3, 3)                     # "And they can dive past three thousand feet"
 HZ_POS = Vector((-30.0, -150.0, 3.2))                            # the horizon shot (the loop's join)
 HZ_TGT = HZ_POS + Vector((0.9, 0.3, 0.035)).normalized() * 100.0     # away from the sun: the dark horizon of the brief
@@ -3357,20 +3358,22 @@ def camera_frames():
             q = whip(q, 38.0 * k, q @ Vector((1, 0, 0)))
         frames[f] = (cam, tgt, q, 22.0 + 4.0 * u)
         fstop[f] = 4.0
-    # 2 gear: top down over the cockpit (bow at the top of the frame), then aft along the line to the bait
-    ga, gb = CUT1, CUT2
-    span = gb - ga
-    for f in range(ga, gb):
-        u = (f - ga) / span
+    # 2 gear: top down over the cockpit (bow at the top of the frame), easing aft over the transom along the line;
+    # then a hard cut to the trolled mackerel far astern at the temperature break (a long fast move only smears)
+    for f in range(CUT1, CUT2):
         bx = gear_boat_x(f)
-        k = ease(smoothstep(0.2, 0.93, u))
-        over_chair = Vector((bx + CHAIR_AT.x - 0.3, 0.15, 6.4))
-        over_bait = Vector((bait_pos(f).x - 0.6, -1.6, 4.2))
-        cam = over_chair.lerp(over_bait, k)
-        cam.z += 11.0 * math.sin(math.pi * k)                      # climbs while it travels (less blur)
-        tgt = Vector((cam.x - 0.6, cam.y - 0.05, 0.6 * (1 - k)))
+        if f < CUT1B:
+            u = (f - CUT1) / (CUT1B - CUT1)
+            k = ease(smoothstep(0.25, 1.0, u))
+            cam = Vector((bx + CHAIR_AT.x - 0.3, 0.15, 6.4)).lerp(Vector((bx - 2.6, 0.0, 7.6)), k)
+            lens = 30.0
+        else:
+            u = (f - CUT1B) / (CUT2 - CUT1B)
+            cam = Vector((bait_pos(f).x - 0.6, -1.05, 5.0 - 0.5 * ease(u)))
+            lens = 28.0
+        tgt = Vector((cam.x - 0.6, cam.y - 0.05, 0.0))
         q = look_at(cam, tgt, Vector((1, 0, 0)))
-        frames[f] = (cam, tgt, q, 30.0 - 2.0 * k)
+        frames[f] = (cam, tgt, q, lens)
         fstop[f] = 11.0
     # 3 the water column, side on, long and clean; the camera follows the school, then tilts after the diving fish
     for f in range(CUT2, CUT3):
@@ -3507,6 +3510,24 @@ def build_fill(col, name, energy=0.0, size=4.0, color=(255, 236, 214)):
     col.objects.link(ob)
     ob.rotation_mode = "QUATERNION"
     return ob
+
+
+def mask_sea_in_cockpit(mat, boat_root):
+    """The hull is an open shell, so in a steep swell the sea plane shows above the cockpit sole: make the sea
+    transparent inside the cockpit (in the boat's own frame), so the cockpit stays dry."""
+    nt = mat.node_tree
+    out = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeOutputMaterial")
+    src = out.inputs["Surface"].links[0].from_socket
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    tc.object = boat_root
+    o = separate(nt, tc.outputs["Object"])
+    inside = nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", map_range(nt, o["X"], 0.0, 0.08), map_range(nt, o["X"], 4.7, 4.6)),
+                   map_range(nt, nmath(nt, "ABSOLUTE", o["Y"]), 2.3, 2.2))
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(inside, mix.inputs["Fac"])
+    nt.links.new(src, mix.inputs[1])
+    nt.links.new(nt.nodes.new("ShaderNodeBsdfTransparent").outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
 
 
 def key_sea_center(sea):
@@ -3867,7 +3888,7 @@ def build_overlays(hud, st):
     # 2 gear
     hud.badge(1, "HEAVY TROLLING RIG", "130 lb class line, 14/0 reel", CUT1 + 8, CUT2 - 8)
     s1, s2 = P(2, 0), P(2, 1)
-    s3 = s2 + int((CUT2 - s2) * 0.55)
+    s3 = CUT1B
     hud.serif("Average gear will *snap in seconds.*", max(CUT1 + 6, s1), s2 - 9, lines=["Average gear will", "*snap in seconds.*"])
     hud.serif("*130 lb class* line on a *14/0 reel.*", s2, s3 - 9, lines=["*130 lb class* line", "on a *14/0 reel.*"],
               src="FRASER'S TACKLE: OUTDOOR LIFE")
@@ -3902,10 +3923,10 @@ def build_overlays(hud, st):
             if b.x <= cx <= a.x:
                 return a.lerp(b, (a.x - cx) / max(1e-6, a.x - b.x))
         return pts[-1]
-    hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1 + int(span * 0.68), dot_color=GOLD, side=-0.07)
-    hud.pin(lambda f: bait_pos(f) + Vector((0.0, 0.0, 0.15)), "fresh mackerel", CUT1 + int(span * 0.7), CUT2 - 8,
+    hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1B - 8, dot_color=GOLD, side=-0.07)
+    hud.pin(lambda f: bait_pos(f) + Vector((0.0, 0.0, 0.15)), "fresh mackerel", CUT1B + 6, CUT2 - 8,
             dot_color=GOLD, side=0.08, y_band=(-0.17, 0.3))
-    hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.8, 0.15)), "temperature break", CUT1 + int(span * 0.76),
+    hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.8, 0.15)), "temperature break", CUT1B + 20,
             CUT2 - 8, dot_color=srgb(120, 210, 220), side=0.02, rise=0.06, y_band=(-0.22, 0.3))
     # 3 the water column
     hud.badge(2, "THERMOCLINE DEPTH", "where their dives level off", CUT2 + 8, CUT3 - 8)
@@ -4161,7 +4182,7 @@ def subject_report(frames, st):
 def write_events(path, st):
     data = {
         "fps": FPS, "frames": FRAME_END, "loop": True,
-        "cuts": CUTS, "whips": [[1, WHIP_IN], [CUT4 - 4, CUT4 + 6]],
+        "cuts": [WHIP_IN, CUT1, CUT2, CUT3, CUT4], "hard_cuts": [CUT1B], "whips": [[1, WHIP_IN], [CUT4 - 4, CUT4 + 6]],
         "overlays": sorted(st["hud"].events),
         "under": [[WHIP_IN, CUT1], [CUT2, CUT3]], "dive": DIVE_F, "fight": [CUT3, CUT4], "troll": [CUT1, CUT2],
         "vo_start": VO_START, "vo_len": VO_LEN, "vo_text": VO_TEXT,
@@ -4197,6 +4218,7 @@ def build_scene():
     wake = wake_object(c_sea, M, "Wake")
     brk = break_object(c_sea, M)
     boat = build_boat(c_boat, M)
+    mask_sea_in_cockpit(M.sea, boat["root"])
     ang = build_angler(c_boat, M)
     rod = build_rod(c_boat, M)
     tips_t, mids_t, reels_t = rig_fight(boat, rod, ang, sc, CUT1 - 2, CUT2 + 1, "troll")
@@ -4217,7 +4239,8 @@ def build_scene():
     mk.rotation_mode = "QUATERNION"
     for f in range(CUT1 - 2, CUT2 + 2):
         mk.location = bait_pos(f)
-        mk.rotation_quaternion = heading_quat(Vector((1.0, 0.15 * math.cos(t_of(f) * 2.1), 0.0)), 0.3 * math.sin(t_of(f) * 9.0))
+        mk.rotation_quaternion = heading_quat(Vector((1.0, 0.15 * math.cos(t_of(f) * 2.1), 0.0)),
+                                              1.05 + 0.35 * math.sin(t_of(f) * 9.0))   # rolled: the silver flank flashes
         key(mk, "location", f)
         key(mk, "rotation_quaternion", f)
     mk.scale = (1.3, 1.3, 1.3)
@@ -4225,11 +4248,11 @@ def build_scene():
     bubbles = Particles()                                  # the skipping bait leaves a short trail of white water
     for f in range(CUT1 - 30, CUT2 + 2):
         bp = bait_pos(f)
-        for _ in range(6):
-            q = bp + Vector((rng_b.uniform(-0.25, 0.05), rng_b.uniform(-0.06, 0.06), 0.0))
+        for _ in range(10):
+            q = bp + Vector((rng_b.uniform(-0.35, 0.05), rng_b.uniform(-0.06, 0.06), 0.0))
             q.z = surface_z(q.x, q.y, t_of(f)) + 0.01
-            bubbles.emit(t_of(f), q, (rng_b.uniform(-0.1, 0.1), rng_b.uniform(-0.15, 0.15), 0.0), rng_b.uniform(0.6, 1.4),
-                         rng_b.uniform(0.008, 0.02))
+            bubbles.emit(t_of(f), q, (rng_b.uniform(-0.1, 0.1), rng_b.uniform(-0.25, 0.25), 0.0), rng_b.uniform(0.8, 1.8),
+                         rng_b.uniform(0.02, 0.045))
     bait_foam = bubbles.build("BaitFoam", c_boat, M.spray)
     spray = transom_spray(fight_boat_x, CUT3 - 2, CUT4 + 1).build("TransomSpray", c_boat, M.spray, streak=True)
     # open water (the hook)
