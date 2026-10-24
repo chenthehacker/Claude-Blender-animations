@@ -56,7 +56,7 @@
    "fighting chair"
   ],
   [
-   307,
+   315,
    "pin",
    "14/0 reel"
   ],
@@ -71,7 +71,7 @@
    "*130 lb class* line on a *14/0 reel.*"
   ],
   [
-   423,
+   407,
    "pin",
    "130 lb mono"
   ],
@@ -84,6 +84,11 @@
    479,
    "pin",
    "fresh mackerel"
+  ],
+  [
+   489,
+   "pin",
+   "temperature break"
   ],
   [
    572,

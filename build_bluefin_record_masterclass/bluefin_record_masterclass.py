@@ -872,7 +872,7 @@ class Hud:
                 best = run
         if len(best) < 24:
             print(f"WARNING pin '{label}' only on screen for {len(best)} frames in {f_lo}-{f_hi}")
-        if not best:
+        if len(best) < 16:                     # too short to fade in and out cleanly: leave it out rather than ghost
             return None
         f_in, f_out = best[0] + (6 if best[0] > f_lo else 0), best[-1] - (6 if best[-1] < f_hi else 0)
         self.events.append((f_in - 6, "pin", label))
@@ -1860,6 +1860,8 @@ def build_shafts(col, M, center, n=7, seed=5, spread=8.0, length=30.0):
         bm = bmesh.new()
         bm_frustum(bm, c, c + d * length, r0, r1, segs=10, cap0=False, cap1=False)
         ob = finish(f"Shaft{i}", bm, col, [M.shaft], recalc=False)
+        for pl in ob.data.polygons:                          # smooth: a flat shaded frustum reads as a plank
+            pl.use_smooth = True
         ob.visible_shadow = False
         ob.color = (1, 1, 1, rng.uniform(0.5, 1.0))
         obs.append(ob)
@@ -1906,11 +1908,11 @@ def build_materials(atmos):
         col = mix_rgb(nt, foam, water, srgb(214, 222, 224))
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
         nt.links.new(col, b.inputs["Base Color"])
-        _feed(nt, b.inputs["Roughness"], map_range(nt, foam, 0.0, 1.0, 0.06, 0.6, smooth=False))
+        _feed(nt, b.inputs["Roughness"], map_range(nt, foam, 0.0, 1.0, 0.13, 0.6, smooth=False))
         b.inputs["IOR"].default_value = 1.333
         b.inputs["Specular IOR Level"].default_value = 0.6
         h = nmath(nt, "ADD", nmath(nt, "MULTIPLY", rip, 1.0), nmath(nt, "MULTIPLY", rip2, 0.35))
-        bstr = map_range(nt, dist, 20.0, 400.0, 0.5, 0.12)
+        bstr = map_range(nt, dist, 20.0, 400.0, 0.32, 0.12)
         bp = nt.nodes.new("ShaderNodeBump")
         nt.links.new(bstr, bp.inputs["Strength"])
         bp.inputs["Distance"].default_value = 0.08
@@ -1943,11 +1945,11 @@ def build_materials(atmos):
         wob = nmath(nt, "MULTIPLY", noise(nt, vmath(nt, "MULTIPLY", p, (0.05, 0.05, 1.0)), 1.0, 3.0), 2.0)
         dy = nmath(nt, "SUBTRACT", nmath(nt, "SUBTRACT", BREAK_Y, o["Y"]), wob)
         line = nmath(nt, "MULTIPLY", map_range(nt, dy, 0.0, 0.35), map_range(nt, dy, 1.4, 0.5))
-        weed = map_range(nt, noise(nt, vmath(nt, "MULTIPLY", p, (0.5, 2.0, 1.0)), 2.5, 6.0, 0.65), 0.45, 0.62)
+        weed = map_range(nt, noise(nt, vmath(nt, "MULTIPLY", p, (0.5, 2.0, 1.0)), 2.5, 6.0, 0.65), 0.36, 0.55)
         line = nmath(nt, "MULTIPLY", line, weed)
         tint = nmath(nt, "MULTIPLY", map_range(nt, dy, 0.3, 2.5), map_range(nt, dy, 14.0, 9.0))
-        col = mix_rgb(nt, line, srgb(26, 70, 58), srgb(176, 150, 82))
-        alpha = nmath(nt, "MAXIMUM", nmath(nt, "MULTIPLY", tint, 0.42), line)
+        col = mix_rgb(nt, line, srgb(34, 92, 70), srgb(196, 164, 84))
+        alpha = nmath(nt, "MAXIMUM", nmath(nt, "MULTIPLY", tint, 0.7), line)
         return psdf(nt, col, rough=0.25, coat=0.4, alpha=alpha)
     M.breakline = mat("TemperatureBreak", breakline)
 
@@ -2165,7 +2167,7 @@ def build_materials(atmos):
         em = nt.nodes.new("ShaderNodeEmission")
         em.inputs["Color"].default_value = (*srgb(120, 220, 230), 1.0)
         oi = nt.nodes.new("ShaderNodeObjectInfo")
-        nt.links.new(nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY_ADD", edge, 0.6, 0.06), shimmer),
+        nt.links.new(nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY_ADD", edge, 0.3, 0.02), shimmer),
                            oi.outputs["Alpha"]), em.inputs["Strength"])
         tr = nt.nodes.new("ShaderNodeBsdfTransparent")
         add = nt.nodes.new("ShaderNodeAddShader")
@@ -2181,6 +2183,8 @@ def build_materials(atmos):
         col = color_ramp(nt, map_range(nt, z, -60.0, 0.0, 0.0, 1.0, smooth=False),
                          [(0.0, srgb(1, 3, 8)), (0.45, srgb(4, 14, 30)), (0.68, srgb(10, 38, 62)), (0.74, srgb(30, 86, 96)),
                           (0.86, srgb(54, 120, 116)), (1.0, srgb(96, 160, 150))])
+        line = map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", z, THERMO_Z)), 0.9, 0.15)   # the layer, drawn
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", line, 0.8), col, srgb(150, 236, 240))
         em = nt.nodes.new("ShaderNodeEmission")
         nt.links.new(col, em.inputs["Color"])
         em.inputs["Strength"].default_value = 1.0
@@ -2243,17 +2247,15 @@ class Particles:
                      combine(ng, 0.0, 0.0, nmath(ng, "MULTIPLY", nmath(ng, "MULTIPLY", age, age),
                                                 nmath(ng, "MULTIPLY", nattr("grav"), -0.5))))
         links.new(disp, sp.inputs["Offset"])
-        dele = nodes.new("GeometryNodeDeleteGeometry")
-        dele.domain = "POINT"
-        links.new(sp.outputs[0], dele.inputs["Geometry"])
-        links.new(nmath(ng, "SUBTRACT", 1.0, alive), dele.inputs["Selection"])
+        # every point stays (dead ones shrink to nothing): a stable point order gives true motion vectors, while
+        # deleting dead points reshuffles indices and motion blur smears particles into long false streaks
         ico = nodes.new("GeometryNodeMeshIcoSphere")
         ico.inputs["Radius"].default_value = 1.0
         ico.inputs["Subdivisions"].default_value = 1
         inst = nodes.new("GeometryNodeInstanceOnPoints")
-        links.new(dele.outputs[0], inst.inputs["Points"])
+        links.new(sp.outputs[0], inst.inputs["Points"])
         links.new(ico.outputs["Mesh"], inst.inputs["Instance"])
-        grow = nmath(ng, "MULTIPLY", nattr("size"),
+        grow = nmath(ng, "MULTIPLY", nmath(ng, "MULTIPLY", nattr("size"), alive),
                      nmath(ng, "POWER", nmath(ng, "SUBTRACT", 1.0, nmath(ng, "DIVIDE", age, life), clamp=True), 0.4))
         if streak:   # stretched along the motion as a shutter would draw it (points born per frame get no blur)
             v_now = vmath(ng, "SUBTRACT", nattr("vel", "FLOAT_VECTOR"),
@@ -3283,7 +3285,7 @@ def bait_pos(f):
     t = t_of(f)
     x = gear_boat_x(f) - BAIT_BACK
     y = -0.35 + 0.25 * math.sin(t * 2.1)
-    return Vector((x, y, sea_height(x, y, t) - 0.12))
+    return Vector((x, y, sea_height(x, y, t) + 0.01))            # skipping in the surface film, as trolled baits do
 
 
 # --------------------------------------------------------------------------
@@ -3308,7 +3310,7 @@ def camera_frames():
         p, fwd, _b = hook_fish(f)
         u = (f - WHIP_IN) / (CUT1 - WHIP_IN)
         side = fwd.cross(Z).normalized()
-        cam = p - side * (3.9 - 0.6 * u) + fwd * (0.9 - 1.6 * u) + Vector((0, 0, -0.55))
+        cam = p - side * (5.4 - 0.8 * u) + fwd * (0.5 - 1.4 * u) + Vector((0, 0, -0.65))
         tgt = p + fwd * (0.55 - 0.35 * u) + Vector((0, 0, 0.12))
         q = look_at(cam, tgt, Z)
         if f < WHIP_IN + 6:                                       # the whip lands: residual turn settles fast
@@ -3322,11 +3324,11 @@ def camera_frames():
     for f in range(ga, gb):
         u = (f - ga) / span
         bx = gear_boat_x(f)
-        k = ease(smoothstep(0.3, 0.88, u))
+        k = ease(smoothstep(0.24, 0.9, u))
         over_chair = Vector((bx + CHAIR_AT.x - 0.3, 0.15, 6.4))
-        over_bait = Vector((bait_pos(f).x - 0.6, -0.9, 7.5))
+        over_bait = Vector((bait_pos(f).x - 0.6, -1.2, 4.2))
         cam = over_chair.lerp(over_bait, k)
-        cam.z += 1.6 * math.sin(math.pi * k)                       # rises a little while it travels
+        cam.z += 8.0 * math.sin(math.pi * k)                       # climbs while it travels (less blur)
         tgt = Vector((cam.x - 0.6, cam.y - 0.05, 0.6 * (1 - k)))
         q = look_at(cam, tgt, Vector((1, 0, 0)))
         frames[f] = (cam, tgt, q, 30.0 - 2.0 * k)
@@ -3336,8 +3338,8 @@ def camera_frames():
         t = t_of(f) - t_of(CUT2)
         lead, _fw = thermo_fish(0, min(f, DIVE_F - 6))
         base_x = UW2.x - 10.0 + 1.75 * t
-        cam = Vector((base_x, -19.0, THERMO_Z + 1.5))
-        tgt = Vector((base_x + 1.0, 0.0, THERMO_Z + 2.0))
+        cam = Vector((base_x, -19.0, THERMO_Z + 0.4))             # level with the layer: it reads as a line
+        tgt = Vector((base_x + 1.0, 0.0, THERMO_Z + 0.7))
         if f > DIVE_F - 4:
             d, _ = thermo_fish(0, f)
             k = smoothstep(DIVE_F - 4, DIVE_F + 40, f)
@@ -3457,7 +3459,7 @@ def build_fill(col, name, energy=0.0, size=4.0, color=(255, 236, 214)):
     return ob
 
 
-def key_scene_state(sc, world_vals, sun, key_l):
+def key_scene_state(sc, world_vals, sun, key_l, bounce):
     under_v, deep_v = world_vals
     for f in range(1, FRAME_END + 1):
         u, d, c = under_at(f), deep_at(f), clear_at(f)
@@ -3477,14 +3479,26 @@ def key_scene_state(sc, world_vals, sun, key_l):
             key_l.location = p + Vector((0.0, 0.0, 4.0)) - fwd * 0.5
             key_l.rotation_quaternion = (p - key_l.location).normalized().to_track_quat("-Z", "Y")
             key_l.data.energy = 900.0
+            side = fwd.cross(Vector((0, 0, 1))).normalized()       # the camera's side, low: lifts the silver belly
+            bounce.location = p - side * 3.0 + Vector((0.0, 0.0, -3.2))
+            bounce.rotation_quaternion = (p - bounce.location).normalized().to_track_quat("-Z", "Y")
+            bounce.data.energy = 260.0
         elif CUT2 <= f < CUT3:
             cam = UW2 + Vector((-10.0 + 1.75 * (t_of(f) - t_of(CUT2)), 0.0, THERMO_Z + 9.0))
             key_l.location = cam
             key_l.rotation_quaternion = Vector((0, 0, -1)).to_track_quat("-Z", "Y")
             key_l.data.energy = 2500.0
+            bounce.location = cam + Vector((0.0, -12.0, -16.0))
+            bounce.rotation_quaternion = Vector((0.0, 0.6, 0.8)).to_track_quat("-Z", "Y")
+            bounce.data.energy = 900.0
         else:
             key_l.data.energy = 0.0
+        if not (WHIP_IN <= f < CUT1 or CUT2 <= f < CUT3):
+            bounce.data.energy = 0.0
         key_l.data.keyframe_insert("energy", frame=f)
+        bounce.data.keyframe_insert("energy", frame=f)
+        key(bounce, "location", f)
+        key(bounce, "rotation_quaternion", f)
         key(key_l, "location", f)
         key(key_l, "rotation_quaternion", f)
     set_constant(sc)
@@ -3492,6 +3506,8 @@ def key_scene_state(sc, world_vals, sun, key_l):
     set_constant(sun)
     set_constant(key_l)
     set_constant(key_l.data)
+    set_constant(bounce)
+    set_constant(bounce.data)
 
 
 # --------------------------------------------------------------------------
@@ -3758,7 +3774,12 @@ def build_overlays(hud, st):
 
     hud.pin(lambda f: hook_fish(f)[0] + hook_fish(f)[1] * 0.3 + Vector((0.0, 0.0, 0.3)), "128.5 in, fraser's fish",
             p1 + 6, CUT1 - 10, dot_color=GOLD, side=-0.04, y_band=(-0.15, 0.3))
-    hud.pin(lambda f: mouth_corner_world(st["tuna"], f, *hook_fish(f)[:2]) + Vector((-2.0, -0.2, 1.3)), "heavy line",
+    def tow_pt(f, u=0.24):
+        """A point on the tow line itself (the same quadratic Bezier as build_tow_line)."""
+        a = mouth_corner_world(st["tuna"], f, *hook_fish(f)[:2])
+        m, b = a + Vector((-7.5, -1.2, 3.2)), a + Vector((-16.0, -2.0, 10.5))
+        return a * (1 - u) ** 2 + m * (2 * u * (1 - u)) + b * u * u
+    hud.pin(tow_pt, "heavy line",
             WHIP_IN + 30, p1 - 8, dot_color=GOLD, side=0.05, y_band=(-0.15, 0.3))
     # 2 gear
     hud.badge(1, "HEAVY TROLLING RIG", "130 lb class line, 14/0 reel", CUT1 + 8, CUT2 - 8)
@@ -3801,7 +3822,7 @@ def build_overlays(hud, st):
     hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1 + int(span * 0.68), dot_color=GOLD, side=-0.07)
     hud.pin(lambda f: bait_pos(f) + Vector((0.0, 0.0, 0.15)), "fresh mackerel", CUT1 + int(span * 0.7), CUT2 - 8,
             dot_color=GOLD, side=0.08, y_band=(-0.17, 0.3))
-    hud.pin(lambda f: Vector((bait_pos(f).x - 1.5, BREAK_Y - 0.3, 0.15)), "temperature break", CUT1 + int(span * 0.76),
+    hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.3, 0.15)), "temperature break", CUT1 + int(span * 0.76),
             CUT2 - 8, dot_color=srgb(120, 210, 220), side=0.02, rise=0.06, y_band=(-0.22, 0.3))
     # 3 the water column
     hud.badge(2, "THERMOCLINE DEPTH", "where their dives level off", CUT2 + 8, CUT3 - 8)
@@ -3816,7 +3837,7 @@ def build_overlays(hud, st):
 
     def cam_x(f):
         return frames_pos(st, f).x
-    hud.pin(lambda f: Vector((cam_x(f) + 0.5, 0.0, THERMO_Z + 8.0)), "warm surface water", CUT2 + 14, t2 - 4,
+    hud.pin(lambda f: Vector((cam_x(f) + 0.5, 0.0, THERMO_Z + 5.5)), "warm surface water", CUT2 + 14, t2 - 4,
             dot_color=srgb(120, 210, 200), side=0.04, y_band=(-0.2, 0.33))
     hud.pin(lambda f: Vector((cam_x(f) + 4.5, 4.0, THERMO_Z)), "thermocline", CUT2 + 30, t3 - 4,
             dot_color=srgb(120, 220, 230), side=-0.05, rise=0.05, y_band=(-0.25, 0.33))
@@ -4138,12 +4159,15 @@ def build_scene():
     shafts2 = build_shafts(c_uw2, M, (UW2.x + 20, UW2.y + 2, 0.0), n=9, seed=7, spread=26.0, length=40.0)
     plank2 = specks("Plankton2", c_uw2, M.specks, tuple(UW2 + Vector((20.0, -6.0, THERMO_Z + 2.0))), (40.0, 12.0, 14.0), 6000, 0.006, 32)
     build_camera(c_cam, frames, fstop)
-    key_scene_state(sc, (w_under, w_deep), sun, key_l)
+    bounce = build_fill(c_fx, "UnderwaterBounce", size=8.0, color=(110, 186, 196))
+    key_scene_state(sc, (w_under, w_deep), sun, key_l, bounce)
     # visibility: each place renders only in its own shots (the boat set in the troll and the fight)
     above_spans = [(1, WHIP_IN - 1), (CUT1, CUT2 - 1), (CUT3, FRAME_END)]
     boat_spans = [(CUT1, CUT2 - 1), (CUT3, CUT4 - 1)]
     key_visibility([sea], above_spans)
-    key_visibility([o for o in c_boat.all_objects if o.type in ("MESH", "CURVE") and o.name not in ("RollerGuide",)], boat_spans)
+    own = {o.name for o in [wake, brk, mk, spray] + lines_t + lines_f}       # keyed below for one span only (keys add up)
+    key_visibility([o for o in c_boat.all_objects if o.type in ("MESH", "CURVE") and o.name not in own
+                    and o.name != "RollerGuide"], boat_spans)
     key_visibility([wake, brk, mk] + lines_t, [(CUT1, CUT2 - 1)])
     key_visibility(lines_f + [spray], [(CUT3, CUT4 - 1)])
     key_visibility([o for o in c_uw1.all_objects if o.type in ("MESH", "CURVE")], [(WHIP_IN, CUT1 - 1)])
