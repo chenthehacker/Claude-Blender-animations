@@ -3959,7 +3959,8 @@ def build_overlays(hud, st):
             dot_color=srgb(120, 220, 230), side=0.0, rise=0.11, y_band=(-0.25, 0.33))
     hud.pin(lambda f: Vector((cam_x(f) - 1.0, 6.0, THERMO_Z - 4.5)), "cold deep water", t2, t3 - 4,
             dot_color=srgb(60, 110, 200), side=0.05, rise=0.05, y_band=(-0.25, 0.33))
-    hud.pin(lambda f: thermo_fish(0, f)[0] + thermo_fish(0, f)[1] * 1.7, "dives past 3,000 ft",   # ahead of her nose t3 + 12, CUT3 - 10, dot_color=GOLD, side=0.06,
+    # the dot rides just ahead of her nose, so it never hides the diving fish
+    hud.pin(lambda f: thermo_fish(0, f)[0] + thermo_fish(0, f)[1] * 1.7, "dives past 3,000 ft", t3 + 12, CUT3 - 10, dot_color=GOLD, side=0.06,
             y_band=(-0.25, 0.33))
     # 4 the fight
     hud.badge(3, "BACK DOWN HARD", "keep line on the spool", CUT3 + 6, CUT4 - 6)
