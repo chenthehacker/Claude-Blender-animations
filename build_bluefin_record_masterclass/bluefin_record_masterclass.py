@@ -1766,6 +1766,13 @@ def sea_group(name="SeaGN"):
         s5 = nmath(ng, "MULTIPLY", nmath(ng, "POWER", nmath(ng, "ABSOLUTE", s), 5.0), nmath(ng, "SIGN", s))
         return nmath(ng, "MULTIPLY", nmath(ng, "MULTIPLY_ADD", s, 0.03, nmath(ng, "MULTIPLY", s5, 0.97)), SEA_SIZE)
     x, y = stretch(sx), stretch(sy)
+    # the grid is centred on the object (moved per shot to where the camera works, so the fine detail is there);
+    # the waves themselves use world coordinates and do not move with it
+    so = nodes.new("GeometryNodeSelfObject")
+    oi = nodes.new("GeometryNodeObjectInfo")
+    links.new(so.outputs[0], oi.inputs["Object"])
+    loc = separate(ng, oi.outputs["Location"])
+    wx, wy = nmath(ng, "ADD", x, loc["X"]), nmath(ng, "ADD", y, loc["Y"])
     t = nmath(ng, "DIVIDE", nmath(ng, "SUBTRACT", ng.nodes.new("GeometryNodeInputSceneTime").outputs["Frame"], 1.0), float(FPS))
     r = nmath(ng, "SQRT", nmath(ng, "ADD", nmath(ng, "MULTIPLY", x, x), nmath(ng, "MULTIPLY", y, y)))
     dx = dy = h = None
@@ -1773,8 +1780,9 @@ def sea_group(name="SeaGN"):
     for i, (a, kx, ky, w, ph, q) in enumerate(SWELLS):
         k = math.hypot(kx, ky)
         lam = 2 * math.pi / k
-        fade = map_range(ng, r, lam * 8.0, lam * 20.0, 1.0, 0.0) if i >= 2 else 1.0   # no aliasing far away
-        arg = nmath(ng, "ADD", nmath(ng, "SUBTRACT", nmath(ng, "ADD", nmath(ng, "MULTIPLY", x, kx), nmath(ng, "MULTIPLY", y, ky)),
+        fade = (map_range(ng, r, lam * 8.0, lam * 20.0, 1.0, 0.0) if i >= 2       # no aliasing far away
+                else map_range(ng, r, lam * 14.0, lam * 30.0, 1.0, 0.0))
+        arg = nmath(ng, "ADD", nmath(ng, "SUBTRACT", nmath(ng, "ADD", nmath(ng, "MULTIPLY", wx, kx), nmath(ng, "MULTIPLY", wy, ky)),
                                      nmath(ng, "MULTIPLY", t, w)), ph)
         cs, sn = nmath(ng, "COSINE", arg), nmath(ng, "SINE", arg)
         amp = a if isinstance(fade, float) else nmath(ng, "MULTIPLY", fade, a)
@@ -1800,7 +1808,7 @@ def sea_group(name="SeaGN"):
     st2.domain = "POINT"
     st2.inputs["Name"].default_value = "rest"
     links.new(st.outputs[0], st2.inputs["Geometry"])
-    links.new(combine(ng, x, y, 0.0), st2.inputs["Value"])
+    links.new(combine(ng, wx, wy, 0.0), st2.inputs["Value"])
     sm = nodes.new("GeometryNodeSetShadeSmooth")
     links.new(st2.outputs[0], sm.inputs["Geometry"])
     links.new(sm.outputs[0], go.inputs["Geometry"])
@@ -1908,7 +1916,9 @@ def build_materials(atmos):
         col = mix_rgb(nt, foam, water, srgb(214, 222, 224))
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
         nt.links.new(col, b.inputs["Base Color"])
-        _feed(nt, b.inputs["Roughness"], map_range(nt, foam, 0.0, 1.0, 0.13, 0.6, smooth=False))
+        rough = nmath(nt, "ADD", map_range(nt, foam, 0.0, 1.0, 0.13, 0.6, smooth=False),
+                      map_range(nt, dist, 200.0, 1400.0, 0.0, 0.25))           # far grazing facets: no comb of glints
+        _feed(nt, b.inputs["Roughness"], rough)
         b.inputs["IOR"].default_value = 1.333
         b.inputs["Specular IOR Level"].default_value = 0.6
         h = nmath(nt, "ADD", nmath(nt, "MULTIPLY", rip, 1.0), nmath(nt, "MULTIPLY", rip2, 0.35))
@@ -1923,13 +1933,13 @@ def build_materials(atmos):
 
     def wake(nt):
         """White water astern: dense churn behind the transom thinning into streaks down the wake (alpha)."""
-        p = tex_coord(nt, "Object")
+        p = attr(nt, "rest", "Vector")
         o = separate(nt, p)
         along = nmath(nt, "ABSOLUTE", o["X"])
         wdt = nmath(nt, "ADD", 2.2, nmath(nt, "MULTIPLY", along, 0.18))
         across = nmath(nt, "DIVIDE", nmath(nt, "ABSOLUTE", o["Y"]), wdt)
-        n1 = looped_noise(nt, vmath(nt, "MULTIPLY", p, (0.35, 1.2, 1.0)), (0.0, 0.0, 0.0), 1.3, 6.0, 0.65)
-        n2 = noise(nt, vmath(nt, "MULTIPLY", p, (0.2, 2.5, 1.0)), 1.8, 5.0, 0.6)
+        n1 = looped_noise(nt, vmath(nt, "MULTIPLY", p, (0.6, 1.2, 1.0)), (0.0, 0.0, 0.0), 1.3, 6.0, 0.65)
+        n2 = noise(nt, vmath(nt, "MULTIPLY", p, (0.6, 1.6, 1.0)), 1.8, 5.0, 0.6)
         core = nmath(nt, "MULTIPLY", map_range(nt, along, 0.0, 30.0, 1.0, 0.1), map_range(nt, across, 0.75, 0.2))
         edge = nmath(nt, "MULTIPLY", map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", across, 0.85)), 0.15, 0.0),
                      map_range(nt, along, 0.0, 55.0, 0.8, 0.0))
@@ -1940,7 +1950,7 @@ def build_materials(atmos):
 
     def breakline(nt):
         """The temperature break: a ragged scum line of weed and foam, greener water on its far side (alpha)."""
-        p = tex_coord(nt, "Object")
+        p = attr(nt, "rest", "Vector")
         o = separate(nt, p)
         wob = nmath(nt, "MULTIPLY", noise(nt, vmath(nt, "MULTIPLY", p, (0.05, 0.05, 1.0)), 1.0, 3.0), 2.0)
         dy = nmath(nt, "SUBTRACT", nmath(nt, "SUBTRACT", BREAK_Y, o["Y"]), wob)
@@ -1974,6 +1984,7 @@ def build_materials(atmos):
         core = nmath(nt, "POWER", nmath(nt, "SUBTRACT", 1.0, lw.outputs["Facing"]), 5.0)
         zw = separate(nt, world_pos(nt))["Z"]
         along = nmath(nt, "EXPONENT", nmath(nt, "MULTIPLY", zw, 1.0 / 9.0))
+        along = nmath(nt, "MULTIPLY", along, map_range(nt, zw, -0.4, -4.5))       # no hard rim where it leaves the surface
         dist = nt.nodes.new("ShaderNodeCameraData").outputs["View Distance"]
         along = nmath(nt, "MULTIPLY", along, map_range(nt, dist, 0.5, 4.0))
         along = nmath(nt, "MULTIPLY", along, 0.16)
@@ -2115,7 +2126,7 @@ def build_materials(atmos):
     M.reel_gold = mat("ReelGold", lambda nt: psdf(nt, srgb(214, 168, 70), rough=0.22, metal=1.0, coat=0.3))
     M.reel_dark = mat("ReelDark", lambda nt: psdf(nt, srgb(26, 26, 28), rough=0.35, metal=0.6))
     M.chrome = mat("Chrome", lambda nt: psdf(nt, srgb(200, 204, 210), rough=0.12, metal=1.0))
-    M.blank = mat("RodBlank", lambda nt: psdf(nt, srgb(18, 22, 30), rough=0.25, coat=0.8, coat_rough=0.05))
+    M.blank = mat("RodBlank", lambda nt: psdf(nt, srgb(214, 216, 210), rough=0.22, coat=0.8, coat_rough=0.05))  # pale: reads against the hull
     M.wrap = mat("RodWrap", lambda nt: psdf(nt, srgb(170, 30, 30), rough=0.3, coat=0.6))
     M.grip = mat("RodGrip", lambda nt: psdf(nt, srgb(30, 30, 32), rough=0.7, normal=bump(nt, noise(nt, tex_coord(nt), 200.0), 0.3)))
     M.line = mat("Line", lambda nt: psdf(nt, srgb(214, 220, 140), rough=0.3, emission=srgb(214, 220, 140), emission_strength=0.25))
@@ -2126,12 +2137,12 @@ def build_materials(atmos):
         p = tex_coord(nt, "Object")
         z = attr(nt, "zrel", "Fac")
         # zrel = (z + 1) / 3.4: the waterline (z = 0) sits at 0.294; a navy boot stripe just above it, a navy sheer
-        # stripe under the rub rail, red antifouling below the water
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", map_range(nt, z, 0.305, 0.312), map_range(nt, z, 0.35, 0.343)),
+        # stripe under the rub rail; a deep navy boot band (the swell washes over it), red antifouling well below
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", map_range(nt, z, 0.2, 0.207), map_range(nt, z, 0.33, 0.323)),
                       srgb(232, 234, 232), srgb(16, 30, 52))
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", map_range(nt, z, 0.68, 0.685), map_range(nt, z, 0.72, 0.715)), col,
                       srgb(16, 30, 52))
-        col = mix_rgb(nt, map_range(nt, z, 0.3, 0.29), col, srgb(130, 34, 30))
+        col = mix_rgb(nt, map_range(nt, z, 0.2, 0.19), col, srgb(130, 34, 30))   # deep: rarely shows in the swell
         n = noise(nt, p, 3.0, 4.0)
         return psdf(nt, vmath(nt, "SCALE", col, scale=nmath(nt, "MULTIPLY_ADD", n, 0.06, 0.95)), rough=0.18, coat=0.8,
                     coat_rough=0.05)
@@ -2146,7 +2157,7 @@ def build_materials(atmos):
     M.cushion = mat("ChairCushion", lambda nt: psdf(nt, srgb(222, 220, 212), rough=0.55, sss=0.05,
                                                     normal=bump(nt, noise(nt, tex_coord(nt), 60.0), 0.15)))
     M.dark = mat("BoatDark", lambda nt: psdf(nt, srgb(30, 32, 36), rough=0.5))
-    M.spray = mat("Spray", lambda nt: psdf(nt, srgb(232, 240, 242), rough=0.15, transmission=0.4, alpha=0.85))
+    M.spray = mat("Spray", lambda nt: psdf(nt, srgb(236, 242, 244), rough=0.4, alpha=0.7, emission=srgb(150, 160, 164), emission_strength=0.35))
 
     # --- the angler --------------------------------------------------------------------------------------------
     M.skin = mat("Skin", lambda nt: psdf(nt, srgb(196, 140, 106), rough=0.55, sss=0.2, sss_scale=0.01))
@@ -2181,8 +2192,8 @@ def build_materials(atmos):
         black deep water (by world height)."""
         z = separate(nt, world_pos(nt))["Z"]
         col = color_ramp(nt, map_range(nt, z, -60.0, 0.0, 0.0, 1.0, smooth=False),
-                         [(0.0, srgb(1, 3, 8)), (0.45, srgb(4, 14, 30)), (0.68, srgb(10, 38, 62)), (0.74, srgb(30, 86, 96)),
-                          (0.86, srgb(54, 120, 116)), (1.0, srgb(96, 160, 150))])
+                         [(0.0, srgb(1, 3, 8)), (0.4, srgb(3, 10, 24)), (0.528, srgb(8, 28, 54)), (0.548, srgb(34, 96, 102)),
+                          (0.75, srgb(58, 126, 118)), (1.0, srgb(100, 165, 150))])      # warm above the layer, cold below
         line = map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", z, THERMO_Z)), 0.9, 0.15)   # the layer, drawn
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", line, 0.8), col, srgb(150, 236, 240))
         em = nt.nodes.new("ShaderNodeEmission")
@@ -2913,7 +2924,7 @@ def boat_attitude(pos, t, heading=0.0, squat=0.0):
     hp = sea_height(*(mid + side * 2.0).xy, t)
     hst = sea_height(*(mid - side * 2.0).xy, t)
     hm = sea_height(*mid.xy, t)
-    z = 0.25 * (hb + hs + hp + hst) * 0.6 + 0.4 * hm - 0.22 - squat * 0.15     # loaded draft: no bottom paint showing
+    z = 0.25 * (hb + hs + hp + hst) * 0.6 + 0.4 * hm - 0.05 - squat * 0.12     # a deeper draft floods the open cockpit in a trough
     pitch = math.atan2(hb - hs, 11.0) * 0.75 - squat * math.radians(2.5)
     roll = math.atan2(hp - hst, 4.0) * 0.55
     q = Euler((roll, -pitch, heading), "XYZ").to_quaternion()
@@ -3311,7 +3322,7 @@ def camera_frames():
         u = (f - WHIP_IN) / (CUT1 - WHIP_IN)
         side = fwd.cross(Z).normalized()
         cam = p - side * (5.4 - 0.8 * u) + fwd * (0.5 - 1.4 * u) + Vector((0, 0, -0.65))
-        tgt = p + fwd * (0.55 - 0.35 * u) + Vector((0, 0, 0.12))
+        tgt = p - fwd * (0.25 + 0.15 * u) + Vector((0, 0, 0.12))          # centred on the body, tail in frame
         q = look_at(cam, tgt, Z)
         if f < WHIP_IN + 6:                                       # the whip lands: residual turn settles fast
             k = 1.0 - ease_out((f - WHIP_IN) / 6.0, 3.0)
@@ -3353,8 +3364,8 @@ def camera_frames():
         u = (f - CUT3) / (CUT4 - CUT3)
         t = t_of(f)
         bx = fight_boat_x(f)
-        cx = bx - 5.6 + 1.2 * u                                    # off the quarter, so the bent rod reads side on
-        cy = -6.0 + 0.8 * u
+        cx = bx - 7.6 + 1.6 * u                                    # off the quarter, so the bent rod reads side on
+        cy = -7.6 + 1.0 * u
         h = sea_height(cx, cy, t)
         cam = Vector((cx, cy, max(h + 1.25, 0.95 + 0.4 * h)))     # low, but high enough to see the chair and rod
         cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
@@ -3403,8 +3414,18 @@ def build_camera(col, frames, fstop):
         cd.dof.aperture_fstop = fstop[f]
         cd.dof.keyframe_insert("focus_distance", frame=f)
         cd.dof.keyframe_insert("aperture_fstop", frame=f)
-    for fc in iter_fcurves(cam) + iter_fcurves(cd):                 # cuts must not interpolate
+    for fc in iter_fcurves(cam) + iter_fcurves(cd):
         for kp in fc.keyframe_points:
+            kp.interpolation = "LINEAR"
+    # cuts must not interpolate: the motion blur shutter (frame -+0.25) would smear the cut frame between the two
+    # shots. Hold the old shot to f - 0.5, then the new shot from there (CONSTANT steps)
+    for c in CUTS:
+        for fc in iter_fcurves(cam) + iter_fcurves(cd):
+            v_new = fc.evaluate(c)
+            for kp in fc.keyframe_points:
+                if abs(kp.co.x - (c - 1)) < 1e-3:
+                    kp.interpolation = "CONSTANT"
+            kp = fc.keyframe_points.insert(c - 0.5, v_new)
             kp.interpolation = "LINEAR"
     bpy.context.scene.camera = cam
     return cam
@@ -3457,6 +3478,16 @@ def build_fill(col, name, energy=0.0, size=4.0, color=(255, 236, 214)):
     col.objects.link(ob)
     ob.rotation_mode = "QUATERNION"
     return ob
+
+
+def key_sea_center(sea):
+    """Centre the sea grid (finest near its middle) where each above water shot works; held constant per shot."""
+    centres = [(1, HZ_POS + Vector((25.0, 10.0, 0.0))), (CUT1, Vector((-15.0, -0.5, 0.0))),
+               (CUT3, Vector((-5.0, -3.0, 0.0))), (CUT4, HZ_POS + Vector((25.0, 10.0, 0.0)))]
+    for f, c in centres:
+        sea.location = (c.x, c.y, 0.0)
+        sea.keyframe_insert("location", frame=f - 0.5 if f > 1 else 1)      # changes between shutters, at a cut
+    set_constant(sea)
 
 
 def key_scene_state(sc, world_vals, sun, key_l, bounce):
@@ -3558,13 +3589,13 @@ def hook_glints(f_lo, f_hi, fish_state):
     for f in range(f_lo, f_hi + 1):
         p, fwd, _b = fish_state(f)
         side = fwd.cross(Vector((0, 0, 1))).normalized()
-        for _ in range(9):
-            along = rng.uniform(-0.5, 0.4) * TUNA_L
+        for _ in range(7):
+            along = rng.uniform(-0.5, 0.1) * TUNA_L                  # shed mostly from the rear half: trails
             src = p + fwd * along + side * rng.uniform(-0.35, 0.35) + Vector((0, 0, rng.uniform(-0.35, 0.35)))
             if along > -0.3:
                 src = src + side * rng.choice((-1, 1)) * 0.32
             sp.emit(t_of(f), src, (rng.uniform(-0.12, 0.12), rng.uniform(-0.12, 0.12), rng.uniform(0.0, 0.12)),
-                    rng.uniform(0.9, 2.2), rng.uniform(0.006, 0.014))
+                    rng.uniform(0.9, 2.2), rng.uniform(0.004, 0.009))
     return sp
 
 
@@ -3661,28 +3692,58 @@ def transom_spray(boat_x_fn, f_lo, f_hi):
         t = t_of(f)
         bx = boat_x_fn(f)
         h = sea_height(bx - 0.5, 0.0, t)
-        burst = 18 + int(70 * smoothstep(-0.2, 0.4, h))
+        burst = 40 + int(160 * smoothstep(-0.2, 0.4, h))
         for _ in range(burst):
             y = rng.uniform(-2.3, 2.3)
             p = Vector((bx - 0.25, y, h + rng.uniform(-0.1, 0.3)))
             v = Vector((rng.uniform(-2.2, 0.6), rng.uniform(-0.8, 0.8) + 0.6 * y / 2.3, rng.uniform(1.8, 5.5)))
-            sp.emit(t, p, v, rng.uniform(0.6, 1.3), rng.uniform(0.02, 0.06), 9.81)
+            sp.emit(t, p, v, rng.uniform(0.6, 1.3), rng.uniform(0.008, 0.026), 9.81)
     return sp
 
 
-def wake_object(col, M, name):
+def gerstner_gn(ng, wx, wy, t):
+    """The sea's own surface motion in a node tree: (dx, dy, h) for the point resting at world (wx, wy), so sheets
+    laid on the sea (wake, the break) sit exactly on it instead of cutting through it on the slopes."""
+    dx = dy = h = None
+    for a, kx, ky, w, ph, q in SWELLS:
+        k = math.hypot(kx, ky)
+        arg = nmath(ng, "ADD", nmath(ng, "SUBTRACT", nmath(ng, "ADD", nmath(ng, "MULTIPLY", wx, kx), nmath(ng, "MULTIPLY", wy, ky)),
+                                     nmath(ng, "MULTIPLY", t, w)), ph)
+        sn = nmath(ng, "SINE", arg)
+        tx, ty = nmath(ng, "MULTIPLY", sn, -q * a * kx / k), nmath(ng, "MULTIPLY", sn, -q * a * ky / k)
+        tz = nmath(ng, "MULTIPLY", nmath(ng, "COSINE", arg), a)
+        dx = tx if dx is None else nmath(ng, "ADD", dx, tx)
+        dy = ty if dy is None else nmath(ng, "ADD", dy, ty)
+        h = tz if h is None else nmath(ng, "ADD", h, tz)
+    return dx, dy, h
+
+
+def store_rest_after(ng, sp, x, y, go):
+    """Keep the undisplaced position as "rest" so foam and weed stay put on the water as the surface heaves."""
+    st = ng.nodes.new("GeometryNodeStoreNamedAttribute")
+    st.data_type = "FLOAT_VECTOR"
+    st.domain = "POINT"
+    st.inputs["Name"].default_value = "rest"
+    ng.links.new(sp.outputs[0], st.inputs["Geometry"])
+    ng.links.new(combine(ng, x, y, 0.0), st.inputs["Value"])
+    ng.links.new(st.outputs[0], go.inputs["Geometry"])
+
+
+def wake_object(col, M, name, length=60.0, width=2.2, spread=0.18):
     """White water in the wake: a strip astern of the transom that rides the swell (foam by alpha)."""
     bm = bmesh.new()
-    nx, ny = 60, 14
+    nx, ny = int(length), 14
     for i in range(nx):
         for j in range(ny):
-            x0, x1 = -60.0 * i / nx, -60.0 * (i + 1) / nx
-            w0, w1 = 2.2 + 0.18 * (-x0), 2.2 + 0.18 * (-x1)
+            x0, x1 = -length * i / nx, -length * (i + 1) / nx
+            w0, w1 = width + spread * (-x0), width + spread * (-x1)
             y0, y1 = -1 + 2 * j / ny, -1 + 2 * (j + 1) / ny
             bm.faces.new([bm.verts.new((x0, w0 * y0, 0.0)), bm.verts.new((x1, w1 * y0, 0.0)),
                           bm.verts.new((x1, w1 * y1, 0.0)), bm.verts.new((x0, w0 * y1, 0.0))])
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
     ob = finish(name, bm, col, [M.wake], recalc=False)
+    for pl in ob.data.polygons:
+        pl.use_smooth = True
     ng, gi, go = new_group(name + "GN", "GeometryNodeTree", [("Geometry", "NodeSocketGeometry")],
                            [("Geometry", "NodeSocketGeometry")])
     so = ng.nodes.new("GeometryNodeSelfObject")
@@ -3692,16 +3753,12 @@ def wake_object(col, M, name):
     x, y, _z = gn_xyz(ng)
     wx, wy = nmath(ng, "ADD", x, loc["X"]), nmath(ng, "ADD", y, loc["Y"])
     t = gn_time(ng)
-    h = None
-    for a, kx, ky, w, ph, _q in SWELLS:
-        arg = nmath(ng, "ADD", nmath(ng, "SUBTRACT", nmath(ng, "ADD", nmath(ng, "MULTIPLY", wx, kx), nmath(ng, "MULTIPLY", wy, ky)),
-                                     nmath(ng, "MULTIPLY", t, w)), ph)
-        term = nmath(ng, "MULTIPLY", nmath(ng, "COSINE", arg), a)
-        h = term if h is None else nmath(ng, "ADD", h, term)
+    dx, dy, h = gerstner_gn(ng, wx, wy, t)
     sp = ng.nodes.new("GeometryNodeSetPosition")
     ng.links.new(gi.outputs["Geometry"], sp.inputs["Geometry"])
-    ng.links.new(combine(ng, x, y, nmath(ng, "SUBTRACT", nmath(ng, "ADD", h, 0.05), loc["Z"])), sp.inputs["Position"])
-    ng.links.new(sp.outputs[0], go.inputs["Geometry"])
+    ng.links.new(combine(ng, nmath(ng, "ADD", x, dx), nmath(ng, "ADD", y, dy),
+                         nmath(ng, "SUBTRACT", nmath(ng, "ADD", h, 0.05), loc["Z"])), sp.inputs["Position"])
+    store_rest_after(ng, sp, x, y, go)
     ob.modifiers.new(name, "NODES").node_group = ng
     ob.visible_shadow = False
     return ob
@@ -3720,20 +3777,17 @@ def break_object(col, M):
                           bm.verts.new((x1, y0, 0.0))])
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
     ob = finish("TemperatureBreak", bm, col, [M.breakline], recalc=False)
+    for pl in ob.data.polygons:
+        pl.use_smooth = True
     ng, gi, go = new_group("BreakGN", "GeometryNodeTree", [("Geometry", "NodeSocketGeometry")],
                            [("Geometry", "NodeSocketGeometry")])
     x, y, _z = gn_xyz(ng)
     t = gn_time(ng)
-    h = None
-    for a, kx, ky, w, ph, _q in SWELLS:
-        arg = nmath(ng, "ADD", nmath(ng, "SUBTRACT", nmath(ng, "ADD", nmath(ng, "MULTIPLY", x, kx), nmath(ng, "MULTIPLY", y, ky)),
-                                     nmath(ng, "MULTIPLY", t, w)), ph)
-        term = nmath(ng, "MULTIPLY", nmath(ng, "COSINE", arg), a)
-        h = term if h is None else nmath(ng, "ADD", h, term)
+    dx, dy, h = gerstner_gn(ng, x, y, t)
     sp = ng.nodes.new("GeometryNodeSetPosition")
     ng.links.new(gi.outputs["Geometry"], sp.inputs["Geometry"])
-    ng.links.new(combine(ng, x, y, nmath(ng, "ADD", h, 0.03)), sp.inputs["Position"])
-    ng.links.new(sp.outputs[0], go.inputs["Geometry"])
+    ng.links.new(combine(ng, nmath(ng, "ADD", x, dx), nmath(ng, "ADD", y, dy), nmath(ng, "ADD", h, 0.04)), sp.inputs["Position"])
+    store_rest_after(ng, sp, x, y, go)
     ob.modifiers.new("Break", "NODES").node_group = ng
     ob.visible_shadow = False
     return ob
@@ -3774,7 +3828,7 @@ def build_overlays(hud, st):
 
     hud.pin(lambda f: hook_fish(f)[0] + hook_fish(f)[1] * 0.3 + Vector((0.0, 0.0, 0.3)), "128.5 in, fraser's fish",
             p1 + 6, CUT1 - 10, dot_color=GOLD, side=-0.04, y_band=(-0.15, 0.3))
-    def tow_pt(f, u=0.24):
+    def tow_pt(f, u=0.1):
         """A point on the tow line itself (the same quadratic Bezier as build_tow_line)."""
         a = mouth_corner_world(st["tuna"], f, *hook_fish(f)[:2])
         m, b = a + Vector((-7.5, -1.2, 3.2)), a + Vector((-16.0, -2.0, 10.5))
@@ -3862,7 +3916,7 @@ def build_overlays(hud, st):
     def rod_pt(f):
         sc.frame_set(f)
         return rod["ctrl"]["Mid"].matrix_world.translation.lerp(rod["ctrl"]["Tip"].matrix_world.translation, 0.4)
-    hud.pin(transom_pt, "backing down", CUT3 + 16, f2 + 20, dot_color=GOLD, side=-0.06, rise=0.06)
+    hud.pin(transom_pt, "backing down", CUT3 + 16, f2 + 20, dot_color=GOLD, side=-0.08, rise=-0.12)
     hud.pin(rod_pt, "rod doubled over", f2 + 30, CUT4 - 8, dot_color=GOLD, side=0.06)
     # 5 outro (the last caption is gone before the end: the last frame matches the first)
     hud.serif("The ultimate *apex predator* of the sea.", CUT4 + 8, P(5, 1) - 9, lines=["The ultimate", "*apex predator* of the sea."])
@@ -4110,6 +4164,7 @@ def build_scene():
     frames, fstop = camera_frames()
     # above water
     sea = build_sea(c_sea, M)
+    key_sea_center(sea)
     wake = wake_object(c_sea, M, "Wake")
     brk = break_object(c_sea, M)
     boat = build_boat(c_boat, M)
@@ -4124,6 +4179,10 @@ def build_scene():
         bx = gear_boat_x(f) if f < CUT2 + 2 else fight_boat_x(f)
         wake.location = (bx, 0.0, 0.0)
         key(wake, "location", f)
+    wash = wake_object(c_sea, M, "TransomWash", length=12.0, width=2.7, spread=0.12)   # white water piling astern
+    for f in range(CUT3 - 2, CUT4 + 2):
+        wash.location = (fight_boat_x(f) + 0.3, 0.0, 0.0)
+        key(wash, "location", f)
     mk = bpy.data.objects.new("MackerelBait", mackerel_mesh(M))
     c_boat.objects.link(mk)
     mk.rotation_mode = "QUATERNION"
@@ -4165,11 +4224,11 @@ def build_scene():
     above_spans = [(1, WHIP_IN - 1), (CUT1, CUT2 - 1), (CUT3, FRAME_END)]
     boat_spans = [(CUT1, CUT2 - 1), (CUT3, CUT4 - 1)]
     key_visibility([sea], above_spans)
-    own = {o.name for o in [wake, brk, mk, spray] + lines_t + lines_f}       # keyed below for one span only (keys add up)
+    own = {o.name for o in [wake, wash, brk, mk, spray] + lines_t + lines_f}       # keyed below for one span only (keys add up)
     key_visibility([o for o in c_boat.all_objects if o.type in ("MESH", "CURVE") and o.name not in own
                     and o.name != "RollerGuide"], boat_spans)
     key_visibility([wake, brk, mk] + lines_t, [(CUT1, CUT2 - 1)])
-    key_visibility(lines_f + [spray], [(CUT3, CUT4 - 1)])
+    key_visibility(lines_f + [spray, wash], [(CUT3, CUT4 - 1)])
     key_visibility([o for o in c_uw1.all_objects if o.type in ("MESH", "CURVE")], [(WHIP_IN, CUT1 - 1)])
     key_visibility([o for o in c_uw2.all_objects if o.type in ("MESH", "CURVE") and o.name != "SchoolFish"], [(CUT2, CUT3 - 1)])
     _ = (glints, bub, surf1, shafts1, plank1, back, sheet, school, school2, surf2, shafts2, plank2, entry_f)
