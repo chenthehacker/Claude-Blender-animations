@@ -3747,7 +3747,7 @@ def transom_spray(boat_x_fn, f_lo, f_hi):
         t = t_of(f)
         bx = boat_x_fn(f)
         h = sea_height(bx - 0.5, 0.0, t)
-        burst = 40 + int(160 * smoothstep(-0.2, 0.4, h))
+        burst = 24 + int(100 * smoothstep(-0.2, 0.4, h))
         for _ in range(burst):
             y = rng.uniform(-2.3, 2.3)
             p = Vector((bx - 0.25, y, h + rng.uniform(-0.1, 0.3)))
@@ -3929,7 +3929,8 @@ def build_overlays(hud, st):
                 return a.lerp(b, (a.x - cx) / max(1e-6, a.x - b.x))
         return pts[-1]
     hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.455), CUT1B - 8, dot_color=GOLD, side=-0.07)
-    hud.pin(lambda f: bait_pos(f) + Vector((0.45, 0.0, 0.1)), "fresh mackerel",            # dot just ahead of its nose CUT1B + 6, CUT2 - 8,
+    # the dot sits just ahead of its nose, so it never hides the bait
+    hud.pin(lambda f: bait_pos(f) + Vector((0.45, 0.0, 0.1)), "fresh mackerel", CUT1B + 6, CUT2 - 8,
             dot_color=GOLD, side=0.08, y_band=(-0.17, 0.3))
     hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.8, 0.15)), "temperature break", CUT1B + 20,
             CUT2 - 8, dot_color=srgb(120, 210, 220), side=0.02, rise=0.06, y_band=(-0.22, 0.3))
