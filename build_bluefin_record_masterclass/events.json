@@ -9,6 +9,9 @@
   928,
   1185
  ],
+ "hard_cuts": [
+  477
+ ],
  "whips": [
   [
    1,
@@ -81,12 +84,12 @@
    "Troll fresh *mackerel or herring.*"
   ],
   [
-   481,
+   477,
    "pin",
    "fresh mackerel"
   ],
   [
-   489,
+   491,
    "pin",
    "temperature break"
   ],
