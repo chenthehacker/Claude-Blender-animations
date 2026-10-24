@@ -2167,7 +2167,7 @@ def build_materials(atmos):
         em = nt.nodes.new("ShaderNodeEmission")
         em.inputs["Color"].default_value = (*srgb(120, 220, 230), 1.0)
         oi = nt.nodes.new("ShaderNodeObjectInfo")
-        nt.links.new(nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY_ADD", edge, 0.3, 0.02), shimmer),
+        nt.links.new(nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY_ADD", edge, 0.12, 0.012), shimmer),
                            oi.outputs["Alpha"]), em.inputs["Strength"])
         tr = nt.nodes.new("ShaderNodeBsdfTransparent")
         add = nt.nodes.new("ShaderNodeAddShader")
@@ -2913,7 +2913,7 @@ def boat_attitude(pos, t, heading=0.0, squat=0.0):
     hp = sea_height(*(mid + side * 2.0).xy, t)
     hst = sea_height(*(mid - side * 2.0).xy, t)
     hm = sea_height(*mid.xy, t)
-    z = 0.25 * (hb + hs + hp + hst) * 0.6 + 0.4 * hm - squat * 0.15
+    z = 0.25 * (hb + hs + hp + hst) * 0.6 + 0.4 * hm - 0.22 - squat * 0.15     # loaded draft: no bottom paint showing
     pitch = math.atan2(hb - hs, 11.0) * 0.75 - squat * math.radians(2.5)
     roll = math.atan2(hp - hst, 4.0) * 0.55
     q = Euler((roll, -pitch, heading), "XYZ").to_quaternion()
@@ -3227,7 +3227,7 @@ BAIT_BACK = 38.0                     # the mackerel trails this far astern
 BREAK_Y = -1.6                       # the temperature break runs along the boat's track, just to port of the bait
 DIVE_F = P(3, 3)                     # "And they can dive past three thousand feet"
 HZ_POS = Vector((-30.0, -150.0, 3.2))                            # the horizon shot (the loop's join)
-HZ_TGT = HZ_POS + Vector((-0.28, 1.0, 0.035)).normalized() * 100.0
+HZ_TGT = HZ_POS + Vector((0.9, 0.3, 0.035)).normalized() * 100.0     # away from the sun: the dark horizon of the brief
 
 
 def smooth_vectors(vals, k):
@@ -3344,7 +3344,7 @@ def camera_frames():
             d, _ = thermo_fish(0, f)
             k = smoothstep(DIVE_F - 4, DIVE_F + 40, f)
             tgt = tgt.lerp(d + Vector((0.0, 0.0, 1.0)), 0.7 * k)
-            cam = cam + Vector((0.0, 0.0, -6.0 * k))
+            cam = cam + Vector((0.0, 0.0, -3.0 * k))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 32.0)
         fstop[f] = 16.0
         _ = lead
@@ -3353,16 +3353,16 @@ def camera_frames():
         u = (f - CUT3) / (CUT4 - CUT3)
         t = t_of(f)
         bx = fight_boat_x(f)
-        cx = bx - 9.0 + 2.2 * u
-        cy = -4.6 + 1.2 * u
+        cx = bx - 5.6 + 1.2 * u                                    # off the quarter, so the bent rod reads side on
+        cy = -6.0 + 0.8 * u
         h = sea_height(cx, cy, t)
-        cam = Vector((cx, cy, max(h + 0.75, 0.55 + 0.4 * h)))
+        cam = Vector((cx, cy, max(h + 1.25, 0.95 + 0.4 * h)))     # low, but high enough to see the chair and rod
         cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
-        tgt = Vector((bx + 2.0, 0.2, 2.1 + 0.25 * h))
+        tgt = Vector((bx + 2.3, 0.2, 2.3 + 0.25 * h))
         q = look_at(cam, tgt, Z)
         if f >= CUT4 - 3:                                          # whip out
             q = whip(q, -(16.0 * (f - (CUT4 - 4)) ** 1.6), Z)
-        frames[f] = (cam, tgt, q, 22.0)
+        frames[f] = (cam, tgt, q, 30.0)
         fstop[f] = 8.0
     # 5 outro: whip in to the horizon and hold it (the hold is frame 1's shot: the loop)
     for f in range(CUT4, FRAME_END + 1):
@@ -3661,12 +3661,12 @@ def transom_spray(boat_x_fn, f_lo, f_hi):
         t = t_of(f)
         bx = boat_x_fn(f)
         h = sea_height(bx - 0.5, 0.0, t)
-        burst = 6 + int(26 * smoothstep(-0.1, 0.5, h))
+        burst = 18 + int(70 * smoothstep(-0.2, 0.4, h))
         for _ in range(burst):
             y = rng.uniform(-2.3, 2.3)
             p = Vector((bx - 0.25, y, h + rng.uniform(-0.1, 0.3)))
-            v = Vector((rng.uniform(-1.5, 1.0), rng.uniform(-0.8, 0.8) + 0.4 * y / 2.3, rng.uniform(1.4, 4.2)))
-            sp.emit(t, p, v, rng.uniform(0.5, 1.1), rng.uniform(0.012, 0.035), 9.81)
+            v = Vector((rng.uniform(-2.2, 0.6), rng.uniform(-0.8, 0.8) + 0.6 * y / 2.3, rng.uniform(1.8, 5.5)))
+            sp.emit(t, p, v, rng.uniform(0.6, 1.3), rng.uniform(0.02, 0.06), 9.81)
     return sp
 
 
