@@ -22,3 +22,5 @@ build_record_bass_masterclass/gpu_render/soundtrack.wav
 **/preview_render_b.log
 build_flathead_catfish_masterclass/test_frames/*.png
 build_flathead_catfish_masterclass/gpu_render/soundtrack.wav
+build_bluefin_record_masterclass/test_frames/*.png
+build_bluefin_record_masterclass/gpu_render/soundtrack.wav
