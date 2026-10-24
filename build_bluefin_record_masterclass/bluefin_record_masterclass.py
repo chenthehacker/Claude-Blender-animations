@@ -3385,8 +3385,8 @@ def camera_frames():
         if f > DIVE_F - 4:
             d, _ = thermo_fish(0, f)
             k = smoothstep(DIVE_F - 4, DIVE_F + 40, f)
-            tgt = tgt.lerp(d + Vector((0.0, 0.0, 1.0)), 0.7 * k)
-            cam = cam + Vector((0.0, 0.0, -3.0 * k))
+            tgt = tgt.lerp(d + Vector((0.0, 0.0, 0.6)), 0.85 * k)
+            cam = cam + Vector((0.0, 0.0, -5.0 * k))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 32.0)
         fstop[f] = 16.0
         _ = lead
@@ -3578,6 +3578,11 @@ def key_scene_state(sc, world_vals, sun, key_l, bounce):
             bounce.location = cam + Vector((0.0, -12.0, -16.0))
             bounce.rotation_quaternion = Vector((0.0, 0.6, 0.8)).to_track_quat("-Z", "Y")
             bounce.data.energy = 900.0
+            if f > DIVE_F - 6:                                         # follow the diver down into the cold water
+                dp = thermo_fish(0, f)[0]
+                bounce.location = dp + Vector((0.0, -6.0, -2.5))
+                bounce.rotation_quaternion = (dp - bounce.location).normalized().to_track_quat("-Z", "Y")
+                bounce.data.energy = 700.0
         else:
             key_l.data.energy = 0.0
         if not (WHIP_IN <= f < CUT1 or CUT2 <= f < CUT3):
@@ -3954,7 +3959,7 @@ def build_overlays(hud, st):
             dot_color=srgb(120, 220, 230), side=0.0, rise=0.11, y_band=(-0.25, 0.33))
     hud.pin(lambda f: Vector((cam_x(f) - 1.0, 6.0, THERMO_Z - 4.5)), "cold deep water", t2, t3 - 4,
             dot_color=srgb(60, 110, 200), side=0.05, rise=0.05, y_band=(-0.25, 0.33))
-    hud.pin(lambda f: thermo_fish(0, f)[0], "dives past 3,000 ft", t3 + 12, CUT3 - 10, dot_color=GOLD, side=0.06,
+    hud.pin(lambda f: thermo_fish(0, f)[0] + thermo_fish(0, f)[1] * 1.7, "dives past 3,000 ft",   # ahead of her nose t3 + 12, CUT3 - 10, dot_color=GOLD, side=0.06,
             y_band=(-0.25, 0.33))
     # 4 the fight
     hud.badge(3, "BACK DOWN HARD", "keep line on the spool", CUT3 + 6, CUT4 - 6)
