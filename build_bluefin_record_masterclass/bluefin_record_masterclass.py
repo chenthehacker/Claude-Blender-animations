@@ -3325,7 +3325,7 @@ def bait_pos(f):
     t = t_of(f)
     x = gear_boat_x(f) - BAIT_BACK
     y = -0.35 + 0.25 * math.sin(t * 2.1)
-    return Vector((x, y, surface_z(x, y, t) + 0.015))            # skipping in the surface film, as trolled baits do
+    return Vector((x, y, surface_z(x, y, t) + 0.06))             # skipping on the surface, as trolled baits do
 
 
 # --------------------------------------------------------------------------
@@ -3397,11 +3397,15 @@ def camera_frames():
         bx = fight_boat_x(f)
         cx = bx - 7.6 + 1.6 * u                                    # off the quarter, so the bent rod reads side on
         cy = -7.6 + 1.0 * u
-        h = sum(sea_height(cx, cy, t + k / FPS) * math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11)) / \
-            sum(math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11))            # rides the swell, smoothed
-        cam = Vector((cx, cy, h + 2.7))                            # low (well under the tower), but above the coaming
+        wsum = sum(math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11))
+        h = sum(sea_height(cx, cy, t + k / FPS) * math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11)) / wsum
+        hb = sum(boat_attitude(Vector((fight_boat_x(f + k), 0.0, 0.0)), t + k / FPS, squat=1.0)[0].z
+                 * math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11)) / wsum
+        # low, level with the boat's waterline + 2.1 m (under the angler's eye line, just over the coaming), and never
+        # closer than 0.9 m to the swell under the lens
+        cam = Vector((cx, cy, max(hb + 2.1, h + 0.9)))
         cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
-        tgt = Vector((bx + 2.0, 0.2, 1.9 + 0.25 * h))
+        tgt = Vector((bx + 2.0, 0.2, hb + 2.0))
         q = look_at(cam, tgt, Z)
         if f >= CUT4 - 3:                                          # whip out
             q = whip(q, -(16.0 * (f - (CUT4 - 4)) ** 1.6), Z)
@@ -3491,6 +3495,7 @@ def set_constant(idb):
 def build_sun(col):
     light = bpy.data.lights.new("Sun", "SUN")
     light.energy = 3.0
+    light.specular_factor = 0.4      # overcast: soft glints (full strength sparkles the rippled sea into noise)
     light.color = srgb(255, 226, 196)
     light.angle = math.radians(2.5)
     ob = bpy.data.objects.new("Sun", light)
@@ -3911,7 +3916,7 @@ def build_overlays(hud, st):
     span = CUT2 - CUT1
     hud.pin(chair_pt, "fighting chair", CUT1 + 10, CUT1 + int(span * 0.15), dot_color=GOLD, side=0.07)
     hud.pin(reel_pt, "14/0 reel", CUT1 + int(span * 0.195), CUT1 + int(span * 0.36), dot_color=GOLD, side=-0.08, rise=0.1)
-    hud.pin(guide_pt, "roller guides", CUT1 + int(span * 0.22), CUT1 + int(span * 0.42), dot_color=GOLD, side=0.08)
+    hud.pin(guide_pt, "roller guides", CUT1 + int(span * 0.22), CUT1 + int(span * 0.40), dot_color=GOLD, side=0.08)
 
     def line_pt(f):
         """The point of the line (tip, entry, bait) just ahead of the camera's ground point, so the pin rides along."""
@@ -3923,8 +3928,8 @@ def build_overlays(hud, st):
             if b.x <= cx <= a.x:
                 return a.lerp(b, (a.x - cx) / max(1e-6, a.x - b.x))
         return pts[-1]
-    hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.42), CUT1B - 8, dot_color=GOLD, side=-0.07)
-    hud.pin(lambda f: bait_pos(f) + Vector((0.0, 0.0, 0.15)), "fresh mackerel", CUT1B + 6, CUT2 - 8,
+    hud.pin(line_pt, "130 lb mono", CUT1 + int(span * 0.455), CUT1B - 8, dot_color=GOLD, side=-0.07)
+    hud.pin(lambda f: bait_pos(f) + Vector((0.45, 0.0, 0.1)), "fresh mackerel",            # dot just ahead of its nose CUT1B + 6, CUT2 - 8,
             dot_color=GOLD, side=0.08, y_band=(-0.17, 0.3))
     hud.pin(lambda f: Vector((bait_pos(f).x - 1.0, BREAK_Y - 0.8, 0.15)), "temperature break", CUT1B + 20,
             CUT2 - 8, dot_color=srgb(120, 210, 220), side=0.02, rise=0.06, y_band=(-0.22, 0.3))
@@ -4251,8 +4256,8 @@ def build_scene():
         for _ in range(10):
             q = bp + Vector((rng_b.uniform(-0.35, 0.05), rng_b.uniform(-0.06, 0.06), 0.0))
             q.z = surface_z(q.x, q.y, t_of(f)) + 0.01
-            bubbles.emit(t_of(f), q, (rng_b.uniform(-0.1, 0.1), rng_b.uniform(-0.25, 0.25), 0.0), rng_b.uniform(0.8, 1.8),
-                         rng_b.uniform(0.02, 0.045))
+            bubbles.emit(t_of(f), q, (rng_b.uniform(-0.1, 0.1), rng_b.uniform(-0.12, 0.12), 0.0), rng_b.uniform(0.35, 0.8),
+                         rng_b.uniform(0.012, 0.03))
     bait_foam = bubbles.build("BaitFoam", c_boat, M.spray)
     spray = transom_spray(fight_boat_x, CUT3 - 2, CUT4 + 1).build("TransomSpray", c_boat, M.spray, streak=True)
     # open water (the hook)
@@ -4290,7 +4295,8 @@ def build_scene():
     own = {o.name for o in [wake, wash, brk, mk, bait_foam, spray] + lines_t + lines_f}       # keyed below for one span only (keys add up)
     key_visibility([o for o in c_boat.all_objects if o.type in ("MESH", "CURVE") and o.name not in own
                     and o.name != "RollerGuide"], boat_spans)
-    key_visibility([wake, brk, mk, bait_foam] + lines_t, [(CUT1, CUT2 - 1)])
+    key_visibility([wake, mk, bait_foam] + lines_t, [(CUT1, CUT2 - 1)])
+    key_visibility([brk], [(CUT1B, CUT2 - 1)])                       # the break only in the bait shot (not under the boat)
     key_visibility(lines_f + [spray, wash], [(CUT3, CUT4 - 1)])
     key_visibility([o for o in c_uw1.all_objects if o.type in ("MESH", "CURVE")], [(WHIP_IN, CUT1 - 1)])
     key_visibility([o for o in c_uw2.all_objects if o.type in ("MESH", "CURVE") and o.name != "SchoolFish"], [(CUT2, CUT3 - 1)])
