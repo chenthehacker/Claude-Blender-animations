@@ -1690,8 +1690,9 @@ def build_world(sc):
     sun_side = map_range(nt, to_sun, 0.6, 1.0)
     cloud_dark = mix_rgb(nt, sun_side, srgb(70, 78, 86), srgb(196, 170, 140))
     cloud_lit = mix_rgb(nt, nmath(nt, "MULTIPLY", cl2, 0.6), cloud_dark, srgb(150, 154, 158))
-    near_h = map_range(nt, view["Z"], 0.0, 0.12)                    # clouds thin out into haze at the horizon
-    skyc = mix_rgb(nt, nmath(nt, "MULTIPLY", cover, nmath(nt, "MULTIPLY_ADD", near_h, 0.7, 0.3)), lit,
+    near_h = map_range(nt, view["Z"], 0.012, 0.14)                  # clouds thin out into haze at the horizon
+    # (fully gone by the horizon: the projected noise aliases into a comb of streaks there)
+    skyc = mix_rgb(nt, nmath(nt, "MULTIPLY", cover, nmath(nt, "POWER", near_h, 1.3)), lit,
                    vmath(nt, "SCALE", cloud_lit, scale=0.55))
     knee, top = 0.55, 0.97
     sp = separate(nt, skyc)
@@ -3395,9 +3396,9 @@ def camera_frames():
         cy = -7.6 + 1.0 * u
         h = sum(sea_height(cx, cy, t + k / FPS) * math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11)) / \
             sum(math.exp(-0.5 * (k / 4.0) ** 2) for k in range(-10, 11))            # rides the swell, smoothed
-        cam = Vector((cx, cy, h + 1.3))                            # low, but high enough to see the chair and rod
+        cam = Vector((cx, cy, h + 2.7))                            # low (well under the tower), but above the coaming
         cam += Vector((0.0, 0.03 * math.sin(f * 0.68), 0.035 * math.sin(f * 0.41) + 0.015 * math.sin(f * 0.93)))
-        tgt = Vector((bx + 2.3, 0.2, 2.3 + 0.25 * h))
+        tgt = Vector((bx + 2.0, 0.2, 1.9 + 0.25 * h))
         q = look_at(cam, tgt, Z)
         if f >= CUT4 - 3:                                          # whip out
             q = whip(q, -(16.0 * (f - (CUT4 - 4)) ** 1.6), Z)
@@ -3944,7 +3945,7 @@ def build_overlays(hud, st):
     def rod_pt(f):
         sc.frame_set(f)
         return rod["ctrl"]["Mid"].matrix_world.translation.lerp(rod["ctrl"]["Tip"].matrix_world.translation, 0.4)
-    hud.pin(transom_pt, "backing down", CUT3 + 16, f2 + 20, dot_color=GOLD, side=-0.08, rise=-0.12)
+    hud.pin(transom_pt, "backing down", CUT3 + 16, f2 + 20, dot_color=GOLD, side=-0.14, rise=0.09)
     hud.pin(rod_pt, "rod doubled over", f2 + 30, CUT4 - 8, dot_color=GOLD, side=0.06)
     # 5 outro (the last caption is gone before the end: the last frame matches the first)
     hud.serif("The ultimate *apex predator* of the sea.", CUT4 + 8, P(5, 1) - 9, lines=["The ultimate", "*apex predator* of the sea."])
