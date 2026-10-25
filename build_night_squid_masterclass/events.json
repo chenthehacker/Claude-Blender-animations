@@ -1,0 +1,202 @@
+{
+ "fps": 24,
+ "frames": 1320,
+ "loop": true,
+ "cuts": [
+  7,
+  157,
+  484,
+  797,
+  1212
+ ],
+ "whips": [
+  [
+   1,
+   7
+  ],
+  [
+   1208,
+   1218
+  ]
+ ],
+ "overlays": [
+  [
+   5,
+   "caption",
+   "Why most anglers fish *blindly* for squid."
+  ],
+  [
+   73,
+   "caption",
+   "Squid hunt with *their eyes.*"
+  ],
+  [
+   159,
+   "badge",
+   "THE LIGHT CONE"
+  ],
+  [
+   159,
+   "caption",
+   "Squid don't sit *in the light.*"
+  ],
+  [
+   197,
+   "pin",
+   "light cone"
+  ],
+  [
+   237,
+   "caption",
+   "They lurk on the *shadow line.*"
+  ],
+  [
+   239,
+   "pin",
+   "shadow line"
+  ],
+  [
+   297,
+   "caption",
+   "Light draws *baitfish.* Squid *ambush* from the dark."
+  ],
+  [
+   299,
+   "pin",
+   "baitfish in the light"
+  ],
+  [
+   373,
+   "pin",
+   "squid wait in the dark"
+  ],
+  [
+   486,
+   "badge",
+   "GLOWING EGI JIG"
+  ],
+  [
+   486,
+   "caption",
+   "A cloth wrapped *egi* jig."
+  ],
+  [
+   493,
+   "pin",
+   "cloth wrap"
+  ],
+  [
+   562,
+   "pin",
+   "glowing body"
+  ],
+  [
+   625,
+   "caption",
+   "Squid eyes are tuned to *blue green* light."
+  ],
+  [
+   631,
+   "pin",
+   "weighted nose"
+  ],
+  [
+   700,
+   "pin",
+   "barbless crown"
+  ],
+  [
+   709,
+   "caption",
+   "A glowing *silhouette* stands out."
+  ],
+  [
+   797,
+   "badge",
+   "HOP AND FALL"
+  ],
+  [
+   797,
+   "caption",
+   "Three sharp *rod jerks.*"
+  ],
+  [
+   851,
+   "pin",
+   "dart up"
+  ],
+  [
+   907,
+   "caption",
+   "Then *pause.*"
+  ],
+  [
+   978,
+   "caption",
+   "Most strikes come *on the fall.*"
+  ],
+  [
+   980,
+   "pin",
+   "the drift down"
+  ],
+  [
+   1082,
+   "pin",
+   "strike"
+  ],
+  [
+   1216,
+   "caption",
+   "Master the *shadow line.*"
+  ],
+  [
+   1262,
+   "caption",
+   "And you'll quickly *realize...*"
+  ]
+ ],
+ "jerks": [
+  861,
+  879,
+  897
+ ],
+ "pause": 911,
+ "fall": 974,
+ "strike": 1092,
+ "under": [
+  [
+   7,
+   1212
+  ]
+ ],
+ "trap_strike": 327,
+ "vo_start": {
+  "1": 1,
+  "2": 177,
+  "3": 524,
+  "4": 842,
+  "5": 1218
+ },
+ "vo_len": {
+  "1": 5.68,
+  "2": 11.12,
+  "3": 9.482,
+  "4": 9.091,
+  "5": 4.284
+ },
+ "vo_text": {
+  "1": "Stop casting blindly into the dark for squid. You're completely ignoring how their eyes hunt.",
+  "2": "Squid don't sit directly in dock lights. They lurk right along the shadow line. High power green or white lights draw in small baitfish, and squid ambush them from the pitch black edge.",
+  "3": "To trigger them, use a cloth wrapped eggy jig with a glowing body. Squid eyes are tuned to blue green light, so a bright silhouette stands out in dark water.",
+  "4": "Work the jig with three aggressive vertical rod jerks to make it dart upward, then pause. Most strikes come on the slow, horizontal drift down.",
+  "5": "Master the shadow line, lock in your drift, and you'll quickly realize..."
+ },
+ "beats": [
+  1,
+  157,
+  484,
+  797,
+  1212
+ ]
+}
