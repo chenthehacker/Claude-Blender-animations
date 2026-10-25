@@ -1865,11 +1865,11 @@ def build_materials(atmos):
         # the lamp's glow from below the surface (the lamp is opaque from above, so it is painted on)
         d = vmath(nt, "LENGTH", vmath(nt, "MULTIPLY", vmath(nt, "SUBTRACT", p, (LAMP_POS.x + 1.4, LAMP_POS.y, 0.0)),
                                       (0.8, 1.0, 0.0)))
-        g = nmath(nt, "EXPONENT", nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", d, d), -0.22))
-        g = nmath(nt, "MULTIPLY", g, map_range(nt, rip, 0.3, 0.7, 0.7, 1.2))
+        g = nmath(nt, "EXPONENT", nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY", d, d), -0.3))
+        g = nmath(nt, "MULTIPLY", g, map_range(nt, rip2, 0.3, 0.7, 0.8, 1.15))
         em = nt.nodes.new("ShaderNodeEmission")
         em.inputs["Color"].default_value = (*LAMP, 1.0)
-        nt.links.new(nmath(nt, "MULTIPLY", g, 2.4), em.inputs["Strength"])
+        nt.links.new(nmath(nt, "MULTIPLY", g, 1.8), em.inputs["Strength"])
         add = nt.nodes.new("ShaderNodeAddShader")
         nt.links.new(b.outputs[0], add.inputs[0])
         nt.links.new(em.outputs[0], add.inputs[1])
@@ -2685,7 +2685,9 @@ def build_pier(col, M):
     bm_box(bm, (-1.5, 0.0, DECK_Z), (3.4, 24.8, 0.08))
     deck = finish("Deck", bm, col, [M.deck])
     bm = bmesh.new()                                           # deck lamp: post, arm, shade
-    bm_frustum(bm, (DECK_LAMP.x, DECK_LAMP.y, DECK_Z), (DECK_LAMP.x, DECK_LAMP.y, DECK_LAMP.z + 0.1), 0.05, 0.04, segs=10)
+    px = DECK_LAMP.x - 0.35                                    # the post stands back; an arm carries the shade
+    bm_frustum(bm, (px, DECK_LAMP.y, DECK_Z), (px, DECK_LAMP.y, DECK_LAMP.z + 0.2), 0.05, 0.04, segs=10)
+    bm_box(bm, ((px + DECK_LAMP.x) / 2, DECK_LAMP.y, DECK_LAMP.z + 0.17), (0.4, 0.04, 0.04))
     bm_frustum(bm, (DECK_LAMP.x, DECK_LAMP.y, DECK_LAMP.z + 0.12), (DECK_LAMP.x, DECK_LAMP.y, DECK_LAMP.z - 0.12), 0.06, 0.2, segs=14)
     for y in (-9.0, -3.0, 6.0):                                # bollards
         bm_frustum(bm, (-0.45, y, DECK_Z), (-0.45, y, DECK_Z + 0.35), 0.11, 0.09, segs=12)
@@ -2800,8 +2802,8 @@ B = Vector((-40.0, 0.0, -3.0))
 H = Vector((5.0, 4.2, -4.6))                     # where the jig is worked, outside the cone (the dark side)
 OH_POS = Vector((3.2, -2.4, 15.0))               # the pier light from above (the loop's join)
 OH_TGT = Vector((1.5, 0.6, 0.0))
-W_POS = Vector((2.0, -5.6, -3.3))                # the wide cross section (framed on the lamp and the three squid)
-W_TGT = Vector((2.0, 0.0, -3.45))
+W_POS = Vector((1.78, -5.6, -3.3))                # the wide cross section (framed on the lamp and the three squid)
+W_TGT = Vector((1.78, 0.0, -3.45))
 JERKS = None                                     # set in hop_times()
 
 
@@ -2924,11 +2926,11 @@ def hop_squid(f):
     jp = jig_hop(min(f, STRIKE_F))[0]
     far = H + Vector((1.1, 1.2, -1.0))
     t = t_of(f)
-    close = jp + Vector((-0.42, 0.22, -0.18))
+    close = jp + Vector((-0.36, 0.18, -0.15))
     k = smoothstep(FALL_F - 40, STRIKE_F, f)
     p = far.lerp(close, k) + Vector((0.03 * math.sin(t * 0.8), 0.02 * math.sin(t * 0.6), 0.03 * math.sin(t * 1.1)))
     if f >= STRIKE_F:
-        p = close.lerp(jp + Vector((-0.2, 0.1, -0.08)), smoothstep(STRIKE_F + 4, STRIKE_F + 14, f))
+        p = close.lerp(jp + Vector((-0.2, 0.1, -0.08)), smoothstep(STRIKE_F, STRIKE_F + 7, f))
     fwd = (jp - p).normalized() if (jp - p).length > 1e-3 else Vector((1, 0, 0))
     tucked = 1.0 - (smoothstep(STRIKE_F - 3, STRIKE_F, f) - smoothstep(STRIKE_F + 6, STRIKE_F + 14, f))
     return p, fwd, tucked
@@ -2997,7 +2999,7 @@ def camera_frames():
         q = look_at(cam, look, Z)
         if f >= CUT4 - 3:                                       # whip out
             q = whip(q, -(15.0 * (f - (CUT4 - 4)) ** 1.6), q @ Vector((1, 0, 0)))
-        frames[f] = (cam, look, q, 30.0)
+        frames[f] = (cam, look, q, 34.0)
         fstop[f] = 4.0
     # 5 outro: whip in to the pier light from above and hold (the hold is frame 1's shot: the loop)
     for f in range(CUT4, FRAME_END + 1):
@@ -3153,9 +3155,15 @@ def build_trail(col, M, f_lo, f_hi):
     col.objects.link(ob)
     ob.hide_render = True
     ctrl = empty_object("TrailCtrl", col, size=0.05)
+    cum = [0.0]                                  # trimming works by length: map each frame to its arc length
+    for p0, p1 in zip(pts, pts[1:]):
+        cum.append(cum[-1] + (p1 - p0).length)
+    total = max(1e-6, cum[-1])
     for f in range(f_lo, f_hi + 1):
-        end = max(0.002, (f - f_lo) / (f_hi - f_lo))
-        ctrl.location = (end, max(0.0, end - 0.045), 0.0)
+        u = (f - f_lo) / 2.0
+        i = min(int(u), len(cum) - 2)
+        s = cum[i] + (cum[i + 1] - cum[i]) * min(1.0, u - i)
+        ctrl.location = (max(0.002, s / total), max(0.0, s - 0.45) / total, 0.0)
         key(ctrl, "location", f)
     ng, gi, go = new_group("TrailGN", "GeometryNodeTree", [("Geometry", "NodeSocketGeometry")],
                            [("Geometry", "NodeSocketGeometry")])
@@ -3530,7 +3538,7 @@ def build_scene():
         trap.append(s)
     trap_lights = []                 # scattered light from the beam: each squid on the shadow line catches a little
     for i in range(3):
-        lt = build_point(c_fx, f"TrapGlow{i}", Vector((0, 0, 0)), 5.0, srgb(170, 255, 205), radius=0.25)
+        lt = build_point(c_fx, f"TrapGlow{i}", Vector((0, 0, 0)), 18.0, srgb(170, 255, 205), radius=0.25)
         lt.data.use_custom_distance = True
         lt.data.cutoff_distance = 2.0
         for f in range(CUT1 - 2, CUT2 + 2):
@@ -3546,7 +3554,7 @@ def build_scene():
     hop_line = build_hop_line(c_hop, M, hop_egi, CUT3 - 2, CUT4 + 2)
     trail = build_trail(c_hop, M, CUT3, CUT4 + 2)
     hop_fill = build_glow_fill(c_fx, "HopFill", H + Vector((-1.0, -1.5, 3.5)), H, 140.0, size=4.0)
-    hop_glow = build_point(c_fx, "HopJigGlow", H, 1.6, srgb(130, 255, 190))
+    hop_glow = build_point(c_fx, "HopJigGlow", H, 5.0, srgb(130, 255, 190))
     for f in range(CUT3 - 2, CUT4 + 2):
         hop_glow.location = jig_hop(f)[0]
         key(hop_glow, "location", f)
