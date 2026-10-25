@@ -6,3 +6,5 @@ EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a va
 rendered 1 in 163.4s
 03:46.184  render           | Saved: '/home/user/Claude-Blender-animations/build_night_squid_masterclass/test_frames/frame_0528.png'
 rendered 528 in 62.3s
+06:21.059  render           | Saved: '/home/user/Claude-Blender-animations/build_night_squid_masterclass/test_frames/frame_1320.png'
+rendered 1320 in 154.8s

@@ -33,3 +33,5 @@ Error: Shadow buffer full, may result in missing shadows and lower performance. 
 Error: Shadow buffer full, may result in missing shadows and lower performance. (2465 / 2048)
 04:02.994  render           | Saved: '/home/user/Claude-Blender-animations/build_night_squid_masterclass/test_frames/frame_0264.png'
 rendered 264 in 242.4s
+06:27.248  render           | Saved: '/home/user/Claude-Blender-animations/build_night_squid_masterclass/test_frames/frame_0912.png'
+rendered 912 in 144.2s
