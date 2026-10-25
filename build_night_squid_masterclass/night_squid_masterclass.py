@@ -3163,7 +3163,7 @@ def build_trail(col, M, f_lo, f_hi):
         u = (f - f_lo) / 2.0
         i = min(int(u), len(cum) - 2)
         s = cum[i] + (cum[i + 1] - cum[i]) * min(1.0, u - i)
-        ctrl.location = (max(0.002, s / total), max(0.0, s - 0.45) / total, 0.0)
+        ctrl.location = (max(0.002, s / total), max(0.0, s - 0.3) / total, 0.0)
         key(ctrl, "location", f)
     ng, gi, go = new_group("TrailGN", "GeometryNodeTree", [("Geometry", "NodeSocketGeometry")],
                            [("Geometry", "NodeSocketGeometry")])
@@ -3597,6 +3597,7 @@ def build_scene():
     show([o for o in c_hop.all_objects if o.type in ("MESH", "CURVE") and o.name != "JigTrailPath"], [(CUT3, CUT4 - 1)])
     show([o for s in trap for o in (s["body"], s["arms"], s["tent"])], [(CUT1, CUT2 - 1)])
     show(trap_lights, [(CUT1 - 1, CUT2 - 1)])
+    show([trail], [(FALL_F + 10, STRIKE_F - 3)])                    # the trail only marks the slow drift down
     show([hop_fill, hop_glow], [(CUT3 - 1, CUT4 - 1)])
     show([o for o in c_a.all_objects if o.type in ("MESH", "CURVE")], [(WHIP_IN, CUT1 - 1)])
     show([o for o in c_b.all_objects if o.type in ("MESH", "CURVE")], [(CUT2, CUT3 - 1)])
