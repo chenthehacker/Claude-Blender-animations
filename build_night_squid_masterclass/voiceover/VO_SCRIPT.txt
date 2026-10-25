@@ -1,0 +1,9 @@
+Night squid masterclass voiceover (ElevenLabs, voice "Mark - Natural Conversations", model eleven_v4).
+"eggy" is the phonetic spelling of the Japanese egi (squid jig) so the voice says it correctly.
+
+vo1  Stop casting blindly into the dark for squid. You're completely ignoring how their eyes hunt.
+vo2  Squid don't sit directly in dock lights. They lurk right along the shadow line. High power green or white lights draw in small baitfish, and squid ambush them from the pitch black edge.
+vo3  To trigger them, use a cloth wrapped eggy jig with a glowing body. Squid eyes are tuned to blue green light, so a bright silhouette stands out in dark water.
+vo4  Work the jig with three aggressive vertical rod jerks to make it dart upward, then pause. Most strikes come on the slow, horizontal drift down.
+vo5  Master the shadow line, lock in your drift, and you'll quickly realize...
+(loops back into vo1)
