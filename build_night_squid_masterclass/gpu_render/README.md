@@ -1,7 +1,7 @@
 # Rendering the night squid masterclass on your GPU
 
 The cloud session that built this scene has no GPU. Its software renderer is far too slow for a full
-quality 1320 frame render (see "Why this exists" below), so the final render is meant to run on your
+quality 1018 frame render (see "Why this exists" below), so the final render is meant to run on your
 computer. The preview.mp4 made in the cloud is a reduced quality draft (see the numbers below).
 
 ## What you need
@@ -14,7 +14,7 @@ computer. The preview.mp4 made in the cloud is a reduced quality draft (see the 
 
     night_squid_masterclass.blend    the scene, with every texture and font packed inside
     gpu_render/render_gpu.py     joins the frames and the soundtrack into preview.mp4 (or renders, from a terminal)
-    gpu_render/soundtrack.flac   the 55 s soundtrack with the voiceover (lossless)
+    gpu_render/soundtrack.flac   the 42.4 s soundtrack with the voiceover (lossless)
     SOURCES.md                   where every fact in the on-screen text comes from
     assets/CREDITS.md            what is original (every model) and what is generated (the voice)
     fonts/OFL-*.txt              font licences
@@ -24,12 +24,12 @@ computer. The preview.mp4 made in the cloud is a reduced quality draft (see the 
 1. Unzip the package. Keep the folder together; the steps below depend on its layout.
 2. Start Blender, choose File > Open, and open night_squid_masterclass.blend.
 3. Choose Render > Render Animation (shortcut Ctrl+F12). A render window opens and shows the frame
-   number and the time per frame; multiply that time by 1320 for the total. Frames are saved
+   number and the time per frame; multiply that time by 1018 for the total. Frames are saved
    automatically into gpu_render/frames. You do not need to set an output folder.
    The file is set to 32 samples with motion blur on (Properties > Render tab).
 4. To stop, press Esc in the render window. To continue later, open the file again and repeat step 3:
    finished frames are skipped.
-5. When the last frame (1320) is done, click the Scripting tab at the top of the Blender window.
+5. When the last frame (1018) is done, click the Scripting tab at the top of the Blender window.
    In the Text Editor, choose Text > Open, select gpu_render/render_gpu.py, then click Run Script
    (the play arrow) or press Alt+P with the mouse over the text. Blender looks frozen for a few
    minutes, then shows "Saved ...preview.mp4": 1080x1920, 24 fps, H.264 with the AAC soundtrack.
@@ -78,13 +78,14 @@ brief asked for, at full resolution, 32 samples, motion blur and depth of field 
 
     sum 767.1 s / 5 frames = 153.4 s per frame per process (two processes running)
     two processes finish 2 frames every 153.4 s: 153.4 / 2 = 76.7 s per frame
-    76.7 s x 1320 frames = 101,244 s = about 28.1 hours with two processes
-    one process alone (two give about 1.7 times the throughput here): 28.1 h x 1.7 = about 47.8 hours
+    76.7 s x 1018 frames = 78,081 s = about 21.7 hours with two processes
+    one process alone (two give about 1.7 times the throughput here): 21.7 h x 1.7 = about 36.9 hours
 
-The five frames are a small sample, and the light cone shot (frames 157 to 483, a quarter of the film) was the
-slowest, so the real total could be higher. Either way it is far over the 10 hour limit, so the full quality
+These frames were measured on the first, 55 s cut (1320 frames); the film was then tightened to 1018 frames with
+the same shots, so the per frame times still apply. The five frames are a small sample, and the light cone shot
+(frames 142 to 419, 27 percent of the film) was the slowest, so the real total could be higher. Either way it is far over the 10 hour limit, so the full quality
 render runs on your GPU instead. How long it takes there depends on your card and driver; it cannot be predicted
-from these numbers. Read the time per frame in the render window after the first few frames and multiply by 1320.
+from these numbers. Read the time per frame in the render window after the first few frames and multiply by 1018.
 
 The cloud preview (preview_draft_12fps.mp4) was rendered from the same .blend at 50 percent resolution (540x960)
 and 16 samples, motion blur and depth of field on, every second frame only (12 fps, each frame shown twice), then
