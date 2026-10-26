@@ -3522,7 +3522,7 @@ def build_scene():
     pier = build_pier(c_pier, M)
     lamp_body, lens = build_lamp(c_pier, M)
     em = next(n for n in M.lens.node_tree.nodes if n.bl_idname == "ShaderNodeEmission")
-    for f, v in ((CUT1 - 1, 40.0), (CUT1 - 0.5, 9.0), (CUT1 + 24, 9.0), (CUT1 + 56, 40.0)):   # dimmer for the close match cut
+    for f, v in ((CUT1 - 1, 40.0), (CUT1 - 0.5, 1.5), (CUT1 + 24, 1.5), (CUT1 + 56, 40.0)):   # dimmer for the close match cut
         em.inputs["Strength"].default_value = v
         em.inputs["Strength"].keyframe_insert("default_value", frame=f)
     for fc in iter_fcurves(M.lens.node_tree):
