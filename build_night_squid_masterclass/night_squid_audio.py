@@ -6,7 +6,7 @@ Conversations"; see SOURCES.md for the script). Everything else is synthesised h
 a whoosh for each whip pan, a swish for each rod jerk, a thump for each strike, overlay pops, and a slow, dark
 music bed in D minor that ducks under the voice.
 
-The film loops, so the soundtrack does too: the music is 24 bars that fit 55 s exactly, nothing fades in or out
+The film loops, so the soundtrack does too: the music is 24 bars that fit the film exactly, nothing fades in or out
 at the ends, and anything still sounding past the end (a reverb tail, a ringing note) is wrapped onto the start.
 
     python night_squid_audio.py --measure                         # writes vo_timing.json from the clips
@@ -135,7 +135,7 @@ def whoosh(dur=0.45, rising=True):
 
 
 # --------------------------------------------------------------------------
-# Music: a slow D minor loop (Dm, Bb, F, C) of 24 bars that fills the 55 s exactly
+# Music: a slow D minor loop (Dm, Bb, F, C) of 24 bars that fills the film exactly
 # --------------------------------------------------------------------------
 def midi(n):
     return 440.0 * 2 ** ((n - 69) / 12)

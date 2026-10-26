@@ -1,5 +1,5 @@
-"""Night squid masterclass: eging (squid jigging) under a pier light at midnight. Vertical 9:16, 24 fps, 55 s
-(1320 frames), Blender 5.2 EEVEE. Built to loop: the last frame is the first frame's shot, and the voiceover's last
+"""Night squid masterclass: eging (squid jigging) under a pier light at midnight. Vertical 9:16, 24 fps, about 42 s (paced to the voiceover)
+(the frame count follows the measured voiceover), Blender 5.2 EEVEE. Built to loop: the last frame is the first frame's shot, and the voiceover's last
 line runs into its first.
 
 Run with the Blender binary:
@@ -58,8 +58,6 @@ FONT_DIR = os.path.join(HERE, "fonts")
 # --------------------------------------------------------------------------
 FPS = 24
 SHUTTER = 0.5
-FRAME_END = 1320
-LOOP_S = FRAME_END / FPS             # 55 s: the harbour swell and the music repeat with this period
 RES_X, RES_Y = 1080, 1920
 LENS = 35.0            # the overlay camera's lens (the 3D camera's lens is animated)
 SENSOR = 36.0
@@ -112,7 +110,9 @@ VO_TEXT = {
        "on the slow, horizontal drift down.",
     5: "Master the shadow line, lock in your drift, and you'll quickly realize...",
 }
-VO_GAPS = (40, 80, 90)               # frames of breath after clips 1, 2 and 3; the rest goes before the outro
+VO_GAPS = (10, 12, 12)               # frames of breath after clips 1, 2 and 3 (fast paced: no dead air)
+STRIKE_AFTER = 2.6                   # the strike lands this long after "Most strikes come..." begins (s)
+STRIKE_HOLD = 34                     # frames of the strike before the whip out to the pier
 
 
 def _load_vo_timing():
@@ -130,9 +130,11 @@ VO_PHRASES = _load_vo_timing()
 VO_START = {1: 1}
 for _k in range(2, 5):
     VO_START[_k] = VO_START[_k - 1] + int(round(VO_LEN[_k - 1] * FPS)) + VO_GAPS[_k - 2]
-VO_START[5] = FRAME_END + 1 - int(round(VO_LEN[5] * FPS))
-if VO_START[5] < VO_START[4] + int(round(VO_LEN[4] * FPS)) + 4:
-    print("WARNING: the voiceover is longer than the film")
+_p41 = VO_PHRASES[4][1] if 4 in VO_PHRASES and len(VO_PHRASES[4]) > 1 else 0.64 * VO_LEN[4]
+STRIKE_FRAME = VO_START[4] + int(round((_p41 + STRIKE_AFTER) * FPS))
+VO_START[5] = STRIKE_FRAME + STRIKE_HOLD + 6
+FRAME_END = VO_START[5] + int(round(VO_LEN[5] * FPS)) + 6     # the outro line ends just before the loop
+LOOP_S = FRAME_END / FPS             # the harbour swell and the music repeat with this period (the film's length)
 
 
 def vo_end(clip):
@@ -2808,11 +2810,11 @@ JERKS = None                                     # set in hop_times()
 
 
 def hop_times():
-    j0 = VO_START[4] + int(round(0.8 * FPS))
+    j0 = VO_START[4] + int(round(1.9 * FPS))                 # on "three aggressive vertical rod jerks"
     jerks = [j0, j0 + 18, j0 + 36]
     pause = jerks[-1] + 14
     fall0 = max(pause + 30, P(4, 1) - 8)
-    strike = min(CUT4 - 70, P(4, 1) + int(round(4.6 * FPS)))
+    strike = STRIKE_FRAME
     return jerks, pause, fall0, strike
 
 
@@ -2975,7 +2977,7 @@ def camera_frames():
     p0 = LAMP_POS + LAMP_DIR * 0.5 + Vector((0.0, -0.32, 0.06))
     for f in range(CUT1, CUT2):
         u = (f - CUT1) / (CUT2 - CUT1)
-        k = ease(min(1.0, (f - CUT1) / 56.0))
+        k = ease(min(1.0, (f - CUT1) / 40.0))
         wide = W_POS + Vector((0.25 * u, 0.35 * u, 0.1 * u))
         cam = p0.lerp(wide, k)
         tgt = LAMP_POS.lerp(W_TGT + Vector((0.2 * u, 0.0, 0.05 * u)), k)
@@ -3231,9 +3233,9 @@ def build_overlays(hud, st):
               src="CONSISTENT WITH JIGGING BOAT LIGHT STUDIES")
     hud.serif("Light draws *baitfish.* Squid *ambush* from the dark.", t2, CUT2 - 9,
               lines=["Light draws *baitfish.*", "Squid *ambush* from the dark."], src="ANGLER TECHNIQUE")
-    hud.pin(lambda f: axis_point(4.3), "light cone", CUT1 + 46, t1 - 4, dot_color=srgb(150, 255, 190), side=0.06,
+    hud.pin(lambda f: axis_point(4.3), "light cone", CUT1 + 34, t1 + 8, dot_color=srgb(150, 255, 190), side=0.06,
             y_band=(-0.2, 0.32))
-    hud.pin(lambda f: axis_point(3.0) + N_OUT * cone_radius(3.0), "shadow line", t1 + 4, t2 - 4,
+    hud.pin(lambda f: axis_point(3.0) + N_OUT * cone_radius(3.0), "shadow line", t1 + 12, t2 - 4,
             dot_color=srgb(150, 255, 190), side=0.07, rise=0.09, y_band=(-0.2, 0.32))
     hud.pin(lambda f: axis_point(SCHOOL_D), "baitfish in the light", t2 + 4, t2 + 70, dot_color=GOLD, side=-0.05,
             y_band=(-0.2, 0.32))
@@ -3433,7 +3435,7 @@ def run_checks(frames, st):
     a, b = frames[1], frames[FRAME_END]
     print("loop: frame 1 vs last frame camera: position", round((a[0] - b[0]).length, 4), "m, rotation",
           round(math.degrees(a[2].rotation_difference(b[2]).angle), 4), "deg, lens", a[3], b[3])
-    print("loop: water at t=0 vs t=55 s (should match):", round(sea_height(5.0, 7.0, 0.0) - sea_height(5.0, 7.0, LOOP_S), 6))
+    print("loop: water at t=0 vs t=end (should match):", round(sea_height(5.0, 7.0, 0.0) - sea_height(5.0, 7.0, LOOP_S), 6))
     hud = st["hud"]
     live1 = [n for n, fn in hud.boxes if fn(1) is not None]
     liveN = [n for n, fn in hud.boxes if fn(FRAME_END) is not None]
@@ -3522,7 +3524,7 @@ def build_scene():
     pier = build_pier(c_pier, M)
     lamp_body, lens = build_lamp(c_pier, M)
     em = next(n for n in M.lens.node_tree.nodes if n.bl_idname == "ShaderNodeEmission")
-    for f, v in ((CUT1 - 1, 40.0), (CUT1 - 0.5, 1.5), (CUT1 + 24, 1.5), (CUT1 + 56, 40.0)):   # dimmer for the close match cut
+    for f, v in ((CUT1 - 1, 40.0), (CUT1 - 0.5, 1.5), (CUT1 + 16, 1.5), (CUT1 + 40, 40.0)):   # dimmer for the close match cut
         em.inputs["Strength"].default_value = v
         em.inputs["Strength"].keyframe_insert("default_value", frame=f)
     for fc in iter_fcurves(M.lens.node_tree):
