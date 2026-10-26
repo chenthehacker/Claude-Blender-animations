@@ -3220,7 +3220,7 @@ def build_overlays(hud, st):
     hud.kicker("THE FISHING SERIES")
     # 1 hook
     p1 = P(1, 1)
-    hud.serif("Why most anglers fish *blindly* for squid.", WHIP_IN + 2, p1 - 9, y=-0.30, size=0.048,
+    hud.serif("Why most anglers fish *blindly* for squid.", WHIP_IN + 6, p1 - 9, y=-0.30, size=0.048,
               lines=["Why most anglers", "fish *blindly* for squid."], reveal=2.3)
     hud.serif("Squid hunt with *their eyes.*", p1, CUT1 - 9, y=-0.30, size=0.048, lines=["Squid hunt", "with *their eyes.*"])
     # 2 the light trap
@@ -3521,6 +3521,13 @@ def build_scene():
     sea.location = (OH_TGT.x, OH_TGT.y, 0.0)
     pier = build_pier(c_pier, M)
     lamp_body, lens = build_lamp(c_pier, M)
+    em = next(n for n in M.lens.node_tree.nodes if n.bl_idname == "ShaderNodeEmission")
+    for f, v in ((CUT1 - 1, 40.0), (CUT1 - 0.5, 9.0), (CUT1 + 24, 9.0), (CUT1 + 56, 40.0)):   # dimmer for the close match cut
+        em.inputs["Strength"].default_value = v
+        em.inputs["Strength"].keyframe_insert("default_value", frame=f)
+    for fc in iter_fcurves(M.lens.node_tree):
+        for kp in fc.keyframe_points:
+            kp.interpolation = "CONSTANT" if kp.co.x < CUT1 - 0.75 else "LINEAR"
     beam = build_beam(c_pier, M)
     lamp_l, deck_l = build_lamp_light(c_fx)
     seabed = build_seabed(c_pier, M, center=(4.0, 1.0), size=26.0)
