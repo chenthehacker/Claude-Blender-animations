@@ -5,14 +5,14 @@
  "cuts": [
   7,
   306,
-  569,
-  849,
+  568,
+  847,
   1228
  ],
  "hard_cuts": [
-  144,
-  683,
-  1008
+  179,
+  695,
+  1006
  ],
  "whips": [
   [
@@ -41,7 +41,7 @@
    "pacific blue marlin"
   ],
   [
-   144,
+   179,
    "caption",
    "The world record, *landed in under an hour.*"
   ],
@@ -61,102 +61,102 @@
    "steep volcanic drop off"
   ],
   [
-   381,
+   385,
    "caption",
    "Upwellings push *bait and small tuna* up."
   ],
   [
-   383,
+   387,
    "pin",
    "upwelling"
   ],
   [
-   409,
+   413,
    "pin",
    "bait and small tuna"
   ],
   [
-   571,
+   570,
    "badge",
    "THE TROLLING SPREAD"
   ],
   [
-   571,
+   570,
    "caption",
    "A staggered *four lure spread.*"
   ],
   [
-   571,
+   570,
    "pin",
    "short corner"
   ],
   [
-   597,
+   599,
    "pin",
    "long corner"
   ],
   [
-   624,
+   629,
    "pin",
    "short rigger"
   ],
   [
-   640,
+   639,
    "caption",
    "Troll at *7 to 9 knots.*"
   ],
   [
-   651,
+   659,
    "pin",
    "long rigger"
   ],
   [
-   683,
+   695,
    "caption",
    "Resin heads trail *smoke.*"
   ],
   [
-   685,
+   697,
    "pin",
    "smoke trail"
   ],
   [
-   849,
+   847,
    "badge",
    "THE DRAG"
   ],
   [
-   849,
+   847,
    "caption",
    "When a giant eats, *lock it down.*"
   ],
   [
-   851,
+   849,
    "pin",
    "line pouring off"
   ],
   [
-   912,
+   910,
    "caption",
    "*40 lb of drag* on 130 lb tackle."
   ],
   [
-   914,
+   912,
    "pin",
    "strike"
   ],
   [
-   1008,
+   1006,
    "caption",
    "Set the hooks in its *hard jaw.*"
   ],
   [
-   1020,
+   1018,
    "pin",
    "tail walk"
   ],
   [
-   1061,
+   1089,
    "caption",
    "About *30 percent* of line strength."
   ],
@@ -169,41 +169,41 @@
  "under": [
   [
    7,
-   569
+   568
   ],
   [
-   683,
-   849
+   695,
+   847
   ]
  ],
  "hook_strike": 45,
- "reel_start": 849,
- "lock": 916,
+ "reel_start": 847,
+ "lock": 914,
  "tail_walk": [
-  1008,
+  1006,
   1228
  ],
  "spread": [
-  569,
-  683
+  568,
+  695
  ],
  "ledge": [
   306,
-  569
+  568
  ],
  "vo_start": {
   "1": 1,
   "2": 311,
-  "3": 574,
-  "4": 854,
+  "3": 573,
+  "4": 852,
   "5": 1234
  },
  "vo_len": {
-  "1": 12.51,
-  "2": 10.53,
-  "3": 11.23,
-  "4": 14.29,
-  "5": 3.63
+  "1": 12.48,
+  "2": 10.48,
+  "3": 11.2,
+  "4": 14.24,
+  "5": 3.631
  },
  "vo_text": {
   "1": "In 1982, Jay de Beaubien hooked a 1,376 pound Pacific blue marlin off Kona. It became the all tackle world record for the species, landed in under an hour.",
@@ -215,8 +215,8 @@
  "beats": [
   1,
   306,
-  569,
-  849,
+  568,
+  847,
   1228
  ]
 }
