@@ -78,3 +78,8 @@ Australian study).
 The whole film is computer generated: the marlin, its lit up bars, the lures and their bubble trails, the boat, the
 reel, the sea, the drop off diagram, the upwelling streaks, the strike and the tail walk. It is not footage of
 de Beaubien's fish or of any real catch.
+
+## Caption extras
+- "keep it in the water and revive it before you let it go (angler practice)": common catch and release practice,
+  given as advice, not as a measured claim.
+- "the ultimate big game fish": script and caption wording, not a ranking.

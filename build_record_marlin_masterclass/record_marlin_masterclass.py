@@ -1963,7 +1963,7 @@ def build_materials(atmos):
         foam = nmath(nt, "MULTIPLY", nmath(nt, "MAXIMUM", core, edge), map_range(nt, nmath(nt, "ADD", n1, nmath(nt, "MULTIPLY", n2, 0.4)), 0.45, 0.75))
         foam = nmath(nt, "MULTIPLY", foam, map_range(nt, along, 0.0, 1.5))
         return psdf(nt, srgb(226, 234, 236), rough=0.5, alpha=nmath(nt, "MINIMUM", nmath(nt, "MULTIPLY", foam, 0.6), 0.55))
-    M.wake = mat("WakeFoam", wake)
+    M.wake = mat("WakeFoam", wake, blended=True)       # (dithered alpha stipples at low samples)
 
     def lure_foam(nt):
         """The short streak of white water and bubbles a popping lure leaves on the surface (alpha)."""
@@ -1972,10 +1972,10 @@ def build_materials(atmos):
         along = nmath(nt, "ABSOLUTE", o["X"])
         across = nmath(nt, "DIVIDE", nmath(nt, "ABSOLUTE", o["Y"]), nmath(nt, "ADD", 0.12, nmath(nt, "MULTIPLY", along, 0.08)))
         n1 = looped_noise(nt, vmath(nt, "MULTIPLY", p, (3.0, 6.0, 1.0)), (0.0, 0.0, 0.0), 1.0, 5.0, 0.65)
-        k = nmath(nt, "MULTIPLY", nmath(nt, "POWER", map_range(nt, along, 0.0, 5.0, 1.0, 0.0), 2.0), map_range(nt, across, 1.0, 0.3))
+        k = nmath(nt, "MULTIPLY", nmath(nt, "POWER", map_range(nt, along, 0.0, 7.0, 1.0, 0.0), 1.6), map_range(nt, across, 1.0, 0.3))
         foam = nmath(nt, "MULTIPLY", k, map_range(nt, n1, 0.4, 0.7))
         return psdf(nt, srgb(232, 240, 244), rough=0.45, alpha=nmath(nt, "MINIMUM", nmath(nt, "MULTIPLY", foam, 0.85), 1.0))
-    M.lure_foam = mat("LureFoam", lure_foam)
+    M.lure_foam = mat("LureFoam", lure_foam, blended=True)
 
     def surface_under(nt):
         """The surface from below: a bright rippling window overhead, darker total-reflection rim."""
@@ -3359,8 +3359,8 @@ SPREAD = {                                             # lure positions astern o
     "short rigger": (Vector((-38.0, 9.6)), "rigger_port", 2),
     "long rigger": (Vector((-50.0, -10.2)), "rigger_starboard", 3),
 }
-OH_BACK = 17.0                       # the overhead shot looks down 17 m astern: the transom, the corner lures
-OH_H = 19.0
+OH_BACK = 22.0                       # the overhead shot looks straight down between the two corner lures
+OH_H = 10.5
 
 
 def wrap_t(t):
@@ -3554,8 +3554,8 @@ def gauss_smooth(fn, f, k=6):
 
 def overhead(f):
     bx = loop_boat_x(f)
-    tgt = Vector((bx - OH_BACK, -0.2, 0.0))
-    cam = tgt + Vector((-5.0, -0.4, OH_H))                  # a little behind: the lures read against the wake
+    tgt = Vector((bx - OH_BACK, -0.3, 0.0))
+    cam = tgt + Vector((-0.6, -0.1, OH_H))
     return cam, tgt, look_at(cam, tgt, Vector((1, 0, 0)))
 
 
@@ -3629,7 +3629,7 @@ def camera_frames(st):
         bx = spread_boat_x(f)
         tgt = Vector((bx - 30.0 + 3.0 * u, 0.0, 0.0))
         cam = Vector((bx - 91.0 + 4.0 * u, -14.0 + 4.0 * u, 50.0 - 3.0 * u))
-        frames[f] = (cam, tgt, look_at(cam, tgt, Vector((0, 0, 1))), 30.0)
+        frames[f] = (cam, tgt, look_at(cam, tgt, Vector((0, 0, 1))), 42.0)
         fstop[f] = 16.0
     # 3b under water with the smoking lure; a marlin rises out of the blue behind it
     for f in range(CUT2B, CUT3):
@@ -4444,7 +4444,7 @@ def build_scene():
     lures, lure_wakes = {}, []
     for name, (off, tip_key, i) in SPREAD.items():
         lu = make_lure(c_boat, M, i, f"Lure_{i}", flutter=flutter)
-        wk = wake_object(c_sea, M, f"LureWake_{i}", length=5.0, width=0.16, spread=0.09, nx=10, mat=M.lure_foam)
+        wk = wake_object(c_sea, M, f"LureWake_{i}", length=7.0, width=0.2, spread=0.1, nx=14, mat=M.lure_foam)
         for f_lo, f_hi in spread_spans:
             for f in range(f_lo, f_hi + 1):
                 p = lure_world(name, f)
