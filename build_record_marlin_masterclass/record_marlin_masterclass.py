@@ -1962,7 +1962,7 @@ def build_materials(atmos):
                      map_range(nt, along, 0.0, 55.0, 0.8, 0.0))
         foam = nmath(nt, "MULTIPLY", nmath(nt, "MAXIMUM", core, edge), map_range(nt, nmath(nt, "ADD", n1, nmath(nt, "MULTIPLY", n2, 0.4)), 0.45, 0.75))
         foam = nmath(nt, "MULTIPLY", foam, map_range(nt, along, 0.0, 1.5))
-        return psdf(nt, srgb(226, 234, 236), rough=0.5, alpha=nmath(nt, "MINIMUM", nmath(nt, "MULTIPLY", foam, 0.9), 1.0))
+        return psdf(nt, srgb(226, 234, 236), rough=0.5, alpha=nmath(nt, "MINIMUM", nmath(nt, "MULTIPLY", foam, 0.6), 0.55))
     M.wake = mat("WakeFoam", wake)
 
     def lure_foam(nt):
@@ -2243,11 +2243,18 @@ def build_materials(atmos):
     M.basalt = mat("Basalt", basalt)
 
     def cutface(nt):
-        """The cut face of the cross section, drawn flat: dark rock with a fine diagonal hatch (a diagram, not rock)."""
+        """The cut face of the cross section, drawn flat like a geology diagram: warm volcanic layers (darker basalt
+        flows between redder ash beds) with a fine diagonal hatch (a diagram, not rock)."""
         o = separate(nt, world_pos(nt))
+        n = noise(nt, world_pos(nt), 0.08, 3.0)
+        lay = nmath(nt, "ADD", nmath(nt, "MULTIPLY", o["Z"], 0.22), nmath(nt, "MULTIPLY", n, 2.2))
+        col = color_ramp(nt, nmath(nt, "FRACT", lay), [(0.0, srgb(58, 36, 30)), (0.35, srgb(84, 50, 38)),
+                                                       (0.55, srgb(46, 34, 34)), (0.8, srgb(70, 44, 36)), (1.0, srgb(58, 36, 30))])
+        deep = map_range(nt, o["Z"], -10.0, -70.0, 1.0, 0.45)
+        col = vmath(nt, "SCALE", col, scale=deep)
         hatch = nmath(nt, "POWER", nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY",
-                      nmath(nt, "ADD", o["X"], o["Z"]), 9.0))), 30.0)
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", hatch, 0.35), srgb(16, 18, 26), srgb(70, 90, 120))
+                      nmath(nt, "ADD", o["X"], o["Z"]), 6.0))), 40.0)
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", hatch, 0.25), col, srgb(150, 110, 90))
         em = nt.nodes.new("ShaderNodeEmission")
         nt.links.new(col, em.inputs["Color"])
         em.inputs["Strength"].default_value = 1.0
@@ -2266,8 +2273,8 @@ def build_materials(atmos):
     def depth_column(nt):
         """Backdrop of the cross section: sunlit blue near the surface fading to black at depth (by world height)."""
         z = separate(nt, world_pos(nt))["Z"]
-        col = color_ramp(nt, map_range(nt, z, -90.0, 0.0, 0.0, 1.0, smooth=False),
-                         [(0.0, srgb(0, 2, 8)), (0.45, srgb(2, 12, 40)), (0.8, srgb(8, 46, 110)), (1.0, srgb(40, 120, 200))])
+        col = color_ramp(nt, map_range(nt, z, -70.0, 0.0, 0.0, 1.0, smooth=False),
+                         [(0.0, srgb(1, 6, 22)), (0.45, srgb(4, 24, 70)), (0.8, srgb(12, 64, 140)), (1.0, srgb(50, 140, 214))])
         em = nt.nodes.new("ShaderNodeEmission")
         nt.links.new(col, em.inputs["Color"])
         em.inputs["Strength"].default_value = 1.0
@@ -3211,7 +3218,7 @@ def build_spread_tackle(col, M, root):
     for s, side in ((1, "port"), (-1, "starboard")):
         for x, kind, rake in ((0.9, "corner", (-0.85, s * 0.42, 0.62)), (3.1, "rigger", (-0.35, s * 0.25, 0.9))):
             y = s * 2.05
-            butt = Vector((x, y, 1.0))
+            butt = Vector((x, s * (hull_section(x / BOAT_LEN)[1][-1][0] - 0.15), 1.36))   # in the flush holders
             d = Vector(rake).normalized()
             tip = butt + d * 2.3
             bm_frustum(bm, tuple(butt), tuple(butt + d * 0.5), 0.022, 0.02, segs=10)
@@ -3352,8 +3359,8 @@ SPREAD = {                                             # lure positions astern o
     "short rigger": (Vector((-38.0, 9.6)), "rigger_port", 2),
     "long rigger": (Vector((-50.0, -10.2)), "rigger_starboard", 3),
 }
-OH_BACK = 22.0                       # the overhead shot looks down 22 m astern, between the corner lures
-OH_H = 12.0
+OH_BACK = 17.0                       # the overhead shot looks down 17 m astern: the transom, the corner lures
+OH_H = 19.0
 
 
 def wrap_t(t):
@@ -3496,11 +3503,12 @@ def ledge_z(x):
 
 
 def ledge_marlin(f):
+    """Cruising off the face of the drop, a few metres out from the rock, heading out over the deep."""
     t = t_of(f) - t_of(CUT1)
-    x = -14.0 + 1.9 * t
-    z = -16.5 + 0.6 * math.sin(t * 0.5)
+    x = 0.8 + 1.5 * t
+    z = -17.0 + 0.6 * math.sin(t * 0.5) - 0.25 * t
     y = 2.0 + 0.8 * math.sin(t * 0.35)
-    fwd = Vector((1.9, 0.8 * 0.35 * math.cos(t * 0.35), 0.6 * 0.5 * math.cos(t * 0.5))).normalized()
+    fwd = Vector((1.5, 0.8 * 0.35 * math.cos(t * 0.35), 0.6 * 0.5 * math.cos(t * 0.5) - 0.25)).normalized()
     return UW2 + Vector((x, y, z)), fwd
 
 
@@ -3547,7 +3555,7 @@ def gauss_smooth(fn, f, k=6):
 def overhead(f):
     bx = loop_boat_x(f)
     tgt = Vector((bx - OH_BACK, -0.2, 0.0))
-    cam = tgt + Vector((0.0, -0.4, OH_H))
+    cam = tgt + Vector((-5.0, -0.4, OH_H))                  # a little behind: the lures read against the wake
     return cam, tgt, look_at(cam, tgt, Vector((1, 0, 0)))
 
 
@@ -3610,8 +3618,8 @@ def camera_frames(st):
         fstop[f] = 5.6
     for f in range(CUT1W, CUT2):
         u = (f - CUT1W) / (CUT2 - CUT1W)
-        cam = UW2 + Vector((0.5 + 1.5 * u, -76.0 + 6.0 * ease(u), -41.0))
-        tgt = UW2 + Vector((0.5 + 1.5 * u, 0.0, -42.0))
+        cam = UW2 + Vector((3.0 + 2.0 * u, -44.0 + 4.0 * ease(u), -13.0))      # a little high: the slope's top reads
+        tgt = UW2 + Vector((3.0 + 2.0 * u, 0.0, -23.0))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 28.0)
         fstop[f] = 16.0
     # 3 the spread from the air: a high chase behind the spread looking forward and down at the boat, the four
@@ -3646,7 +3654,7 @@ def camera_frames(st):
         fstop[f] = 2.8
     def tw_cam(g):
         p, fwd, roll = tail_walk(g)
-        c = Vector((p.x + 17.0, p.y - 0.8, 0.0))
+        c = Vector((p.x + 12.5, p.y - 0.8, 0.0))
         c.z = sea_height(c.x, c.y, t_of(g)) * 0.4 + 1.5
         return c
     for f in range(CUT3B, CUT4):
@@ -3915,7 +3923,7 @@ def build_ledge(col, M):
     blue; a backdrop shading from sunlit blue to black with depth."""
     bm = bmesh.new()
     xs = [-48.0 + 0.5 * i for i in range(201)]
-    ys = [LEDGE_Y0 + 1.0 * j for j in range(45)]
+    ys = [LEDGE_Y0 + 1.0 * j for j in range(25)]
     grid = []
     for y in ys:
         row = []
@@ -3941,7 +3949,7 @@ def build_ledge(col, M):
     for v in bm.verts:
         v.co = Vector((v.co.x * 220.0, 0.0, v.co.y * 70.0))
     back = finish("LedgeBackdrop", bm, col, [M.column], recalc=False)
-    back.location = (0.0, 120.0, -60.0)
+    back.location = (0.0, 34.0, -60.0)
     for ob in (top, face, back):
         ob.parent = None
         ob.location = ob.location + UW2
@@ -4008,7 +4016,7 @@ def rig_strike(boat, rod, f_lo, f_hi):
         sc.frame_set(f)
         m = boat["root"].matrix_world
         rot = m.to_3x3().normalized()
-        butt = m @ Vector((1.9, -2.05, 1.0))                 # the middle holder (the corner rods stay set)
+        butt = m @ Vector((1.9, -(hull_section(1.9 / BOAT_LEN)[1][-1][0] - 0.15), 1.36))   # in the middle holder
         d = (rot @ Vector((-0.85, -0.42, 0.62))).normalized()
         load = (rot @ Vector((-1.0, -0.25, -0.12))).normalized()
         bend = 0.35 + 0.4 * smoothstep(CUT3, CUT3 + 12, f) + 0.03 * math.sin(f * 0.9)
@@ -4115,11 +4123,11 @@ def build_overlays(hud, st):
               src="ANGLER TECHNIQUE · DIAGRAM NOT TO SCALE")
     hud.serif("Upwellings push *bait and small tuna* up.", l1, CUT2 - 9, lines=["Upwellings push", "*bait and small tuna* up."],
               src="KONA LEDGES: FISHTRACK · DIET: BROCK 1984")
-    hud.pin(lambda f: UW2 + Vector((11.0, LEDGE_Y0, ledge_z(11.0) + 0.5)), "steep volcanic drop off", CUT1W + 10, l1 - 4,
+    hud.pin(lambda f: UW2 + Vector((5.0, LEDGE_Y0, ledge_z(5.0) - 3.0)), "steep volcanic drop off", CUT1W + 10, l1 - 4,
             dot_color=srgb(170, 170, 190), side=0.06, y_band=(-0.22, 0.32))
-    hud.pin(lambda f: UW2 + Vector((18.0, 0.0, ledge_z(18.0) + 4.0)), "upwelling", l1 + 4, CUT2 - 10,
+    hud.pin(lambda f: UW2 + Vector((10.0, 0.0, ledge_z(10.0) + 4.0)), "upwelling", l1 + 4, CUT2 - 10,
             dot_color=srgb(110, 230, 255), side=0.05, y_band=(-0.22, 0.32))
-    hud.pin(lambda f: UW2 + Vector((-3.0, 4.0, -12.0)), "bait and small tuna", l1 + 30, CUT2 - 10,
+    hud.pin(lambda f: UW2 + Vector((2.0, 5.0, -13.0)), "bait and small tuna", l1 + 30, CUT2 - 10,
             dot_color=GOLD, side=-0.06, rise=0.09, y_band=(-0.22, 0.32))
     # 3 the spread
     hud.badge(2, "THE TROLLING SPREAD", "four lures, staggered astern", CUT2 + 8, CUT3 - 8)
@@ -4369,7 +4377,7 @@ def subject_report(frames, st):
             HOOK_STRIKE: ("strike: marlin", lambda f: hook_marlin(f)[0]),
             (CUT1A + CUT1) // 2: ("marlin (side)", lambda f: hook_marlin(f)[0]),
             CUT1 + 3: ("ledge marlin", lambda f: ledge_marlin(f)[0]),
-            (CUT1 + CUT2) // 2: ("ledge face", lambda f: UW2 + Vector((11.0, LEDGE_Y0, ledge_z(11.0)))),
+            (CUT1 + CUT2) // 2: ("ledge face", lambda f: UW2 + Vector((5.0, LEDGE_Y0, ledge_z(5.0) - 3.0))),
             CUT2 + 30: ("short corner lure", lambda f: lure_world("short corner", f)),
             CUT2B - 10: ("long rigger lure", lambda f: lure_world("long rigger", f)),
             CUT2B + 20: ("smoking lure", smoke_lure),
@@ -4446,7 +4454,7 @@ def build_scene():
         lures[name] = lu
         lure_wakes.append(wk)
     spread_lines = build_spread_lines(c_boat, M, boat, tips, lures, spread_spans)
-    wake = wake_object(c_sea, M, "Wake", length=60.0, width=1.5, spread=0.09)
+    wake = wake_object(c_sea, M, "Wake", length=60.0, width=1.25, spread=0.07)
     for f_lo, f_hi in spread_spans + [(CUT3 - 2, CUT4 + 1)]:
         for f in range(f_lo, f_hi + 1):
             wake.location = (boat_x_at(f), 0.0, 0.0)
@@ -4502,7 +4510,7 @@ def build_scene():
     bf = bpy.data.objects.new("SchoolBait", baitfish_mesh(M, L=0.18))
     c_uw2.objects.link(bf)
     bf.hide_render = bf.hide_viewport = True
-    school_t = build_school(c_uw2, sk, UW2 + Vector((-3.0, 4.0, -12.5)), 70, 1.2, 4.5, 1.5, 14, "SkipjackSchool")
+    school_t = build_school(c_uw2, sk, UW2 + Vector((2.0, 5.0, -14.0)), 70, 1.2, 4.0, 1.5, 14, "SkipjackSchool")
     school_b = build_school(c_uw2, bf, UW2 + Vector((-7.0, 5.0, -7.0)), 360, 1.0, 4.0, 1.4, 15, "BaitBall")
     lmar = make_marlin(c_uw2, M, "LedgeMarlin")
     animate_marlin(lmar, [(CUT1 - 2, CUT2 + 2, ledge_marlin, 1.2, 0.06)])
