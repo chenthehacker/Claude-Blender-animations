@@ -1,0 +1,222 @@
+{
+ "fps": 24,
+ "frames": 1320,
+ "loop": true,
+ "cuts": [
+  7,
+  306,
+  569,
+  849,
+  1228
+ ],
+ "hard_cuts": [
+  144,
+  683,
+  1008
+ ],
+ "whips": [
+  [
+   1,
+   7
+  ],
+  [
+   1224,
+   1234
+  ]
+ ],
+ "overlays": [
+  [
+   9,
+   "caption",
+   "In 1982, Jay de Beaubien landed a *1,376 pound* blue marlin."
+  ],
+  [
+   11,
+   "pin",
+   "trolled resin lure"
+  ],
+  [
+   69,
+   "pin",
+   "pacific blue marlin"
+  ],
+  [
+   144,
+   "caption",
+   "The world record, *landed in under an hour.*"
+  ],
+  [
+   308,
+   "badge",
+   "THE DROP OFF LEDGE"
+  ],
+  [
+   308,
+   "caption",
+   "Grander marlin *hunt the ledges.*"
+  ],
+  [
+   332,
+   "pin",
+   "steep volcanic drop off"
+  ],
+  [
+   381,
+   "caption",
+   "Upwellings push *bait and small tuna* up."
+  ],
+  [
+   383,
+   "pin",
+   "upwelling"
+  ],
+  [
+   409,
+   "pin",
+   "bait and small tuna"
+  ],
+  [
+   571,
+   "badge",
+   "THE TROLLING SPREAD"
+  ],
+  [
+   571,
+   "caption",
+   "A staggered *four lure spread.*"
+  ],
+  [
+   571,
+   "pin",
+   "short corner"
+  ],
+  [
+   597,
+   "pin",
+   "long corner"
+  ],
+  [
+   624,
+   "pin",
+   "short rigger"
+  ],
+  [
+   640,
+   "caption",
+   "Troll at *7 to 9 knots.*"
+  ],
+  [
+   651,
+   "pin",
+   "long rigger"
+  ],
+  [
+   683,
+   "caption",
+   "Resin heads trail *smoke.*"
+  ],
+  [
+   685,
+   "pin",
+   "smoke trail"
+  ],
+  [
+   849,
+   "badge",
+   "THE DRAG"
+  ],
+  [
+   849,
+   "caption",
+   "When a giant eats, *lock it down.*"
+  ],
+  [
+   851,
+   "pin",
+   "line pouring off"
+  ],
+  [
+   912,
+   "caption",
+   "*40 lb of drag* on 130 lb tackle."
+  ],
+  [
+   914,
+   "pin",
+   "strike"
+  ],
+  [
+   1008,
+   "caption",
+   "Set the hooks in its *hard jaw.*"
+  ],
+  [
+   1020,
+   "pin",
+   "tail walk"
+  ],
+  [
+   1061,
+   "caption",
+   "About *30 percent* of line strength."
+  ],
+  [
+   1232,
+   "caption",
+   "Master the spread, *fish the ledges...*"
+  ]
+ ],
+ "under": [
+  [
+   7,
+   569
+  ],
+  [
+   683,
+   849
+  ]
+ ],
+ "hook_strike": 45,
+ "reel_start": 849,
+ "lock": 916,
+ "tail_walk": [
+  1008,
+  1228
+ ],
+ "spread": [
+  569,
+  683
+ ],
+ "ledge": [
+  306,
+  569
+ ],
+ "vo_start": {
+  "1": 1,
+  "2": 311,
+  "3": 574,
+  "4": 854,
+  "5": 1234
+ },
+ "vo_len": {
+  "1": 12.51,
+  "2": 10.53,
+  "3": 11.23,
+  "4": 14.29,
+  "5": 3.63
+ },
+ "vo_text": {
+  "1": "In 1982, Jay de Beaubien hooked a 1,376 pound Pacific blue marlin off Kona. It became the all tackle world record for the species, landed in under an hour.",
+  "2": "Grander marlin don't roam open water aimlessly. They hunt steep underwater volcanic drop offs, where deep current upwellings push bait and small tuna right into their path.",
+  "3": "To trigger a strike, run a staggered four lure spread at seven to nine knots. Large skirted resin lures on the short corners create heavy smoke trails that bring giants up from the depths.",
+  "4": "When a 1,000 pound fish eats, lock down 130 pound heavy tackle with 40 pounds of drag pressure to set massive double hooks into its hard jaw. That's about thirty percent of the line's breaking strength, the classic strike drag.",
+  "5": "Master the spread, fish the ledges, and you'll see why..."
+ },
+ "beats": [
+  1,
+  306,
+  569,
+  849,
+  1228
+ ]
+}
