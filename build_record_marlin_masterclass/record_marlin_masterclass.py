@@ -3359,8 +3359,9 @@ SPREAD = {                                             # lure positions astern o
     "short rigger": (Vector((-38.0, 9.6)), "rigger_port", 2),
     "long rigger": (Vector((-50.0, -10.2)), "rigger_starboard", 3),
 }
-OH_BACK = 22.0                       # the overhead shot looks straight down between the two corner lures
-OH_H = 10.5
+OH_BACK = 17.0                       # the overhead shot looks straight down on the short corner lure
+OH_H = 5.2
+OH_Y = 3.0
 
 
 def wrap_t(t):
@@ -3388,15 +3389,25 @@ def boat_x_at(f):
     return loop_boat_x(f)
 
 
+def loop_hz(hz):
+    """The nearest frequency that repeats a whole number of times over the film (so the loop holds)."""
+    return max(1, round(hz * LOOP_S)) / LOOP_S
+
+
+POP_HZ = loop_hz(0.7)
+LURE_PH = {"short corner": math.pi / 2, "long corner": 2.1, "short rigger": 3.9, "long rigger": 5.3}   # short corner
+# pops on frame 1: the loop shot opens on a splash
+
+
 def lure_world(name, f, bx=None):
     """A spread lure: popping on the surface astern, a little sideways wander."""
     off, _tip, _i = SPREAD[name]
     bx = boat_x_at(f) if bx is None else bx
     t = t_of(f)
-    ph = hash(name) % 7
-    x = bx + off.x + 0.25 * math.sin(t * 0.9 + ph)
-    y = off.y + 0.3 * math.sin(t * 0.55 + ph)
-    z = surface_z(x, y, t) - 0.06 + 0.07 * math.sin(t * 2 * math.pi * 0.7 + ph)      # pop, smoke, pop
+    ph = LURE_PH[name]
+    x = bx + off.x + 0.25 * math.sin(t * 2 * math.pi * loop_hz(0.14) + ph)
+    y = off.y + 0.3 * math.sin(t * 2 * math.pi * loop_hz(0.09) + ph)
+    z = surface_z(x, y, t) - 0.06 + 0.07 * math.sin(t * 2 * math.pi * POP_HZ + ph)      # pop, smoke, pop
     return Vector((x, y, z))
 
 
@@ -3554,8 +3565,8 @@ def gauss_smooth(fn, f, k=6):
 
 def overhead(f):
     bx = loop_boat_x(f)
-    tgt = Vector((bx - OH_BACK, -0.3, 0.0))
-    cam = tgt + Vector((-0.6, -0.1, OH_H))
+    tgt = Vector((bx - OH_BACK - 0.6, OH_Y, 0.0))            # the lure sits a little above centre
+    cam = tgt + Vector((-0.3, -0.15, OH_H))
     return cam, tgt, look_at(cam, tgt, Vector((1, 0, 0)))
 
 
@@ -3566,7 +3577,7 @@ def camera_frames(st):
     for f in range(1, WHIP_IN):
         cam, tgt, q = overhead(f)
         ang = 0.0 if f <= 3 else (13.0 * (f - 3) ** 1.6)
-        frames[f] = (cam, tgt, whip(q, ang, q @ Vector((1, 0, 0))), 24.0)
+        frames[f] = (cam, tgt, whip(q, ang, q @ Vector((1, 0, 0))), 26.0)
         fstop[f] = 11.0
     # 1 hook: alongside the lure as the marlin comes up behind it, then with the marlin as it turns away
     def hook_cam_pos(g):
@@ -3671,7 +3682,7 @@ def camera_frames(st):
         if f < CUT4 + 7:
             k = 1.0 - ease_out((f - CUT4) / 7.0, 3.0)
             q = whip(q, 40.0 * k, Z)
-        frames[f] = (cam, tgt, q, 24.0)
+        frames[f] = (cam, tgt, q, 26.0)
         fstop[f] = 11.0
     return frames, fstop
 
@@ -3799,11 +3810,11 @@ def mask_sea_in_cockpit(mat, boat_root):
 
 def key_sea_center(sea):
     """Centre the sea grid (finest near its middle) where each above water shot works; held constant per shot."""
-    centres = [(1, Vector((loop_boat_x(1) - OH_BACK, 0.0, 0.0))),
+    centres = [(1, Vector((loop_boat_x(1) - OH_BACK, OH_Y, 0.0))),
                (CUT2, Vector((spread_boat_x((CUT2 + CUT2B) // 2) - 22.0, 0.0, 0.0))),
                (CUT3, Vector((strike_boat_x(CUT3), -1.0, 0.0))),
                (CUT3B, tail_walk(CUT3B)[0] + Vector((8.0, 0.0, 0.0))),
-               (CUT4, Vector((loop_boat_x(FRAME_END) - OH_BACK, 0.0, 0.0)))]
+               (CUT4, Vector((loop_boat_x(FRAME_END) - OH_BACK, OH_Y, 0.0)))]
     for f, c in centres:
         sea.location = (c.x, c.y, 0.0)
         sea.keyframe_insert("location", frame=f - 0.5 if f > 1 else 1)
@@ -3901,11 +3912,11 @@ def lure_pops(spans, seed=17):
     rng = random.Random(seed)
     sp = Particles()
     for name in SPREAD:
-        ph = hash(name) % 7
+        ph = LURE_PH[name]
         for f_lo, f_hi in spans:
             for f in range(f_lo - 30, f_hi + 1):
                 t = t_of(f)
-                pop = math.sin(t * 2 * math.pi * 0.7 + ph)
+                pop = math.sin(t * 2 * math.pi * POP_HZ + ph)
                 n = int(max(0.0, pop - 0.55) * 160)
                 p = lure_world(name, f)
                 for _ in range(n):
