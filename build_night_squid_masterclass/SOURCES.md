@@ -67,3 +67,6 @@ paraphrase those excerpts. Three lines of the original script were changed becau
 The whole film is computer generated: the squid, its colour changes, the pier, the lamp and the light cone, the
 water, the baitfish, the plankton sparks (stylised; the film does not claim these squid have light organs), the jig,
 its glow trail and the strike. It is not footage of a real catch.
+
+The thumbnail adds a school of glowing baitfish and drifting plankton specks (thumbnail_scene.py): a stylised
+illustration, not bioluminescence and not a shot in the film.

@@ -61,6 +61,9 @@ Audio: `/root/bpyenv/bin/python offshore_audio.py events.json out.wav`, then FLA
    not research)"; safety or release practice; tagline; `Sources:` with full citations; a note that the film
    is simulated; asset credits (CC BY needs attribution). Under 5000 characters, no angle brackets
    (YouTube rejects them), no dashes or hyphens anywhere (user rule), every fact traceable to SOURCES.md.
+   Every video gets this keyword led description (user rule): the opening sentence packs the main search terms,
+   section headings reuse them naturally, a comment prompt, 3 to 5 hashtags at the end; also suggest a title
+   (under 100 characters, main keyword first) in the reply.
 
 ## Blender 5.2 and EEVEE pitfalls (learned the hard way)
 
