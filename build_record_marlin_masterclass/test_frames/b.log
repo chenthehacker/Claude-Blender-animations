@@ -2,3 +2,39 @@
 EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
 EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
 EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2604 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2355 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2627 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2609 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2622 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2618 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2610 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2614 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2613 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2615 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2620 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2616 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2612 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2619 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2624 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2608 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2617 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2619 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2611 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2622 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2614 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2622 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2609 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2613 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2624 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2610 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2605 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2616 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2618 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2612 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2615 / 2048)
+Error: Shadow buffer full, may result in missing shadows and lower performance. (2614 / 2048)
+02:39.137  render           | Saved: '/home/user/Claude-Blender-animations/build_record_marlin_masterclass/test_frames/frame_0264.png'
+rendered 264 in 158.4s
+04:55.786  render           | Saved: '/home/user/Claude-Blender-animations/build_record_marlin_masterclass/test_frames/frame_0912.png'
+rendered 912 in 136.7s
