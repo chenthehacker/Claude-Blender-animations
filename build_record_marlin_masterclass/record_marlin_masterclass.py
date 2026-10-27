@@ -3627,9 +3627,9 @@ def camera_frames(st):
     for f in range(CUT2, CUT2B):
         u = (f - CUT2) / (CUT2B - CUT2)
         bx = spread_boat_x(f)
-        tgt = Vector((bx - 30.0 + 3.0 * u, 0.0, 0.0))
+        tgt = Vector((bx - 33.5 + 3.0 * u, 0.0, 0.0))
         cam = Vector((bx - 91.0 + 4.0 * u, -14.0 + 4.0 * u, 50.0 - 3.0 * u))
-        frames[f] = (cam, tgt, look_at(cam, tgt, Vector((0, 0, 1))), 42.0)
+        frames[f] = (cam, tgt, look_at(cam, tgt, Vector((0, 0, 1))), 36.0)
         fstop[f] = 16.0
     # 3b under water with the smoking lure; a marlin rises out of the blue behind it
     for f in range(CUT2B, CUT3):
@@ -3892,6 +3892,26 @@ def strike_burst(center_fn, f0, n, seed, mat_spray=None):
         d = Vector((rng.gauss(0, 1), rng.gauss(0, 1), rng.gauss(0, 1))).normalized()
         sp.emit(t_of(f), c + d * rng.uniform(0.0, 0.35), d * rng.uniform(0.3, 1.8) + Vector((0, 0, rng.uniform(0.2, 0.8))),
                 rng.uniform(0.8, 2.2), rng.uniform(0.006, 0.03), gravity=-0.6)
+    return sp
+
+
+def lure_pops(spans, seed=17):
+    """The spread lures popping: each time a lure's head digs in (about 0.7 Hz), a burst of white water kicks up
+    and back, so the lures read as splashing even from the air."""
+    rng = random.Random(seed)
+    sp = Particles()
+    for name in SPREAD:
+        ph = hash(name) % 7
+        for f_lo, f_hi in spans:
+            for f in range(f_lo - 30, f_hi + 1):
+                t = t_of(f)
+                pop = math.sin(t * 2 * math.pi * 0.7 + ph)
+                n = int(max(0.0, pop - 0.55) * 160)
+                p = lure_world(name, f)
+                for _ in range(n):
+                    v = Vector((rng.uniform(-3.5, -0.8), rng.gauss(0, 0.7), rng.uniform(0.6, 2.4)))
+                    sp.emit(t + rng.random() / FPS, p + Vector((rng.uniform(-0.15, 0.1), rng.gauss(0, 0.06), 0.02)), v,
+                            rng.uniform(0.4, 0.9), rng.uniform(0.01, 0.03), 9.81)
     return sp
 
 
@@ -4454,6 +4474,7 @@ def build_scene():
         lures[name] = lu
         lure_wakes.append(wk)
     spread_lines = build_spread_lines(c_boat, M, boat, tips, lures, spread_spans)
+    pops = lure_pops(spread_spans).build("LurePops", c_boat, M.spray, streak=True)
     wake = wake_object(c_sea, M, "Wake", length=60.0, width=1.25, spread=0.07)
     for f_lo, f_hi in spread_spans + [(CUT3 - 2, CUT4 + 1)]:
         for f in range(f_lo, f_hi + 1):
@@ -4547,7 +4568,7 @@ def build_scene():
     show([sea], above)
     show([o for o in c_boat.all_objects if o.type in ("MESH", "CURVE") and o.name != "RollerGuide"],
          [(1, WHIP_IN - 1), (CUT2, CUT2B - 1), (CUT3, CUT4 - 1), (CUT4, FRAME_END)])
-    show([o for lu in lures.values() for o in (lu["head"], lu["skirt"], lu["hooks"])] + lure_wakes + spread_lines,
+    show([o for lu in lures.values() for o in (lu["head"], lu["skirt"], lu["hooks"])] + lure_wakes + spread_lines + [pops],
          [(1, WHIP_IN - 1), (CUT2, CUT2B - 1), (CUT4, FRAME_END)])
     show([rod["ob"]] + [o for o in rod["mount"].children_recursive if o.type == "MESH"] + [strike_line], [(CUT3, CUT4 - 1)])
     show([wake], [(1, WHIP_IN - 1), (CUT2, CUT2B - 1), (CUT3, FRAME_END)])
