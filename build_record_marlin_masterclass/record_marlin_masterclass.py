@@ -880,7 +880,7 @@ class Hud:
             print(f"WARNING pin '{label}' only on screen for {len(best)} frames in {f_lo}-{f_hi}")
         if len(best) < 16:                     # too short to fade in and out cleanly: leave it out rather than ghost
             return None
-        f_in, f_out = best[0] + (6 if best[0] > f_lo else 0), best[-1] - (6 if best[-1] < f_hi else 0)
+        f_in, f_out = best[0] + 6, best[-1] - 6     # the 6 frame fades stay inside the range (never across a cut)
         self.events.append((f_in - 6, "pin", label))
         g = self.group()
         lab = self.group()
