@@ -81,7 +81,7 @@ brief asked for, at full resolution, 32 samples, motion blur and depth of field 
     75.45 s x 1320 frames = 99,594 s = about 27.7 hours with two processes
     one process alone (two give about 1.7 times the throughput here): 27.7 h x 1.7 = about 47.1 hours
 
-The five frames are a small sample, and the tail walk (thousands of spray particles) was not among them, so the real
+The five frames are a small sample, and the jumps (thousands of spray particles) were not among them, so the real
 total could be higher. Either way it is far over the 10 hour limit, so the full quality render runs on your GPU
 instead. How long it takes there depends on your card and driver; it cannot be predicted from these numbers. Read
 the time per frame in the render window after the first few frames and multiply by 1320.

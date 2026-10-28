@@ -3,7 +3,7 @@
 Every on-screen fact and every claim in the voiceover and caption, with where it comes from. Lines marked "angler
 technique" are common angling advice, not research. The marlin (modelled about 4.9 m with the bill, illustrative and
 not the record fish to scale), the boat (about 43 ft), the drop off and its depths (the cross section is not to
-scale), the upwelling streaks (drawn), the spread layout, the strike and the tail walk are simulated and illustrative.
+scale), the upwelling streaks (drawn), the spread layout, the strike and the jumps are simulated and illustrative.
 
 Note on access: the pages below were read through web search results (excerpts) on 27 October 2026; the notes
 paraphrase those excerpts. Two lines of the brief's script were changed because the sources did not support them:
@@ -68,7 +68,7 @@ Australian study).
   https://www.pakula.com.au/index.php/btl/0001-between-the-lines-7/setting-the-drag
 - "set massive double hooks into its hard jaw": script wording (angler technique); double hook rigs are common on
   big game lures, not measured here.
-- Pins "line pouring off", "strike", "tail walk": labels of the simulated reel (a generic gold lever drag reel with
+- Pins "line pouring off", "strike", "leaping on the line": labels of the simulated reel (a generic gold lever drag reel with
   a strike stop on its quadrant) and of the simulated jump.
 
 ## Outro
@@ -76,7 +76,7 @@ Australian study).
 
 ## What is simulated
 The whole film is computer generated: the marlin, its lit up bars, the lures and their bubble trails, the boat, the
-reel, the sea, the drop off diagram, the upwelling streaks, the strike and the tail walk. It is not footage of
+reel, the sea, the drop off diagram, the upwelling streaks, the strike and the jumps. It is not footage of
 de Beaubien's fish or of any real catch.
 
 ## Caption extras
