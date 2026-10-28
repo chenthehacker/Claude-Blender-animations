@@ -113,7 +113,7 @@ VO_TEXT = {
        "classic strike drag.",
     5: "Master the spread, fish the ledges, and you'll see why...",
 }
-VO_GAPS = (10, 10, 10)               # frames of breath after clips 1, 2 and 3; the rest is the tail walk
+VO_GAPS = (18, 18, 18)               # frames of breath after clips 1, 2 and 3 (the slack spread evenly)
 
 
 def _load_vo_timing():
@@ -154,13 +154,13 @@ P = phrase_frame
 WHIP_IN = 7                          # frames 1..6: the spread from above (the loop's join), whip pan down, cut under
 CUT1A = P(1, 1) - 4                              # hard cut inside the hook: a second angle, from below against the sun
 CUT1 = (vo_end(1) + VO_START[2]) // 2            # match cut: the marlin's flank -> the marlin on the ledge diagram
-CUT1W = CUT1 + 22                                # hard cut: the marlin close -> the whole drop off diagram
+ZOOM_F = (CUT1 + 16, CUT1 + 88)                  # the zoom out: the marlin close -> the whole drop off diagram
 CUT2 = (vo_end(2) + VO_START[3]) // 2            # jump cut to the aerial spread breakdown
 CUT2B = P(3, 1) - 4                              # hard cut inside the spread beat: aerial -> a smoking lure, under water
 CUT3 = (vo_end(3) + VO_START[4]) // 2            # rapid cut to the reel close up
 CUT3B = VO_START[4] + int(round(6.4 * FPS))      # hard cut: the reel -> the marlin tail walking
 CUT4 = VO_START[5] - 6                           # whip pan back to the spread from above (the loop's join)
-CUTS = [WHIP_IN, CUT1A, CUT1, CUT1W, CUT2, CUT2B, CUT3, CUT3B, CUT4]
+CUTS = [WHIP_IN, CUT1A, CUT1, CUT2, CUT2B, CUT3, CUT3B, CUT4]
 SEGMENTS = [(1, CUT1 - 1), (CUT1, CUT2 - 1), (CUT2, CUT3 - 1), (CUT3, CUT4 - 1), (CUT4, FRAME_END)]
 LOOP_HOLD = 26                       # the last frames hold the overhead shot that frame 1 opens on
 
@@ -2597,22 +2597,24 @@ def make_marlin(col, M, name="Marlin"):
     paired = []
     for s in (1, -1):                                    # long sickle pectorals, held out a little from the side
         pb = bmesh.new()
-        soft_fin(pb, [(0.04, 0.03), (-0.1, 0.06), (-0.4, 0.055), (-0.7, 0.01), (-0.76, -0.02), (-0.5, -0.04),
-                      (-0.18, -0.06), (0.04, -0.045)], 0.014, 0, samples=6)
+        # the root runs on forward and into the body (hidden inside it), so the fin grows out of the flank
+        # without a visible cut edge
+        soft_fin(pb, [(0.16, 0.02), (0.02, 0.045), (-0.1, 0.06), (-0.4, 0.055), (-0.7, 0.01), (-0.76, -0.02),
+                      (-0.5, -0.04), (-0.18, -0.06), (0.02, -0.05), (0.16, -0.03)], 0.03, 0, samples=6)
         pm = fish_mesh(f"{name}Pectoral{'L' if s > 0 else 'R'}", pb, [M.fin_dark])
         po = bpy.data.objects.new(pm.name, pm)
         col.objects.link(po)
         po.parent = body
-        po.location = marlin_surface(xu(0.18), -0.35, s) - Vector((0.0, s * 0.012, 0.0))
+        po.location = marlin_surface(xu(0.18), -0.35, s) - Vector((0.0, s * 0.045, 0.0))
         po.rotation_euler = (s * math.radians(30), math.radians(14), s * math.radians(-30))
         paired.append(po)
         vb = bmesh.new()                                 # thin pelvic fins
-        soft_fin(vb, [(0.01, 0.0), (-0.1, -0.012), (-0.42, -0.03), (-0.3, -0.008), (0.0, 0.01)], 0.006, 0, samples=5)
+        soft_fin(vb, [(0.1, 0.01), (-0.1, -0.012), (-0.42, -0.03), (-0.3, -0.008), (0.0, 0.012), (0.1, 0.02)], 0.01, 0, samples=5)
         vm = fish_mesh(f"{name}Pelvic{'L' if s > 0 else 'R'}", vb, [M.fin_dark])
         vo = bpy.data.objects.new(vm.name, vm)
         col.objects.link(vo)
         vo.parent = body
-        vo.location = marlin_surface(xu(0.21), -0.95, s) - Vector((0.0, s * 0.01, -0.005))
+        vo.location = marlin_surface(xu(0.21), -0.95, s) - Vector((0.0, s * 0.02, -0.02))
         vo.rotation_euler = (s * math.radians(-30), math.radians(-8), s * math.radians(-5))
         paired.append(vo)
     root = empty_object(name + "Rig", col, size=0.5)
@@ -3523,27 +3525,93 @@ def ledge_marlin(f):
     return UW2 + Vector((x, y, z)), fwd
 
 
-# --- the tail walk -------------------------------------------------------------------------------------------
+# --- the jumps on the line -----------------------------------------------------------------------------------
+JUMP_V = 4.5                         # m/s across the surface
+JUMP_Z0 = -1.8                       # depth of the body's centre between jumps
+# (kind, apex above the surface or duration in s, heading in degrees: +90 runs screen right, away from the boat)
+JUMP_PLAN = [("jump", 2.4, 96.0), ("swim", 0.55, None), ("jump", 1.6, 72.0), ("swim", 0.55, None),
+             ("jump", 2.9, -84.0), ("swim", 0.35, None), ("jump", 1.3, -104.0), ("swim", 1.6, None)]
+JUMP_T0 = -0.3                       # the first jump starts just before the cut: it is bursting out on the cut
+
+
+def _jump_dir(deg):
+    a = math.radians(deg)
+    return Vector((math.cos(a), math.sin(a), 0.0))
+
+
+def build_jump_path():
+    """The hooked marlin leaping clear of the water and crashing back in, again and again, changing direction
+    under water between jumps: ballistic arcs (g = 9.81) joined by short runs below the surface."""
+    g = 9.81
+    segs, t, p = [], JUMP_T0, Vector((strike_boat_x(CUT3B) - 44.0, -16.0, JUMP_Z0))
+    heads = [deg for kind, _v, deg in JUMP_PLAN if kind == "jump"]
+    ji = 0
+    for kind, val, deg in JUMP_PLAN:
+        if kind == "jump":
+            vz0 = math.sqrt(2 * g * (val - JUMP_Z0))
+            dur = 2 * vz0 / g
+            segs.append(("jump", t, dur, p.copy(), _jump_dir(deg), vz0))
+            p = p + _jump_dir(deg) * JUMP_V * dur
+            ji += 1
+        else:
+            d0 = _jump_dir(heads[ji - 1])
+            d1 = _jump_dir(heads[ji]) if ji < len(heads) else d0
+            segs.append(("swim", t, val, p.copy(), (d0, d1), None))
+            n = 24
+            for k in range(n):
+                p = p + d0.lerp(d1, (k + 0.5) / n).normalized() * JUMP_V * val / n
+        t += segs[-1][2]
+    return segs
+
+
+JUMP_SEGS = build_jump_path()
+JUMP_PITCH = math.atan2(math.sqrt(2 * 9.81 * (2.4 - JUMP_Z0)), JUMP_V)     # about 63 degrees out of and into the water
+
+
 def tail_walk(f):
-    """Root position, heading (nose direction), roll for the marlin walking on its tail across the surface."""
+    """Root position, heading (nose direction) and roll of the leaping marlin."""
+    g = 9.81
     t = t_of(f) - t_of(CUT3B)
-    bx0 = strike_boat_x(CUT3B)
-    x = bx0 - 44.0 + 0.4 * math.sin(t * 1.3)
-    y = -16.0 + 3.0 * t
-    rise = ease_out(min(1.0, (t + 0.18) / 0.45), 2.0)            # already bursting out on the cut
-    zc = -1.8 + 3.75 * rise + 0.22 * math.sin(2 * math.pi * 3.2 * t)
-    zc -= 0.15 * smoothstep(0.0, 2.0, t)
-    tilt = math.radians(68 + 6 * math.sin(2 * math.pi * 1.6 * t))
-    yaw = math.radians(90 + 18 * math.sin(2 * math.pi * 1.5 * t))
-    fwd = Vector((math.cos(tilt) * math.cos(yaw), math.cos(tilt) * math.sin(yaw), math.sin(tilt)))
-    roll = math.radians(28) * math.sin(2 * math.pi * 2.9 * t)
-    return Vector((x, y, zc)), fwd, roll
+    seg = JUMP_SEGS[-1]
+    for s in JUMP_SEGS:
+        if s[1] <= t < s[1] + s[2]:
+            seg = s
+            break
+    if t < JUMP_SEGS[0][1]:
+        seg = JUMP_SEGS[0]
+    kind, t0, dur, p0, dirs, vz0 = seg
+    tau = t - t0
+    if kind == "jump":
+        p = p0 + dirs * JUMP_V * tau + Vector((0.0, 0.0, vz0 * tau - 0.5 * g * tau * tau))
+        fwd = (dirs * JUMP_V + Vector((0.0, 0.0, vz0 - g * tau))).normalized()
+        air = math.sin(math.pi * min(1.0, max(0.0, tau / dur)))
+        roll = math.radians(34) * math.sin(2 * math.pi * 2.6 * tau + t0) * air       # head shakes in the air
+        return p, fwd, roll
+    d0, d1 = dirs
+    u = min(1.0, max(0.0, tau / dur))
+    p = p0.copy()
+    n = 24
+    for k in range(int(u * n)):
+        p = p + d0.lerp(d1, (k + 0.5) / n).normalized() * JUMP_V * dur / n
+    h = d0.lerp(d1, ease(u)).normalized()
+    pitch = -JUMP_PITCH + 2 * JUMP_PITCH * ease(u)                  # nose down after the splash, up for the next
+    p.z = JUMP_Z0 - 0.5 * math.sin(math.pi * u)
+    fwd = Vector((h.x * math.cos(pitch), h.y * math.cos(pitch), math.sin(pitch)))
+    return p, fwd, 0.0
 
 
-def tail_contact(f):
-    p, fwd, roll = tail_walk(f)
-    tail = p - fwd * (MARLIN_L / 2 + 0.25)
-    return Vector((tail.x, tail.y, surface_z(tail.x, tail.y, t_of(f))))
+def jump_splashes():
+    """Times (s from the cut) and places where the body's centre breaks the surface, out or in."""
+    g = 9.81
+    out = []
+    for kind, t0, dur, p0, dirs, vz0 in JUMP_SEGS:
+        if kind != "jump":
+            continue
+        disc = vz0 * vz0 + 2 * g * JUMP_Z0
+        for tau in ((vz0 - math.sqrt(disc)) / g, (vz0 + math.sqrt(disc)) / g):
+            p = p0 + dirs * JUMP_V * tau
+            out.append((t0 + tau, Vector((p.x, p.y, 0.0)), tau < dur / 2))
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -3621,18 +3689,19 @@ def camera_frames(st):
         fstop[f] = 5.6
     # 2 the drop off: match cut on the marlin running screen right, then a hard cut to the whole diagram, which
     # drifts in slowly
-    for f in range(CUT1, CUT1W):
+    z0, z1 = ZOOM_F
+    for f in range(CUT1, CUT2):
         mp, fwd = ledge_marlin(f)
-        cam = mp + Vector((0.4 + 0.02 * (f - CUT1), -6.8, -0.9))
-        tgt = mp + Vector((0.4, 0.0, 0.25))
+        near_cam = mp + Vector((0.4 + 0.02 * (f - CUT1), -6.8, -0.9))
+        near_tgt = mp + Vector((0.4, 0.0, 0.25))
+        u = (f - z1) / max(1, CUT2 - z1)
+        wide_cam = UW2 + Vector((3.0 + 2.0 * max(0.0, u), -44.0 + 4.0 * ease(max(0.0, u)), -13.0))   # a little high
+        wide_tgt = UW2 + Vector((3.0 + 2.0 * max(0.0, u), 0.0, -23.0))
+        k = ease(smoothstep(z0, z1, f))                            # the zoom out: dolly back and rise, one smooth move
+        cam = near_cam.lerp(wide_cam, k)
+        tgt = near_tgt.lerp(wide_tgt, ease(smoothstep(z0, z1 - 10, f)))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 28.0)
-        fstop[f] = 5.6
-    for f in range(CUT1W, CUT2):
-        u = (f - CUT1W) / (CUT2 - CUT1W)
-        cam = UW2 + Vector((3.0 + 2.0 * u, -44.0 + 4.0 * ease(u), -13.0))      # a little high: the slope's top reads
-        tgt = UW2 + Vector((3.0 + 2.0 * u, 0.0, -23.0))
-        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 28.0)
-        fstop[f] = 16.0
+        fstop[f] = 5.6 + 10.4 * k
     # 3 the spread from the air: a high chase behind the spread looking forward and down at the boat, the four
     # lures fanned and staggered astern of it
     for f in range(CUT2, CUT2B):
@@ -3665,16 +3734,20 @@ def camera_frames(st):
         fstop[f] = 2.8
     def tw_cam(g):
         p, fwd, roll = tail_walk(g)
-        c = Vector((p.x + 12.5, p.y - 0.8, 0.0))
-        c.z = sea_height(c.x, c.y, t_of(g)) * 0.4 + 1.5
+        c = Vector((p.x + 15.0, p.y - 0.8, 0.0))
+        c.z = sea_height(c.x, c.y, t_of(g)) * 0.4 + 1.6
         return c
+
+    def tw_tgt(g):
+        p, fwd, roll = tail_walk(g)
+        return Vector((p.x, p.y, 0.9 + 0.25 * max(0.0, p.z)))       # held near the surface: the jumps rise through frame
     for f in range(CUT3B, CUT4):
-        cam = gauss_smooth(tw_cam, f, 8)
-        tgt = gauss_smooth(lambda g: tail_walk(g)[0] + Vector((0.0, 0.0, 0.4)), f, 6)
+        cam = gauss_smooth(tw_cam, f, 14)
+        tgt = gauss_smooth(tw_tgt, f, 10)
         q = look_at(cam, tgt, Z)
         if f >= CUT4 - 3:                                       # whip out
             q = whip(q, -(16.0 * (f - (CUT4 - 4)) ** 1.6), Z)
-        frames[f] = (cam, tgt, q, 40.0)
+        frames[f] = (cam, tgt, q, 34.0)
         fstop[f] = 5.6
     # 5 outro: whip in to the spread from above and hold it (the hold is frame 1's shot: the loop)
     for f in range(CUT4, FRAME_END + 1):
@@ -3927,25 +4000,38 @@ def lure_pops(spans, seed=17):
 
 
 def tail_spray(f_lo, f_hi):
-    """Spray thrown from the thrashing tail and flung off the head shakes during the tail walk."""
+    """White water at every exit and re-entry (a burst where the body breaks the surface, a crown of spray thrown
+    up and out), water streaming off the body in the air, and spray wherever the body cuts the surface."""
     rng = random.Random(21)
     sp = Particles()
-    for f in range(f_lo, f_hi + 1):
-        t = t_of(f)
-        c = tail_contact(f)
-        p, fwd, roll = tail_walk(f)
-        n = 70 if f > f_lo + 3 else 400
+    t_cut = t_of(CUT3B)
+    for ts, c, going_out in jump_splashes():
+        if not (t_of(f_lo) - 1.0 <= t_cut + ts <= t_of(f_hi)):
+            continue
+        n = 900 if going_out else 1300
         for _ in range(n):
             d = Vector((rng.gauss(0, 1), rng.gauss(0, 1), 0.0)).normalized()
-            v = d * rng.uniform(0.5, 3.5) + Vector((0.0, -2.4, rng.uniform(1.0, 5.5)))
-            sp.emit(t + rng.random() / FPS, c + d * rng.uniform(0.0, 0.6), v, rng.uniform(0.5, 1.2),
-                    rng.uniform(0.008, 0.03), 9.81)
-        for _ in range(16):                                        # droplets off the head and body
-            s = rng.uniform(-0.2, 0.55) * MARLIN_L
-            q = p + fwd * s
+            v = d * rng.uniform(0.5, 3.0 if going_out else 4.5) + Vector((0.0, 0.0, rng.uniform(1.5, 6.5 if going_out else 8.0)))
+            sp.emit(t_cut + ts + rng.uniform(-0.04, 0.1), c + d * rng.uniform(0.0, 0.7), v, rng.uniform(0.6, 1.5),
+                    rng.uniform(0.01, 0.035), 9.81)
+    for f in range(f_lo, f_hi + 1):
+        t = t_of(f)
+        p, fwd, roll = tail_walk(f)
+        head, tail = p + fwd * (MARLIN_L / 2), p - fwd * (MARLIN_L / 2 + 0.3)
+        hz, tz = head.z - surface_z(head.x, head.y, t), tail.z - surface_z(tail.x, tail.y, t)
+        if (hz > 0) != (tz > 0):                                    # the body cuts the surface: spray at the cut
+            c = head.lerp(tail, hz / (hz - tz))
+            for _ in range(60):
+                d = Vector((rng.gauss(0, 1), rng.gauss(0, 1), 0.0)).normalized()
+                sp.emit(t + rng.random() / FPS, c + d * rng.uniform(0.0, 0.35),
+                        d * rng.uniform(0.5, 2.5) + Vector((0.0, 0.0, rng.uniform(1.0, 4.0))), rng.uniform(0.4, 1.0),
+                        rng.uniform(0.008, 0.025), 9.81)
+        if min(hz, tz) > 0.0:                                       # clear of the water: droplets streaming off
             side = fwd.cross(Vector((0, 0, 1))).normalized()
-            v = side * rng.uniform(-3.5, 3.5) + Vector((0, 0, rng.uniform(0.0, 2.5)))
-            sp.emit(t + rng.random() / FPS, q, v, rng.uniform(0.4, 0.9), rng.uniform(0.005, 0.016), 9.81)
+            for _ in range(14):
+                q = p + fwd * rng.uniform(-0.5, 0.5) * MARLIN_L
+                v = side * rng.uniform(-2.5, 2.5) + Vector((0, 0, rng.uniform(-0.5, 1.5)))
+                sp.emit(t + rng.random() / FPS, q, v, rng.uniform(0.4, 0.9), rng.uniform(0.005, 0.016), 9.81)
     return sp
 
 
@@ -4154,7 +4240,7 @@ def build_overlays(hud, st):
               src="ANGLER TECHNIQUE · DIAGRAM NOT TO SCALE")
     hud.serif("Upwellings push *bait and small tuna* up.", l1, CUT2 - 9, lines=["Upwellings push", "*bait and small tuna* up."],
               src="KONA LEDGES: FISHTRACK · DIET: BROCK 1984")
-    hud.pin(lambda f: UW2 + Vector((5.0, LEDGE_Y0, ledge_z(5.0) - 3.0)), "steep volcanic drop off", CUT1W + 10, l1 - 4,
+    hud.pin(lambda f: UW2 + Vector((5.0, LEDGE_Y0, ledge_z(5.0) - 3.0)), "steep volcanic drop off", ZOOM_F[1] - 4, l1 - 4,
             dot_color=srgb(170, 170, 190), side=0.06, y_band=(-0.22, 0.32))
     hud.pin(lambda f: UW2 + Vector((10.0, 0.0, ledge_z(10.0) + 4.0)), "upwelling", l1 + 4, CUT2 - 10,
             dot_color=srgb(110, 230, 255), side=0.05, y_band=(-0.22, 0.32))
@@ -4198,7 +4284,8 @@ def build_overlays(hud, st):
         return rod["reel"]["root"].matrix_world @ Vector((0.0, 0.0, 0.15))
     hud.pin(spool_pt, "line pouring off", CUT3 + 8, d1 - 10, dot_color=GOLD, side=0.06, rise=0.1, y_band=(-0.2, 0.3))
     hud.pin(stop_pt, "strike", d1 + 4, CUT3B - 6, dot_color=PIN_RED, side=-0.06, rise=0.1, y_band=(-0.2, 0.3))
-    hud.pin(lambda f: tail_walk(f)[0] + tail_walk(f)[1] * 1.2, "tail walk", CUT3B + 18, d3 - 6, dot_color=GOLD,
+    j1 = CUT3B + int(round((JUMP_SEGS[0][1] + JUMP_SEGS[0][2]) * FPS))
+    hud.pin(lambda f: tail_walk(f)[0] + tail_walk(f)[1] * 1.2, "leaping on the line", CUT3B + 2, j1 - 2, dot_color=GOLD,
             side=0.06, y_band=(-0.2, 0.32))
     # 5 outro (the last caption is gone before the end: the last frame matches the first)
     hud.serif("Master the spread, *fish the ledges...*", CUT4 + 8, FRAME_END - 9, lines=["Master the spread,", "*fish the ledges...*"],
@@ -4354,7 +4441,7 @@ def run_checks(frames, st):
     for k, v in worst.items():
         print(f"closest {k}: {round(v[0], 3)} m at frame {v[1]} (negative = inside)")
     acc, turn = (0.0, 0), (0.0, 0)
-    whips = set(range(1, WHIP_IN + 7)) | set(range(CUT4 - 4, CUT4 + 8))
+    whips = set(range(1, WHIP_IN + 7)) | set(range(CUT4 - 4, CUT4 + 8)) | set(range(ZOOM_F[0], ZOOM_F[1] + 1))
     for f in range(3, FRAME_END):
         if any(f - 2 <= c <= f + 1 for c in CUTS) or f in whips:
             continue
@@ -4367,10 +4454,13 @@ def run_checks(frames, st):
         if ang > turn[0]:
             turn = (ang, f)
     print(f"max camera acceleration: {acc[0]:.2f} m/s^2 at frame {acc[1]};  max turn rate: {turn[0]:.1f} deg/s at frame {turn[1]}"
-          " (whip pans excluded)")
+          " (whip pans and the zoom out excluded)")
     cross = [f for f in range(2, FRAME_END + 1) if under_at(f) != under_at(f - 1)]
     print("under/above switches:", cross, "all on cuts:", all(f in CUTS for f in cross))
-    jumps = [f for f in range(2, FRAME_END + 1) if (frames[f][0] - frames[f - 1][0]).length > 0.6 and f not in CUTS]
+    jumps = [f for f in range(2, FRAME_END + 1) if (frames[f][0] - frames[f - 1][0]).length > 0.6 and f not in CUTS
+             and not (ZOOM_F[0] <= f <= ZOOM_F[1])]
+    zs = max((frames[f][0] - frames[f - 1][0]).length for f in range(ZOOM_F[0], ZOOM_F[1] + 1)) * FPS
+    print(f"zoom out (frames {ZOOM_F[0]}-{ZOOM_F[1]}): peak camera speed {zs:.1f} m/s")
     print("camera jumps outside cuts:", jumps or "none")
     a, b = frames[1], frames[FRAME_END]
     print("loop: frame 1 vs last frame camera: position", round((a[0] - b[0]).length, 4), "m, rotation",
@@ -4414,7 +4504,8 @@ def subject_report(frames, st):
             CUT2B + 20: ("smoking lure", smoke_lure),
             CUT3 - 10: ("rising marlin", lambda f: rise_marlin(f)[0]),
             CUT3 + 30: ("reel", lambda f: st["rod"]["reel"]["root"].matrix_world.translation.copy()),
-            CUT3B + 20: ("tail walk", lambda f: tail_walk(f)[0]),
+            CUT3B + 12: ("jump 1", lambda f: tail_walk(f)[0]),
+            CUT3B + 100: ("jump 3", lambda f: tail_walk(f)[0]),
             FRAME_END - 5: ("corner lure (loop)", lambda f: lure_world("short corner", f))}
     print("\n=== SUBJECTS ON SCREEN (x in +-0.281, y in +-0.5) ===")
     for f, (nm, fn) in sorted(subj.items()):
@@ -4431,6 +4522,8 @@ def write_events(path, st):
         "overlays": sorted(st["hud"].events),
         "under": [[WHIP_IN, CUT2], [CUT2B, CUT3]], "hook_strike": HOOK_STRIKE, "reel_start": CUT3, "lock": LOCK_F,
         "tail_walk": [CUT3B, CUT4], "spread": [CUT2, CUT2B], "ledge": [CUT1, CUT2],
+        "splashes": [[CUT3B + round(ts * FPS), int(out)] for ts, _c, out in jump_splashes()
+                     if CUT3B <= CUT3B + round(ts * FPS) < CUT4],
         "vo_start": VO_START, "vo_len": VO_LEN, "vo_text": VO_TEXT,
         "beats": [1, CUT1, CUT2, CUT3, CUT4],
     }
@@ -4552,7 +4645,7 @@ def build_scene():
     plank2 = specks("Plankton2", c_uw2, M.specks, tuple(UW2 + Vector((0.0, -10.0, -30.0))), (50.0, 20.0, 30.0), 5000, 0.01, 32)
     # the tail walk
     tmar = make_marlin(c_tail, M, "TailMarlin")
-    animate_marlin(tmar, [(CUT3B - 2, CUT4 + 2, tail_walk, 3.2, 0.2)])
+    animate_marlin(tmar, [(CUT3B - 2, CUT4 + 2, tail_walk, 2.4, 0.15)])
     tspray = tail_spray(CUT3B - 2, CUT4 + 1).build("TailSpray", c_tail, M.spray, streak=True)
     tw_a = empty_object("TailLineA", c_tail, size=0.05)
     tw_b = empty_object("TailLineB", c_tail, size=0.05)

@@ -4,7 +4,7 @@ The voiceover clips are generated text to speech (voiceover/vo1..vo5; ElevenLabs
 Conversations"; see SOURCES.md for the script). Everything else is synthesised here: trade wind and chop on the
 surface, the hush under water, a diesel rumble while the boat trolls, the fizz of the lures' smoke trails, a heavy
 thump and a burst of white water at the strike, the reel screaming as line pours off, a click as the lever goes up
-to strike, the splashes of the tail walk, whooshes for the whip pans, overlay pops, and a driving music bed in
+to strike, the splashes of the jumps, whooshes for the whip pans, overlay pops, and a driving music bed in
 E minor that ducks under the voice.
 
 The film loops, so the soundtrack does too: the music is 24 bars that fit the film exactly, nothing fades in or out
@@ -246,13 +246,11 @@ def build(ev):
     fx[ia:ib, 1] += scream * 0.06 * env
     place(fx, filt(noise_burst(0.05, 2000, 9000, 0.01), "highpass", 1500), ft(ev["lock"]), 0.1)
     place(fx, tone(1800, 0.08, 0.02), ft(ev["lock"]) + 0.01, 0.04)
-    # the tail walk: crashing splashes on each tail beat, the scream continuing underneath
+    # the jumps: a crash of white water at every exit and a heavier one at every re-entry, the reel still going
     tw0, tw1 = ev["tail_walk"]
-    tc = ft(tw0) - 0.05
-    place(fx, crash(1.4, 1.6), tc, 0.16)
-    while tc < ft(tw1) - 0.2:
-        tc += 1.0 / 3.2
-        place(fx, crash(0.6, 0.8), tc + RNG.uniform(-0.03, 0.03), 0.07, pan=RNG.uniform(-0.3, 0.3))
+    for frame, going_out in ev.get("splashes", []):
+        place(fx, crash(1.4 if going_out else 1.8, 1.2 if going_out else 1.8), ft(frame) - 0.03,
+              0.11 if going_out else 0.17, pan=RNG.uniform(-0.3, 0.3))
     ia, ib = int(ft(tw0) * SR), int(ft(tw1) * SR)
     sc2 = drag_scream((ib - ia) / SR, 760.0, 620.0)
     fx[ia:ib, 0] += sc2 * 0.03
