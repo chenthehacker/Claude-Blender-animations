@@ -4,15 +4,15 @@
  "loop": true,
  "cuts": [
   7,
-  306,
-  568,
-  847,
+  310,
+  580,
+  867,
   1228
  ],
  "hard_cuts": [
   179,
-  695,
-  1006
+  711,
+  1030
  ],
  "whips": [
   [
@@ -46,117 +46,117 @@
    "The world record, *landed in under an hour.*"
   ],
   [
-   308,
+   312,
    "badge",
    "THE DROP OFF LEDGE"
   ],
   [
-   308,
+   312,
    "caption",
    "Grander marlin *hunt the ledges.*"
   ],
   [
-   338,
+   370,
    "pin",
    "steep volcanic drop off"
   ],
   [
-   385,
+   393,
    "caption",
    "Upwellings push *bait and small tuna* up."
   ],
   [
-   393,
+   401,
    "pin",
    "upwelling"
   ],
   [
-   419,
+   427,
    "pin",
    "bait and small tuna"
   ],
   [
-   570,
+   582,
    "badge",
    "THE TROLLING SPREAD"
   ],
   [
-   570,
+   582,
    "caption",
    "A staggered *four lure spread.*"
   ],
   [
-   576,
+   588,
    "pin",
    "short corner"
   ],
   [
-   605,
+   618,
    "pin",
    "long corner"
   ],
   [
-   635,
+   649,
    "pin",
    "short rigger"
   ],
   [
-   639,
+   655,
    "caption",
    "Troll at *7 to 9 knots.*"
   ],
   [
-   665,
+   680,
    "pin",
    "long rigger"
   ],
   [
-   695,
+   711,
    "caption",
    "Resin heads trail *smoke.*"
   ],
   [
-   703,
+   719,
    "pin",
    "smoke trail"
   ],
   [
-   847,
+   867,
    "badge",
    "THE DRAG"
   ],
   [
-   847,
+   867,
    "caption",
    "When a giant eats, *lock it down.*"
   ],
   [
-   855,
+   875,
    "pin",
    "line pouring off"
   ],
   [
-   910,
+   934,
    "caption",
    "*40 lb of drag* on 130 lb tackle."
   ],
   [
-   918,
+   942,
    "pin",
    "strike"
   ],
   [
-   1006,
+   1030,
    "caption",
    "Set the hooks in its *hard jaw.*"
   ],
   [
-   1024,
+   1032,
    "pin",
-   "tail walk"
+   "leaping on the line"
   ],
   [
-   1089,
+   1113,
    "caption",
    "About *30 percent* of line strength."
   ],
@@ -169,33 +169,63 @@
  "under": [
   [
    7,
-   568
+   580
   ],
   [
-   695,
-   847
+   711,
+   867
   ]
  ],
  "hook_strike": 45,
- "reel_start": 847,
- "lock": 914,
+ "reel_start": 867,
+ "lock": 938,
  "tail_walk": [
-  1006,
+  1030,
   1228
  ],
  "spread": [
-  568,
-  695
+  580,
+  711
  ],
  "ledge": [
-  306,
-  568
+  310,
+  580
+ ],
+ "splashes": [
+  [
+   1062,
+   0
+  ],
+  [
+   1087,
+   1
+  ],
+  [
+   1114,
+   0
+  ],
+  [
+   1139,
+   1
+  ],
+  [
+   1176,
+   0
+  ],
+  [
+   1196,
+   1
+  ],
+  [
+   1220,
+   0
+  ]
  ],
  "vo_start": {
   "1": 1,
-  "2": 311,
-  "3": 573,
-  "4": 852,
+  "2": 319,
+  "3": 589,
+  "4": 876,
   "5": 1234
  },
  "vo_len": {
@@ -214,9 +244,9 @@
  },
  "beats": [
   1,
-  306,
-  568,
-  847,
+  310,
+  580,
+  867,
   1228
  ]
 }
