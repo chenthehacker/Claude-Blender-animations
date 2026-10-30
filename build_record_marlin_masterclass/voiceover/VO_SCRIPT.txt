@@ -1,9 +1,10 @@
-Record marlin masterclass voiceover (ElevenLabs, voice "Mark - Natural Conversations", model eleven_v4).
-Sourced rewrites of the brief's script (see SOURCES.md), extended with sourced lines so the voice fills 55 s.
+Record marlin masterclass voiceover (ElevenLabs, voice "Mark, Natural Conversations", model eleven_v4).
+Sourced rewrites of the brief's script (see SOURCES.md). This is the text each clip was generated from:
+vo1 to vo4 through the ElevenLabs connector, vo5 by the user in their ElevenLabs account.
 
 vo1  In 1982, Jay de Beaubien hooked a 1,376 pound Pacific blue marlin off Kona. It became the all tackle world record for the species, landed in under an hour.
-vo2  Grander marlin don't roam open water aimlessly. They hunt steep underwater volcanic drop offs, where deep current upwellings push bait and small tuna right into their path. In one Hawaii study of 87 blue marlin, small tunas were their most important food.
-vo3  To trigger a strike, run a staggered four lure spread at seven to nine knots. Large skirted resin lures on the short corners create heavy smoke trails that bring giants up from the depths. The record fish ate a silver and blue Kita lure.
-vo4  When a 1,000 pound fish eats, lock down 130 pound heavy tackle with 40 pounds of drag pressure to set massive double hooks into its hard jaw. The rule of thumb is a strike drag near thirty percent of the line's breaking strength.
+vo2  Grander marlin don't roam open water aimlessly. They hunt steep underwater volcanic drop offs, where deep current upwellings push bait and small tuna right into their path.
+vo3  To trigger a strike, run a staggered four lure spread at seven to nine knots. Large skirted resin lures on the short corners create heavy smoke trails that bring giants up from the depths.
+vo4  When a 1,000 pound fish eats, lock down 130 pound heavy tackle with 40 pounds of drag pressure to set massive double hooks into its hard jaw. That's about thirty percent of the line's breaking strength, the classic strike drag.
 vo5  Master the spread, fish the ledges, and you'll see why...
 (loops back into vo1)
