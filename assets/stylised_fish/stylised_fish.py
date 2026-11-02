@@ -1,7 +1,8 @@
 """Original stylised low poly fish models, built from cited real anatomy (see SOURCES.md).
 
 Design language (this repo's own): chunky toy proportions, enlarged eyes, softened versions of each
-species' real colours. Default "ps1" style: boxy faceted bodies (superellipse cross sections, flat
+species' real colours. Default "ps2" style: jagged low poly silhouettes, smooth shading, soft low
+resolution textures with painted lighting and painted fin rays. "ps1" style: boxy faceted bodies (superellipse cross sections, flat
 shading), few hundred triangles per fish, unsmoothed fin outlines,
 small nearest filtered textures in 15 bit colour with ordered dither, matte materials. "--style smooth"
 gives the earlier soft, glossy, higher polygon version.
@@ -10,9 +11,9 @@ Every model is 1.0 Blender unit long (tail fork to snout or bill tip is about 1.
 
 Run with the bpy module (or stock Blender: blender -b -P stylised_fish.py -- ARGS):
   /root/bpyenv/bin/python stylised_fish.py --save stylised_fish.blend --glb glb \
-      --render preview.png --res 480x300 [--style ps1|smooth] [--species carp,catfish]
-The ps1 preview renders without anti aliasing at low resolution, then cuts to 15 bit colour with dither
-and scales up by --upscale (nearest neighbour). Vertex snapping and affine texture wobble are render time
+      --render preview.png --res 640x400 --upscale 2 [--style ps2|ps1|smooth] [--species carp,catfish]
+Retro previews render without anti aliasing at low resolution (ps1 also cuts to 15 bit colour with dither)
+and scale up by --upscale (nearest neighbour). Vertex snapping and affine texture wobble are render time
 camera effects and belong in the scene that uses these models, not in the models.
 """
 import argparse
@@ -27,18 +28,35 @@ from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEX_W, TEX_H = 1024, 512   # painting resolution
-# Style switch. "ps1" (default): fewer rings and segments, faceted fin outlines, 256x128 textures cut to
-# 15 bit colour with 4x4 ordered dither and nearest filtering, matte unlit-looking materials (no gloss).
-# "smooth": the earlier soft toy version.
-STYLE = {"name": "ps1"}
-PS1 = {"ring_scale": 0.45, "min_rings": 7, "segs": 8, "fin_iters": 0, "sphere": (6, 4), "tube_segs": 4,
-       "tex": (256, 128),
-       "box_p": 3.4,        # cross section superellipse exponent floor (2 = round, higher = boxier)
-       "flat_body": True}   # faceted body shading
+# Style switch. Retro styles share the low polygon builder and differ in shading and textures.
+#  "ps2" (default): jagged low poly silhouettes with smooth (Gouraud) shading, soft bilinear filtered
+#        low resolution textures with lighting painted in (highlight streak, belly shadow, gill marks),
+#        painted fin ray textures, 6 bits per channel colour, a painted eye glint.
+#  "ps1": boxier flat shaded facets, nearest filtered 15 bit dithered textures, matte.
+#  "smooth": the soft toy version with glossy materials.
+STYLE = {"name": "ps2"}
+STYLES = {
+    "ps1": dict(ring_scale=0.45, min_rings=7, segs=8, fin_iters=0, sphere=(6, 4), tube_segs=4, tex=(256, 128),
+                box_p=3.4, flat_body=True, filter="Closest", quant="15dither", bake=False, fin_tex=False,
+                glint=False),
+    "ps2": dict(ring_scale=0.55, min_rings=8, segs=8, fin_iters=0, sphere=(8, 6), tube_segs=4, tex=(128, 64),
+                box_p=2.6, flat_body=False, filter="Linear", quant="6bit", bake=True, fin_tex=True,
+                glint=True),
+}
+
+
+def retro():
+    return STYLE["name"] in STYLES
+
+
+def RP():
+    return STYLES[STYLE["name"]]
 
 
 def ps1():
     return STYLE["name"] == "ps1"
+
+
 CHUNK = 1.32   # style: bodies deeper and wider than life (toy proportions)
 EYE = 2.1      # style: eyes much larger than life
 
@@ -81,7 +99,7 @@ def chaikin(pts, iters):
 class Builder:
     """Accumulates one species into a single bmesh with material slots."""
 
-    SLOTS = ("body", "fin", "fin_accent", "eye_iris", "eye_pupil", "dark")
+    SLOTS = ("body", "fin", "fin_accent", "eye_iris", "eye_pupil", "dark", "glint")
 
     def __init__(self, sp):
         self.sp = sp
@@ -100,8 +118,8 @@ class Builder:
         hl = prof(sp["hl"], t) * CHUNK
         cz = prof(sp["cz"], t)
         p = prof(sp.get("p", [(0, 2.0), (1, 2.0)]), t)
-        if ps1():
-            p = max(p, PS1["box_p"])
+        if retro():
+            p = max(p, RP()["box_p"])
         s, c = math.sin(th), -math.cos(th)
         y = w * math.copysign(abs(s) ** (2 / p), s)
         h = hu if c > 0 else hl
@@ -126,8 +144,8 @@ class Builder:
     def body(self):
         sp, bm, uv = self.sp, self.bm, self.uv
         R, N = sp.get("rings", 16), sp.get("segs", 12)
-        if ps1():
-            R, N = max(PS1["min_rings"], round(R * PS1["ring_scale"])), PS1["segs"]
+        if retro():
+            R, N = max(RP()["min_rings"], round(R * RP()["ring_scale"])), RP()["segs"]
         t0, t1 = 0.0, sp.get("t_end", 0.97)
         ts = t0 + (t1 - t0) * (1 - (1 - np.linspace(0, 1, R)) ** 1.15)
         rings = [[bm.verts.new(self.surf(t, 2 * math.pi * k / N)) for k in range(N)] for t in ts]
@@ -135,7 +153,7 @@ class Builder:
 
         def put(f, uvs):
             f.material_index = self.mat("body")
-            f.smooth = not (ps1() and PS1["flat_body"])
+            f.smooth = not (retro() and RP()["flat_body"])
             for loop, (u, v) in zip(f.loops, uvs):
                 loop[uv].uv = (u, v)
             faces.append(f)
@@ -157,9 +175,12 @@ class Builder:
         return faces
 
     # ---------------- parts ----------------
-    def fin(self, pts2d, origin, ax_a, ax_b, slot="fin", thick=0.010, iters=2):
+    def fin(self, pts2d, origin, ax_a, ax_b, slot="fin", thick=0.010, iters=2, rays="a"):
+        """Flat fin from a 2D outline in the (ax_a, ax_b) plane. rays="a": painted ray stripes repeat
+        along ax_a, so the rays run along ax_b (dorsal, anal, paired fins). rays="b": stripes repeat along
+        ax_b, rays run along ax_a (caudal fins, whose rays run back along the body)."""
         bm = self.bm
-        p2 = chaikin(pts2d, min(iters, PS1["fin_iters"]) if ps1() else iters)
+        p2 = chaikin(pts2d, min(iters, RP()["fin_iters"]) if retro() else iters)
         o, a, b = Vector(origin), Vector(ax_a).normalized(), Vector(ax_b).normalized()
         n = a.cross(b).normalized()
         front, back = [], []
@@ -172,11 +193,15 @@ class Builder:
         for i in range(m):
             j = (i + 1) % m
             faces.append(bm.faces.new((front[j], front[i], back[i], back[j])))
+        local = {}
+        for (x, y), fv, bv in zip(p2, front, back):
+            uvp = (x * 9.0, y * 9.0) if rays == "a" else (y * 9.0, x * 9.0)
+            local[fv] = local[bv] = uvp
         for f in faces:
             f.material_index = self.mat(slot)
             f.smooth = False
             for loop in f.loops:
-                loop[self.uv].uv = (0.5, 0.5)
+                loop[self.uv].uv = local[loop.vert]
         bmesh.ops.triangulate(self.bm, faces=faces[:2])
 
     def mirror_fin(self, pts2d, origin, ax_a, ax_b, **kw):
@@ -186,14 +211,14 @@ class Builder:
         self.fin(pts2d, (o.x, -o.y, o.z), (ax_a[0], -ax_a[1], ax_a[2]), (ax_b[0], -ax_b[1], ax_b[2]), **kw)
 
     def sphere(self, centre, radius, slot, segs=12, rings=8, scale=(1, 1, 1), uv=(0.5, 0.5)):
-        if ps1():
-            segs, rings = PS1["sphere"]
+        if retro():
+            segs, rings = RP()["sphere"]
         m = Matrix.LocRotScale(Vector(centre), None, Vector(scale) * radius)
         res = bmesh.ops.create_uvsphere(self.bm, u_segments=segs, v_segments=rings, radius=1.0, matrix=m)
         fs = {f for v in res["verts"] for f in v.link_faces}
         for f in fs:
             f.material_index = self.mat(slot)
-            f.smooth = not ps1()
+            f.smooth = not (retro() and RP()["flat_body"])
             for loop in f.loops:
                 loop[self.uv].uv = uv
         return res["verts"]
@@ -212,12 +237,16 @@ class Builder:
                 n = Vector((n.x, -n.y, n.z))
             self.sphere(p - n * 0.25 * r, r, "eye_iris")
             self.sphere(p + n * 0.42 * r, 0.62 * r, "eye_pupil", segs=10, rings=6)
+            if retro() and RP()["glint"]:
+                up = Vector((0, 0, 1))
+                fwd = Vector((1, 0, 0))
+                self.sphere(p + n * 0.78 * r + up * 0.28 * r + fwd * 0.18 * r, 0.2 * r, "glint", segs=6, rings=4)
 
     def tube(self, pts, r0, r1, slot="fin", segs=6, uv=(0.5, 0.5)):
         """Tapered tube along a polyline (barbels, bills)."""
         bm = self.bm
-        if ps1():
-            segs = min(segs, PS1["tube_segs"])
+        if retro():
+            segs = min(segs, RP()["tube_segs"])
         pts = [Vector(p) for p in pts]
         prev = None
         n = len(pts)
@@ -234,7 +263,7 @@ class Builder:
                     k2 = (k + 1) % segs
                     f = bm.faces.new((prev[k], prev[k2], ring[k2], ring[k]))
                     f.material_index = self.mat(slot)
-                    f.smooth = not ps1()
+                    f.smooth = not (retro() and RP()["flat_body"])
                     for loop in f.loops:
                         loop[self.uv].uv = uv
             prev = ring
@@ -242,14 +271,14 @@ class Builder:
         for k in range(segs):
             f = bm.faces.new((prev[k], prev[(k + 1) % segs], tipv))
             f.material_index = self.mat(slot)
-            f.smooth = not ps1()
+            f.smooth = not (retro() and RP()["flat_body"])
             for loop in f.loops:
                 loop[self.uv].uv = uv
 
     def slab(self, outline_xy, z_of, thick_of, slot="body", iters=2):
         """Horizontal slab from a top view outline (cephalofoil). z_of/thick_of take (x, y)."""
         bm = self.bm
-        p2 = chaikin(outline_xy, min(iters, PS1["fin_iters"]) if ps1() else iters)
+        p2 = chaikin(outline_xy, min(iters, RP()["fin_iters"]) if retro() else iters)
         top, bot = [], []
         for x, y in p2:
             z, th = z_of(x, y), thick_of(x, y)
@@ -262,7 +291,7 @@ class Builder:
             faces.append(bm.faces.new((top[j], top[i], bot[i], bot[j])))
         for f in faces:
             f.material_index = self.mat(slot)
-            f.smooth = not ps1()
+            f.smooth = not (retro() and RP()["flat_body"])
             for loop in f.loops:
                 above = loop.vert.co.z > z_of(loop.vert.co.x, loop.vert.co.y)
                 loop[self.uv].uv = (0.9, 0.5 if above else 0.01)
@@ -379,23 +408,82 @@ def quantise15(img):
     return np.clip(np.round(img * 31 + d), 0, 31) / 31
 
 
-def ps1_texture(img):
-    tw, th = PS1["tex"]
+def quantise(img):
+    q = RP()["quant"]
+    if q == "15dither":
+        return quantise15(img)
+    if q == "6bit":
+        return np.round(np.clip(img, 0, 1) * 63) / 63
+    return img
+
+
+def retro_texture(img):
+    tw, th = RP()["tex"]
     fy, fx = img.shape[0] // th, img.shape[1] // tw
     small = img[:th * fy, :tw * fx].reshape(th, fy, tw, fx, 3).mean(axis=(1, 3))
-    return quantise15(small)
+    return quantise(small)
+
+
+GILLS = {  # (u of the gill opening, style): sharks have slits, bony fish a gill cover edge
+    "hammerhead": (0.80, "slits"), "blue_marlin": (0.70, "arc"), "sea_bass": (0.83, "arc"),
+    "catfish": (0.86, "arc"), "carp": (0.82, "arc"),
+}
+
+
+def bake_paint(key, img, U, V, D):
+    """Painted lighting over the base colours, as hand painted textures of that era did:
+    a soft highlight streak along the upper flank, a shadowed belly line, darker head top, gill marks."""
+    light = 0.80 + 0.28 * smoothstep(0.05, 0.75, D)
+    streak = np.exp(-((D - 0.74) / 0.07) ** 2) * smoothstep(0.08, 0.3, U) * smoothstep(0.95, 0.75, U)
+    belly = 1.0 - 0.22 * smoothstep(0.14, 0.0, D)
+    img = img * (light * belly)[..., None] + streak[..., None] * 0.22
+    ug, kind = GILLS[key]
+    if kind == "arc":
+        curve = ug - 0.035 * np.cos((D - 0.5) * 2.4)
+        edge = np.exp(-((U - curve) / 0.006) ** 2) * smoothstep(0.08, 0.3, D)
+        img = img * (1 - 0.45 * edge[..., None])
+        cover = smoothstep(curve - 0.002, curve + 0.03, U) * smoothstep(0.2, 0.5, D) * smoothstep(1.0, 0.85, U)
+        img = img * (1 - 0.08 * cover[..., None])
+    else:
+        for i in range(5):
+            uc = ug - 0.012 * i
+            m = np.exp(-((U - uc) / 0.0035) ** 2) * (np.abs(D - 0.42) < 0.12)
+            img = img * (1 - 0.5 * m[..., None])
+    return np.clip(img, 0, 1)
 
 
 def body_image(key):
     U, V, D, S = uv_grid()
     img = np.clip(PAINT[key](U, V, D, S), 0, 1)
-    if ps1():
-        img = ps1_texture(img)
+    if retro():
+        if RP()["bake"]:
+            img = bake_paint(key, img, U, V, D)
+        img = retro_texture(img)
     os.makedirs(os.path.join(HERE, "textures"), exist_ok=True)
     path = os.path.join(HERE, "textures", f"{key}_body.png")
     im = bpy.data.images.new(f"{key}_body", img.shape[1], img.shape[0], alpha=False)
     rgba = np.concatenate([img, np.ones(img.shape[:2] + (1,))], axis=2).astype(np.float32)
     im.pixels.foreach_set(rgba.ravel())
+    im.filepath_raw = path
+    im.file_format = "PNG"
+    im.save()
+    im.pack()
+    return im
+
+
+def fin_image(name, srgb, accent=False):
+    """Small painted fin texture: ray stripes, darker toward the ray roots, slightly lighter tips."""
+    n = 32
+    u = (np.arange(n) + 0.5) / n
+    U, V = np.meshgrid(u, u)
+    rays = 0.5 + 0.5 * np.cos(2 * np.pi * U * 3)
+    img = np.asarray(srgb, float)[None, None, :] * (0.78 + 0.22 * rays)[..., None]
+    img = img * (0.9 + 0.12 * V)[..., None]
+    img = quantise(np.clip(img, 0, 1))
+    os.makedirs(os.path.join(HERE, "textures"), exist_ok=True)
+    path = os.path.join(HERE, "textures", f"{name}.png")
+    im = bpy.data.images.new(name, n, n, alpha=False)
+    im.pixels.foreach_set(np.concatenate([img, np.ones((n, n, 1))], axis=2).astype(np.float32).ravel())
     im.filepath_raw = path
     im.file_format = "PNG"
     im.save()
@@ -424,11 +512,14 @@ def body_material(key, img):
     m, nt, b = new_mat(f"{key}_body")
     tex = nt.nodes.new("ShaderNodeTexImage")
     tex.image = img
-    tex.interpolation = "Closest" if ps1() else "Linear"
+    tex.interpolation = RP()["filter"] if retro() else "Linear"
     nt.links.new(tex.outputs["Color"], b.inputs["Base Color"])
     if ps1():
         b.inputs["Roughness"].default_value = 1.0
         b.inputs["Specular IOR Level"].default_value = 0.0
+    elif retro():  # lighting is painted in; keep the live shading plain
+        b.inputs["Roughness"].default_value = 0.8
+        b.inputs["Specular IOR Level"].default_value = 0.12
     else:
         b.inputs["Roughness"].default_value = 0.55
         b.inputs["Specular IOR Level"].default_value = 0.35
@@ -440,13 +531,27 @@ def body_material(key, img):
 def flat_material(name, srgb, rough=0.6, coat=0.0):
     m, nt, b = new_mat(name)
     b.inputs["Base Color"].default_value = (*lin(srgb), 1.0)
-    if ps1():
-        srgb = quantise15(np.asarray(srgb, float)[None, None, :])[0, 0]
+    if retro():
+        srgb = quantise(np.asarray(srgb, float)[None, None, :])[0, 0]
         b.inputs["Base Color"].default_value = (*lin(srgb), 1.0)
-        rough, coat = 1.0, 0.0
-        b.inputs["Specular IOR Level"].default_value = 0.0
+        rough, coat = (1.0, 0.0) if ps1() else (max(rough, 0.5), 0.0)
+        b.inputs["Specular IOR Level"].default_value = 0.0 if ps1() else 0.2
     b.inputs["Roughness"].default_value = rough
     b.inputs["Coat Weight"].default_value = coat
+    m.diffuse_color = (*lin(srgb), 1.0)
+    return m
+
+
+def fin_material(name, srgb):
+    if not (retro() and RP()["fin_tex"]):
+        return flat_material(name, srgb)
+    m, nt, b = new_mat(name)
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = fin_image(name, srgb)
+    tex.interpolation = RP()["filter"]
+    nt.links.new(tex.outputs["Color"], b.inputs["Base Color"])
+    b.inputs["Roughness"].default_value = 0.85
+    b.inputs["Specular IOR Level"].default_value = 0.1
     m.diffuse_color = (*lin(srgb), 1.0)
     return m
 
@@ -456,11 +561,12 @@ def species_materials(key, sp):
     c = sp["colours"]
     return {
         "body": body_material(key, img),
-        "fin": flat_material(f"{key}_fin", hexc(c["fin"])),
-        "fin_accent": flat_material(f"{key}_fin_accent", hexc(c.get("fin_accent", c["fin"]))),
+        "fin": fin_material(f"{key}_fin", hexc(c["fin"])),
+        "fin_accent": fin_material(f"{key}_fin_accent", hexc(c.get("fin_accent", c["fin"]))),
         "eye_iris": flat_material(f"{key}_iris", hexc(c.get("iris", "c9b27a")), rough=0.3, coat=0.6),
         "eye_pupil": flat_material(f"{key}_pupil", hexc("141416"), rough=0.08, coat=1.0),
         "dark": flat_material(f"{key}_dark", hexc(c.get("dark", "2a2422")), rough=0.5),
+        "glint": flat_material(f"{key}_glint", hexc("ffffff"), rough=0.5),
     }
 
 
@@ -520,7 +626,7 @@ def build_hammerhead():
     # Caudal: long upper lobe (heterocercal shark tail; style choice, see SOURCES.md)
     B.fin([(0.03, 0.01), (-0.05, 0.08), (-0.13, 0.17), (-0.115, 0.16), (-0.07, 0.07), (-0.03, 0.025),
            (-0.035, -0.02), (-0.06, -0.075), (-0.035, -0.07), (0.03, -0.012)],
-          (0.02, 0, 0.03), (1, 0, 0), (0, 0, 1), iters=2, thick=0.012)
+          (0.02, 0, 0.03), (1, 0, 0), (0, 0, 1), rays="b", iters=2, thick=0.012)
     # Pectorals just behind the gills, pelvics in front of the anal fin
     xp = 0.70
     pp = B.surf(xp, math.pi * 0.28)
@@ -567,7 +673,7 @@ def build_marlin():
     # Caudal: tall crescent (style choice, see SOURCES.md)
     B.fin([(0.04, 0.0), (0.0, 0.04), (-0.06, 0.15), (-0.085, 0.15), (-0.04, 0.05), (-0.03, 0.0),
            (-0.04, -0.05), (-0.085, -0.15), (-0.06, -0.15), (0.0, -0.04)],
-          (0.02, 0, 0.0), (1, 0, 0), (0, 0, 1), iters=2, thick=0.012)
+          (0.02, 0, 0.0), (1, 0, 0), (0, 0, 1), rays="b", iters=2, thick=0.012)
     # Pectorals long and narrow [M1], held out rigidly [M2]
     xp = 0.67
     pp = B.surf(xp, math.pi * 0.30)
@@ -615,7 +721,7 @@ def build_seabass():
           (xa, 0, B.bottom(xa).z), (1, 0, 0), (0, 0, 1), iters=2)
     # Slightly forked tail [S1]
     B.fin([(0.03, 0.0), (0.0, 0.03), (-0.09, 0.105), (-0.11, 0.09), (-0.085, 0.01), (-0.085, -0.01),
-           (-0.11, -0.09), (-0.09, -0.105), (0.0, -0.03)], (0.02, 0, 0.0), (1, 0, 0), (0, 0, 1),
+           (-0.11, -0.09), (-0.09, -0.105), (0.0, -0.03)], (0.02, 0, 0.0), (1, 0, 0), (0, 0, 1), rays="b",
           iters=2, thick=0.012)
     xp = 0.76
     B.mirror_fin([(0.0, 0.0), (-0.05, 0.06), (-0.085, 0.045), (-0.04, -0.005)],
@@ -713,7 +819,7 @@ def build_carp():
            0.004, 0.0015, slot="dark", segs=5)
     # Forked caudal [K2]
     B.fin([(0.03, 0.0), (0.0, 0.035), (-0.08, 0.13), (-0.11, 0.12), (-0.075, 0.02), (-0.075, -0.02),
-           (-0.11, -0.12), (-0.08, -0.13), (0.0, -0.035)], (0.02, 0, 0.0), (1, 0, 0), (0, 0, 1),
+           (-0.11, -0.12), (-0.08, -0.13), (0.0, -0.035)], (0.02, 0, 0.0), (1, 0, 0), (0, 0, 1), rays="b",
           iters=2, thick=0.012)
     B.mirror_fin([(0.0, 0.0), (-0.05, 0.065), (-0.085, 0.05), (-0.04, -0.005)],
                  B.surf(0.78, math.pi * 0.22), (1, 0, 0), (0, 0.6, -0.8), slot="fin_accent", thick=0.008)
@@ -764,14 +870,14 @@ def export_glb(obs, outdir):
         print("exported", path)
 
 
-def ps1_post(path, upscale):
-    """Preview post: 15 bit colour with ordered dither, then a nearest neighbour upscale."""
+def retro_post(path, upscale):
+    """Preview post: the style's colour depth (ps1: 15 bit with ordered dither), nearest neighbour upscale."""
     im = bpy.data.images.load(path)
     w, h = im.size
     px = np.array(im.pixels[:], dtype=np.float32).reshape(h, w, 4)
-    rgb = quantise15(px[..., :3])
+    rgb = quantise15(px[..., :3]) if ps1() else px[..., :3]
     rgb = np.repeat(np.repeat(rgb, upscale, axis=0), upscale, axis=1)
-    out = bpy.data.images.new("ps1_post", w * upscale, h * upscale, alpha=False)
+    out = bpy.data.images.new("retro_post", w * upscale, h * upscale, alpha=False)
     out.pixels.foreach_set(np.concatenate([rgb, np.ones(rgb.shape[:2] + (1,))], axis=2).astype(np.float32).ravel())
     out.filepath_raw = path
     out.file_format = "PNG"
@@ -833,8 +939,8 @@ def main():
     ap.add_argument("--render")
     ap.add_argument("--res", default="1600x1000")
     ap.add_argument("--samples", type=int, default=32)
-    ap.add_argument("--style", choices=("ps1", "smooth"), default="ps1")
-    ap.add_argument("--upscale", type=int, default=3, help="ps1 preview: nearest neighbour upscale factor")
+    ap.add_argument("--style", choices=("ps2", "ps1", "smooth"), default="ps2")
+    ap.add_argument("--upscale", type=int, default=3, help="retro preview: nearest neighbour upscale factor")
     a = ap.parse_args(argv)
     STYLE["name"] = a.style
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -851,13 +957,13 @@ def main():
         print("saved", a.save)
     if a.render:
         bpy.context.scene.render.filepath = os.path.abspath(a.render)
-        if ps1():
+        if retro():
             sc = bpy.context.scene
             sc.eevee.taa_render_samples = 1   # no anti aliasing, like the hardware
             sc.render.filter_size = 0.0
         bpy.ops.render.render(write_still=True)
-        if ps1():
-            ps1_post(os.path.abspath(a.render), a.upscale)
+        if retro():
+            retro_post(os.path.abspath(a.render), a.upscale)
         print("rendered", a.render)
 
 

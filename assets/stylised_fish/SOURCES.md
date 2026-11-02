@@ -3,8 +3,9 @@
 These are original models made for this repo by `stylised_fish.py`. They are not copies of any game's
 designs and were not modelled from game images. Real anatomy (fin layout, fin shapes, barbels, head shape,
 colour zones) follows the sources below; the toy proportions, enlarged eyes, softened palette and the
-PS1 style treatment (boxy flat shaded cross sections, low polygon count, 256x128 nearest filtered 15 bit dithered textures, matte shading)
-are this repo's own style choices.
+retro treatments (default "ps2": jagged low polygon silhouettes with smooth shading, 128x64 bilinear
+filtered body textures with painted lighting, painted fin rays, eye glints; "ps1": boxy flat shaded facets,
+nearest filtered 15 bit dithered textures) are this repo's own style choices.
 
 How the sources were read: on 2026-11-02 the anatomy sites were blocked by the session's network policy,
 so the facts below come from web search result summaries of the linked pages, not from reading the pages
@@ -26,6 +27,8 @@ All models are 1.0 unit long, facing +X with Z up. Real adult sizes differ widel
   Museum); FishBase summary via FAO guides: light grey or grey brown above, white below,
   https://fishbase.se/summary/914 . Model: grey brown back, off white belly.
 - Style choice, not from a source above: heterocercal (long upper lobe) caudal fin outline.
+- Painted gill slits (five) on the ps2 texture: generic shark anatomy, not from a source above; confirm
+  the count for this species before showing it as a fact.
 
 ## Blue marlin, Makaira nigricans (`blue_marlin`)
 
