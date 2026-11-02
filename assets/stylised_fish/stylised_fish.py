@@ -1,7 +1,8 @@
 """Original stylised low poly fish models, built from cited real anatomy (see SOURCES.md).
 
 Design language (this repo's own): chunky toy proportions, enlarged eyes, softened versions of each
-species' real colours. Default "ps1" style: about 650 to 850 triangles per fish, faceted fin outlines,
+species' real colours. Default "ps1" style: boxy faceted bodies (superellipse cross sections, flat
+shading), few hundred triangles per fish, unsmoothed fin outlines,
 small nearest filtered textures in 15 bit colour with ordered dither, matte materials. "--style smooth"
 gives the earlier soft, glossy, higher polygon version.
 Anatomy (fin positions, fin shapes, barbels, cephalofoil, colour zones) follows the sources in SOURCES.md.
@@ -30,8 +31,10 @@ TEX_W, TEX_H = 1024, 512   # painting resolution
 # 15 bit colour with 4x4 ordered dither and nearest filtering, matte unlit-looking materials (no gloss).
 # "smooth": the earlier soft toy version.
 STYLE = {"name": "ps1"}
-PS1 = {"ring_scale": 0.55, "min_rings": 8, "segs": 8, "fin_iters": 1, "sphere": (6, 4), "tube_segs": 4,
-       "tex": (256, 128)}
+PS1 = {"ring_scale": 0.45, "min_rings": 7, "segs": 8, "fin_iters": 0, "sphere": (6, 4), "tube_segs": 4,
+       "tex": (256, 128),
+       "box_p": 3.4,        # cross section superellipse exponent floor (2 = round, higher = boxier)
+       "flat_body": True}   # faceted body shading
 
 
 def ps1():
@@ -97,6 +100,8 @@ class Builder:
         hl = prof(sp["hl"], t) * CHUNK
         cz = prof(sp["cz"], t)
         p = prof(sp.get("p", [(0, 2.0), (1, 2.0)]), t)
+        if ps1():
+            p = max(p, PS1["box_p"])
         s, c = math.sin(th), -math.cos(th)
         y = w * math.copysign(abs(s) ** (2 / p), s)
         h = hu if c > 0 else hl
@@ -130,7 +135,7 @@ class Builder:
 
         def put(f, uvs):
             f.material_index = self.mat("body")
-            f.smooth = True
+            f.smooth = not (ps1() and PS1["flat_body"])
             for loop, (u, v) in zip(f.loops, uvs):
                 loop[uv].uv = (u, v)
             faces.append(f)
@@ -188,7 +193,7 @@ class Builder:
         fs = {f for v in res["verts"] for f in v.link_faces}
         for f in fs:
             f.material_index = self.mat(slot)
-            f.smooth = True
+            f.smooth = not ps1()
             for loop in f.loops:
                 loop[self.uv].uv = uv
         return res["verts"]
@@ -229,7 +234,7 @@ class Builder:
                     k2 = (k + 1) % segs
                     f = bm.faces.new((prev[k], prev[k2], ring[k2], ring[k]))
                     f.material_index = self.mat(slot)
-                    f.smooth = True
+                    f.smooth = not ps1()
                     for loop in f.loops:
                         loop[self.uv].uv = uv
             prev = ring
@@ -237,7 +242,7 @@ class Builder:
         for k in range(segs):
             f = bm.faces.new((prev[k], prev[(k + 1) % segs], tipv))
             f.material_index = self.mat(slot)
-            f.smooth = True
+            f.smooth = not ps1()
             for loop in f.loops:
                 loop[self.uv].uv = uv
 
@@ -257,7 +262,7 @@ class Builder:
             faces.append(bm.faces.new((top[j], top[i], bot[i], bot[j])))
         for f in faces:
             f.material_index = self.mat(slot)
-            f.smooth = True
+            f.smooth = not ps1()
             for loop in f.loops:
                 above = loop.vert.co.z > z_of(loop.vert.co.x, loop.vert.co.y)
                 loop[self.uv].uv = (0.9, 0.5 if above else 0.01)
