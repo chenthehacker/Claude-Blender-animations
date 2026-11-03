@@ -2,11 +2,13 @@
 
 Original assets, built from code. The look follows measurements taken from reference captures
 (see STYLE_NOTES.md next to this file): lookup table lighting instead of PBR, hand painted low
-resolution textures with bilinear filtering, binary alpha cutouts, soft blob shadows, no anti
-aliasing, rendered at the 400x240 per eye resolution of the original top screen.
+resolution textures with bilinear filtering, binary alpha cutouts, soft blob shadows, a high follow camera
+over a rolling log (cylinder) world. Renders clean at 1200x720 by default; --native gives the aliased
+400x240 per eye resolution of the original top screen.
 
     /root/bpyenv/bin/python beach_style_test.py --check
-    /root/bpyenv/bin/python beach_style_test.py --render out.png [--upscale 3] [--water day|lavender]
+    /root/bpyenv/bin/python beach_style_test.py --render out.png [--water day|lavender]
+    /root/bpyenv/bin/python beach_style_test.py --native --render out.png [--upscale 3]
     /root/bpyenv/bin/python beach_style_test.py --save beach.blend
 
 Coordinates: X east, Y north, Z up (metres, chibi scale). The camera looks north.
@@ -29,10 +31,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # --------------------------------------------------------------------------
 # Settings
 # --------------------------------------------------------------------------
-RES_X, RES_Y = 400, 240          # top screen, per eye (3dbrew Hardware page)
-LENS, SENSOR = 30.0, 36.0        # horizontal sensor fit: about 62 x 40 degrees
-CAM_POS = Vector((-3.0, -9.5, 3.0))
-CAM_TARGET = Vector((-3.0, 2.0, 0.6))
+RES_X, RES_Y = 1200, 720         # clean, anti aliased models (3x the original screen, same 5:3 frame)
+SAMPLES = 16
+NATIVE_X, NATIVE_Y = 400, 240    # --native: the top screen itself, per eye (3dbrew Hardware page), aliased
+LENS, SENSOR = 56.0, 36.0        # horizontal sensor fit: about 36 x 22 degrees (estimate, matched by eye)
+CAM_PITCH = 40.0                 # degrees below horizontal: high follow camera looking down at the player
+CAM_DIST = 6.5                   # metres from the focus point
+# Rolling log world: the town is wrapped around a cylinder whose axis runs east to west, so the ground falls
+# away toward the top of the screen and the sky shows over it (80.lv on New Leaf's free camera mod).
+# The radius was not published; this value is matched by eye to reference frames.
+LOG_RADIUS = 11.0
 
 # Noon sun, direction TO the sun: high (about 70 degrees) and slightly south, so the faces turned to the
 # camera catch light. Estimate, not measured.
@@ -127,16 +135,16 @@ def shore_y(x):
 
 
 def cliff_y(x):
-    return 13.5 + 0.4 * math.sin(0.3 * x + 1.0)
+    return 8.6 + 0.4 * math.sin(0.3 * x + 1.0)
 
 
-DUNES = [(-12.0, 8.0, 0.45, 2.2), (-5.0, 9.5, 0.35, 2.0), (2.5, 8.5, 0.40, 2.4), (9.0, 9.8, 0.30, 1.8),
-         (15.0, 8.2, 0.42, 2.5), (-18.0, 9.0, 0.35, 2.0)]
+DUNES = [(-10.0, 5.8, 0.35, 1.5), (-3.5, 6.6, 0.30, 1.4), (3.0, 6.2, 0.35, 1.6), (8.5, 5.6, 0.28, 1.4),
+         (14.0, 6.0, 0.35, 1.6), (-16.0, 6.2, 0.30, 1.5)]
 
 
 def terrain_h(x, y):
     s = y - shore_y(x)
-    h = 0.075 * min(max(s, -5.0), 9.0)
+    h = 0.075 * min(max(s, -5.0), 7.0)
     for xc, yc, a, sig in DUNES:
         h += a * math.exp(-((x - xc) ** 2 + (y - yc) ** 2) / (2 * sig * sig))
     h += 1.3 * float(smoothstep(cliff_y(x), cliff_y(x) + 1.0, y))
@@ -306,12 +314,11 @@ def make_image(name, rgb, alpha=None):
 
 
 def tex_sand():
+    """Soft painted mottling with a faint grain; no single texel speckles (they read as dots when magnified)."""
     w = h = 128
     n = fbm(w, h, 4, 3)
-    col = ramp(0.35 + 0.5 * (n - 0.5), [P["sand_dark"], P["sand"], P["sand_hi"]])
-    speck = RNG.random((h, w))
-    col[speck > 0.985] = hexc(P["sand_hi"])
-    col[speck < 0.012] = hexc(P["sand_dark"]) * 0.92
+    grain = fbm(w, h, 32, 1)
+    col = ramp(0.45 + 0.45 * (n - 0.5) + 0.12 * (grain - 0.5), [P["sand_dark"], P["sand"], P["sand_hi"]])
     return make_image("T_Sand", col)
 
 
@@ -345,7 +352,7 @@ def tex_wood():
     for ku, kv in ((0.27, 0.45), (0.72, 0.62)):
         du = np.minimum(np.abs(u - ku), 1 - np.abs(u - ku)) * 4.0
         r = np.sqrt(du ** 2 + (v - kv) ** 2)
-        knot += np.exp(-r * 9.0) * np.sin(r * 55.0)
+        knot += 0.4 * np.exp(-r * 9.0) * np.sin(r * 55.0)
     g = 0.5 + 0.5 * np.sin(2 * np.pi * (v * 5.0 + warp) + 3.0 * knot)
     t = 0.45 + 0.4 * (g - 0.5) + 0.25 * (fbm(w, h, 8, 1) - 0.5)
     col = ramp(t, [P["wood_dark"], P["wood"], P["wood_hi"]])
@@ -387,17 +394,19 @@ def tex_trunk():
 
 
 def tex_frond():
-    """Leaf card: rib along v, comb of leaflets with binary alpha (alpha test, no partial values)."""
-    w, h = 64, 128
+    """Leaf card: rib along v, comb of leaflets. The alpha is a smooth edge field, so bilinear filtering
+    followed by the alpha test gives clean curved edges instead of magnified texel steps."""
+    w, h = 128, 256
     u = np.linspace(0, 1, w)[None, :]
     v = np.linspace(0, 1, h)[:, None]
     du = np.abs(u - 0.5) * 2
     width = np.sin(np.pi * np.clip(v * 1.05, 0, 1)) ** 0.6
     saw = ((v * 16.0 + du * 1.6) % 1.0)
-    alpha = (du < width * (0.55 + 0.45 * saw)).astype(float)
-    alpha[(du < 0.06) & (v < 0.98)] = 1.0
+    edge = width * (0.55 + 0.45 * saw) - du                  # > 0 inside the leaflet
+    alpha = smoothstep(-0.02, 0.02, edge)
+    alpha = np.maximum(alpha, smoothstep(0.07, 0.05, du) * (v < 0.98))
     col = ramp(0.25 + 0.55 * v + 0.2 * (1 - du), [P["foliage_dark"], P["foliage_mid"], P["foliage_hi"]])
-    col = col * (0.75 + 0.25 * (1 - saw[..., ]))[..., None]         # painted leaflet separation
+    col = col * (0.75 + 0.25 * (1 - saw))[..., None]          # painted leaflet separation
     rib = np.broadcast_to(du < 0.05, (h, w))
     col[rib] = hexc("#9CC870")
     return make_image("T_Frond", col, alpha)
@@ -685,7 +694,7 @@ def water_material(kind, caustic):
     # caustic web, object space so it tiles over the whole sea
     tc = nt.nodes.new("ShaderNodeTexCoord")
     mp = nt.nodes.new("ShaderNodeMapping")
-    mp.inputs["Scale"].default_value = (0.16, 0.30, 1)     # stretched along the shore
+    mp.inputs["Scale"].default_value = (0.30, 0.55, 1)     # stretched along the shore
     link(nt, tc.outputs["Object"], mp.inputs["Vector"])
     ct = nt.nodes.new("ShaderNodeTexImage")
     ct.image, ct.interpolation = caustic, "Linear"
@@ -767,20 +776,73 @@ def water_material(kind, caustic):
     return m
 
 
-def sand_material(img):
-    """Lit sand, darkened toward the waterline (wet attribute) as a painted, baked band."""
-    m = material("M_Sand", image=img)
+def terrain_material(T):
+    """One material for the whole ground. Sand, cliff and grass blend through per vertex weights pushed
+    around by noise, so the borders are soft painted curves instead of face sized steps."""
+    m = bpy.data.materials.new("M_Terrain")
+    try:
+        m.use_nodes = True
+    except (AttributeError, TypeError):
+        pass
     nt = m.node_tree
-    tex = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeTexImage")
-    grp = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeGroup")
-    at = nt.nodes.new("ShaderNodeAttribute")
-    at.attribute_name = "wet"
-    mx = nt.nodes.new("ShaderNodeMix")
-    mx.data_type, mx.blend_type = "RGBA", "MULTIPLY"
-    link(nt, at.outputs["Fac"], mx.inputs[0])
-    link(nt, tex.outputs["Color"], mx.inputs[6])
-    mx.inputs[7].default_value = (*lin(hexc("#B8A79A")), 1)       # A: wet sand multiplier, slightly cool
-    link(nt, mx.outputs[2], grp.inputs[0])
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+
+    def tex(img, uvname):
+        uvn = nt.nodes.new("ShaderNodeUVMap")
+        uvn.uv_map = uvname
+        t = nt.nodes.new("ShaderNodeTexImage")
+        t.image, t.interpolation = img, "Linear"
+        link(nt, uvn.outputs["UV"], t.inputs["Vector"])
+        return t.outputs["Color"]
+
+    def attr(name):
+        a = nt.nodes.new("ShaderNodeAttribute")
+        a.attribute_name = name
+        return a.outputs["Fac"]
+
+    def mix(fac, a, b, blend="MIX"):
+        mx = nt.nodes.new("ShaderNodeMix")
+        mx.data_type, mx.blend_type = "RGBA", blend
+        link(nt, fac, mx.inputs[0])
+        for sock, val in ((mx.inputs[6], a), (mx.inputs[7], b)):
+            if isinstance(val, tuple):
+                sock.default_value = val
+            else:
+                link(nt, val, sock)
+        return mx.outputs[2]
+
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    nz = nt.nodes.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = 0.9
+    nz.inputs["Detail"].default_value = 3.0
+    link(nt, tc.outputs["Object"], nz.inputs["Vector"])
+
+    def soft(weight, amount=0.55, lo=0.38, hi=0.62):
+        add = nt.nodes.new("ShaderNodeMath")
+        add.operation = "MULTIPLY_ADD"
+        link(nt, nz.outputs["Fac"], add.inputs[0])
+        add.inputs[1].default_value = amount
+        link(nt, weight, add.inputs[2])
+        off = nt.nodes.new("ShaderNodeMath")
+        off.operation = "SUBTRACT"
+        link(nt, add.outputs[0], off.inputs[0])
+        off.inputs[1].default_value = 0.5 * amount
+        mr = nt.nodes.new("ShaderNodeMapRange")
+        mr.interpolation_type = "SMOOTHSTEP"
+        link(nt, off.outputs[0], mr.inputs["Value"])
+        mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = lo, hi
+        return mr.outputs["Result"]
+
+    sand = mix(attr("wet"), tex(T["sand"], "UVMap"), (*lin(hexc("#B8A79A")), 1), "MULTIPLY")   # A: wet band
+    col = mix(soft(attr("rock")), sand, tex(T["rock"], "UVRock"))
+    col = mix(soft(attr("grass"), 0.4), col, tex(T["grass"], "UVMap"))
+    g = nt.nodes.new("ShaderNodeGroup")
+    g.node_tree = LUT
+    link(nt, col, g.inputs[0])
+    em = nt.nodes.new("ShaderNodeEmission")
+    link(nt, g.outputs[0], em.inputs["Color"])
+    link(nt, em.outputs[0], out.inputs["Surface"])
     return m
 
 
@@ -788,34 +850,35 @@ def sand_material(img):
 # Scene parts
 # --------------------------------------------------------------------------
 def build_terrain(col, M):
-    xs = np.arange(-45.0, 45.01, 1.0)
-    ys = np.concatenate([np.arange(-8.0, 1.0, 1.0), np.arange(1.0, 16.0, 0.5), np.arange(16.0, 47.0, 2.0)])
-    bm, uv = new_bm()
-    wet = bm.verts.layers.float.new("wet")
+    """Finer grid where the camera looks (0.33 m), coarse beyond. Weights for wet sand, cliff and grass
+    are stored per vertex and blended softly in the shader."""
+    xs = np.concatenate([np.arange(-45.0, -16.0, 2.0), np.arange(-16.0, 14.0, 0.33), np.arange(14.0, 45.01, 2.0)])
+    ys = np.concatenate([np.arange(-14.0, -6.0, 2.0), np.arange(-6.0, 20.0, 0.33), np.arange(20.0, 60.01, 2.5)])
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    uvr = bm.loops.layers.uv.new("UVRock")
+    lay = {k: bm.verts.layers.float.new(k) for k in ("wet", "grass", "rock")}
     grid = []
     for y in ys:
         row = []
         for x in xs:
             h = terrain_h(x, y)
             v = bm.verts.new((x, y, h))
-            v[wet] = float(1.0 - smoothstep(0.02, 0.22, h))
+            cy = cliff_y(x)
+            g = float(smoothstep(cy + 0.70, cy + 1.05, y))
+            v[lay["wet"]] = float(1.0 - smoothstep(0.02, 0.22, h))
+            v[lay["grass"]] = g
+            v[lay["rock"]] = float(smoothstep(cy - 0.15, cy + 0.15, y)) * (1.0 - g)
             row.append(v)
         grid.append(row)
     for j in range(len(ys) - 1):
         for i in range(len(xs) - 1):
             f = bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
-            f.normal_update()
-            c = f.calc_center_median()
-            if c.y > cliff_y(c.x) + 0.85 and f.normal.z > 0.85:
-                f.material_index = 1          # grass
-            elif f.normal.z < 0.8 and c.y > 11.5:
-                f.material_index = 2          # rock
-            else:
-                f.material_index = 0          # sand
             for loop in f.loops:
                 co = loop.vert.co
-                loop[uv].uv = (co.x * 0.3, (co.z if f.material_index == 2 else co.y) * 0.3)
-    return mesh_object("Terrain", bm, col, [M["sand"], M["grass"], M["rock"]])
+                loop[uv].uv = (co.x * 0.3, co.y * 0.3)
+                loop[uvr].uv = (co.x * 0.3, co.z * 0.45)
+    return mesh_object("Terrain", bm, col, [M["terrain"]])
 
 
 def build_water(col, M):
@@ -871,8 +934,10 @@ def build_pier(col, M):
     return deck, posts
 
 
-VILLAGER = Vector((-4.78, -3.15, DECK_Z))     # feet; faces east (+X)
-BOBBER = Vector((-1.35, -2.55, 0.02))
+VILLAGER = Vector((-4.78, -0.6, DECK_Z))      # feet; faces east (+X)
+BOBBER = Vector((-2.15, -0.35, 0.02))
+ROD_TIP = Vector((1.35, 0.15, 1.45))          # relative to the feet
+CAM_TARGET = VILLAGER + Vector((0.9, -0.3, 0.5))
 
 
 def build_villager(col, M):
@@ -944,7 +1009,7 @@ def build_villager(col, M):
 
     # rod, line, bobber
     grip = o + Vector((0.25, 0.0, 0.33))
-    tip = o + Vector((1.55, 0.25, 1.62))
+    tip = o + ROD_TIP
     bm, uv = new_bm()
     bm_tube(bm, uv, [grip + Vector((-0.12, 0, -0.08)), tip], [0.022, 0.009], 6)
     bm_tube(bm, uv, [grip + Vector((0.08, 0.04, 0.04)), grip + Vector((0.08, 0.10, 0.04))], [0.04, 0.04], 8,
@@ -957,7 +1022,7 @@ def build_villager(col, M):
         p = tip.lerp(BOBBER + Vector((0, 0, 0.07)), t)
         p.z -= 0.35 * 4 * t * (1 - t)                                                 # gentle sag
         pts.append(p)
-    bm_tube(bm, uv, pts, [0.011] * len(pts), 4, cap_end=False)
+    bm_tube(bm, uv, pts, [0.006] * len(pts), 4, cap_end=False)
     parts["line"] = mesh_object("Line", bm, col, [M["line"]])
     bm, uv = new_bm()
     bm_sphere(bm, uv, BOBBER + Vector((0, 0, 0.04)), 0.075, scale=(1, 1, 1.15), segs=8, rings=6)
@@ -967,8 +1032,8 @@ def build_villager(col, M):
     ring_in, ring_out = [], []
     for i in range(16):
         a = 2 * math.pi * i / 16
-        ring_in.append(bm.verts.new(BOBBER + Vector((math.cos(a) * 0.20, math.sin(a) * 0.20, 0.005))))
-        ring_out.append(bm.verts.new(BOBBER + Vector((math.cos(a) * 0.27, math.sin(a) * 0.27, 0.005))))
+        ring_in.append(bm.verts.new(BOBBER + Vector((math.cos(a) * 0.22, math.sin(a) * 0.22, 0.005))))
+        ring_out.append(bm.verts.new(BOBBER + Vector((math.cos(a) * 0.245, math.sin(a) * 0.245, 0.005))))
     for i in range(16):
         j = (i + 1) % 16
         bm.faces.new((ring_in[i], ring_out[i], ring_out[j], ring_in[j]))
@@ -977,11 +1042,11 @@ def build_villager(col, M):
 
 
 PALMS = [  # base x, y, height, lean direction (deg from +X), lean amount
-    (-11.0, 8.6, 3.0, 200, 0.9),
-    (-6.8, 10.2, 3.3, 160, 0.7),
-    (1.2, 9.4, 3.1, 20, 0.9),
-    (4.9, 8.0, 2.8, 330, 0.8),
-    (11.5, 10.6, 3.4, 10, 0.6),
+    (-8.0, 3.8, 2.3, 250, 0.9),        # palms lean out over the water (south), as beach palms do
+    (-3.4, 3.4, 2.4, 260, 0.8),
+    (-0.6, 3.0, 2.2, 285, 1.0),
+    (2.0, 3.7, 2.5, 265, 0.8),
+    (4.4, 3.1, 2.3, 290, 1.0),
 ]
 
 
@@ -1003,9 +1068,9 @@ def build_palm(col, M, x, y, height, lean_deg, lean, rng):
         th = 2 * math.pi * i / nf + rng.uniform(-0.2, 0.2)
         d = Vector((math.cos(th), math.sin(th), 0))
         side = Vector((-d.y, d.x, 0))
-        L = rng.uniform(1.6, 2.0)
-        pitch = rng.uniform(0.35, 0.6)
-        droop = rng.uniform(1.1, 1.5)
+        L = rng.uniform(1.7, 2.1)
+        pitch = rng.uniform(0.30, 0.5)
+        droop = rng.uniform(2.0, 2.6)           # fronds hang well down, as in the captured beach palms
         rows = []
         for k in range(5):
             t = k / 4
@@ -1047,7 +1112,7 @@ def build_bushes(col, M, rng):
 
 def build_shells(col, M):
     bm, uv = new_bm()
-    for x, y, a in ((-1.8, 4.6, 0.3), (3.9, 3.7, 1.9)):
+    for x, y, a in ((-3.7, 2.6, 0.3), (-1.2, 2.5, 1.9)):
         z = terrain_h(x, y)
         res = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=4, radius=0.13,
                                         matrix=Matrix.Translation((x, y, z)) @ Matrix.Rotation(a, 4, "Z") @
@@ -1074,7 +1139,7 @@ def rect_blob(col, mat, name, x0, x1, y0, y1, z):
     return mesh_object(name, bm, col, [mat], smooth=False)
 
 
-def build_sky_and_clouds(col, M):
+def build_sky(col, M):
     w = bpy.data.worlds.new("Sky")
     bpy.context.scene.world = w
     try:
@@ -1086,10 +1151,10 @@ def build_sky_and_clouds(col, M):
     out = nt.nodes.new("ShaderNodeOutputWorld")
     tc = nt.nodes.new("ShaderNodeTexCoord")
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-    link(nt, tc.outputs["Generated"], sep.inputs[0])
+    link(nt, tc.outputs["Window"], sep.inputs[0])
     mr = nt.nodes.new("ShaderNodeMapRange")
-    link(nt, sep.outputs[2], mr.inputs["Value"])
-    mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = 0.0, 0.12   # zenith colour by the frame top
+    link(nt, sep.outputs[1], mr.inputs["Value"])
+    mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = 0.70, 1.0   # zenith colour at the top
     cr = nt.nodes.new("ShaderNodeValToRGB")
     link(nt, mr.outputs["Result"], cr.inputs[0])
     cr.color_ramp.elements[0].color = (*lin(hexc(P["sky_horizon"])), 1)
@@ -1098,15 +1163,63 @@ def build_sky_and_clouds(col, M):
     link(nt, cr.outputs["Color"], bg.inputs["Color"])
     link(nt, bg.outputs[0], out.inputs["Surface"])
 
-    for i, (x, z, s) in enumerate(((-48, 6.6, 1.0), (-14, 8.6, 0.8), (22, 7.2, 1.15), (58, 9.0, 0.9))):
+
+CLOUDS = [(0.10, 0.975, 0.22), (0.44, 0.985, 0.17), (0.78, 0.97, 0.24)]   # screen x, screen y, width fraction
+
+
+def build_clouds(col, M, cam, dist=80.0):
+    """Cloud cards placed along camera rays far beyond the curved ground, so they only show in the sky."""
+    sc = bpy.context.scene
+    bpy.context.view_layer.update()
+    mw = cam.matrix_world
+    fr = [mw @ v for v in cam.data.view_frame(scene=sc)]       # top right, bottom right, bottom left, top left
+    tr, br, bl, tl = fr
+    org = mw.translation
+    for i, (sx, sy, wf) in enumerate(CLOUDS):
+        top = tl.lerp(tr, sx)
+        bot = bl.lerp(br, sx)
+        d = (bot.lerp(top, sy) - org).normalized()
+        c = org + d * dist
+        width_world = (tr - tl).length * dist / (tl - org).length * wf
+        right = (tr - tl).normalized()
+        up = d.cross(right).normalized() * -1.0
+        if up.z < 0:
+            up = -up
+        hw, hh = width_world / 2, width_world * 0.375 / 2
         bm, uv = new_bm()
-        wdt, hgt = 22 * s, 8.25 * s
-        vs = [bm.verts.new(p) for p in ((x - wdt / 2, 100, z), (x + wdt / 2, 100, z),
-                                         (x + wdt / 2, 100, z + hgt), (x - wdt / 2, 100, z + hgt))]
+        vs = [bm.verts.new(c + right * a * hw + up * b * hh) for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
         f = bm.faces.new(vs)
-        for loop, c in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
-            loop[uv].uv = c
+        for loop, q in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+            loop[uv].uv = q
         mesh_object(f"Cloud{i}", bm, col, [M["cloud"]], smooth=False)
+
+
+def bend_array(co):
+    """Rolling log: wrap Y around a cylinder (axis along X) through the focus point."""
+    y0, R = CAM_TARGET.y, LOG_RADIUS
+    th = (co[:, 1] - y0) / R
+    r = R + co[:, 2]
+    co[:, 1] = y0 + r * np.sin(th)
+    co[:, 2] = r * np.cos(th) - R
+    return co
+
+
+def bend_point(p):
+    a = bend_array(np.array([[p.x, p.y, p.z]], dtype=float))[0]
+    return Vector(a)
+
+
+def bend_world():
+    for ob in bpy.context.scene.objects:
+        if ob.type != "MESH" or ob.name.startswith("Cloud"):
+            continue
+        me = ob.data
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3) + np.array(ob.location)
+        co = bend_array(co) - np.array(ob.location)
+        me.vertices.foreach_set("co", co.ravel())
+        me.update()
 
 
 def build_camera(col):
@@ -1115,8 +1228,9 @@ def build_camera(col):
     cd.clip_start, cd.clip_end = 0.1, 400.0
     cam = bpy.data.objects.new("Cam", cd)
     col.objects.link(cam)
-    cam.location = CAM_POS
-    d = (CAM_TARGET - CAM_POS).normalized()
+    p = math.radians(CAM_PITCH)
+    d = Vector((0.0, math.cos(p), -math.sin(p)))          # facing north, looking down
+    cam.location = CAM_TARGET - d * CAM_DIST
     cam.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
     bpy.context.scene.camera = cam
     return cam
@@ -1125,7 +1239,7 @@ def build_camera(col):
 # --------------------------------------------------------------------------
 # Build
 # --------------------------------------------------------------------------
-def build(water_kind="day"):
+def build(water_kind="day", native=False):
     global LUT, LUT_CHAR
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
@@ -1135,9 +1249,7 @@ def build(water_kind="day"):
                                        tex_trunk, tex_frond, tex_hair, tex_shirt, tex_rod, tex_bobber,
                                        tex_caustic, tex_cloud)}
     M = {
-        "sand": sand_material(T["sand"]),
-        "grass": material("M_Grass", image=T["grass"]),
-        "rock": material("M_Rock", image=T["rock"]),
+        "terrain": terrain_material(T),
         "wood": material("M_Wood", image=T["wood"]),
         "post_side": material("M_PostSide", image=T["post_side"]),
         "post_top": material("M_PostTop", image=T["post_top"]),
@@ -1165,7 +1277,7 @@ def build(water_kind="day"):
     world = collection("World")
     props = collection("Props")
     chars = collection("Characters")
-    build_sky_and_clouds(world, M)
+    build_sky(world, M)
     build_terrain(world, M)
     build_water(world, M)
     deck, posts = build_pier(props, M)
@@ -1182,17 +1294,26 @@ def build(water_kind="day"):
     blob(chars, M["blob"], "VillagerShadow", (VILLAGER.x + 0.02, VILLAGER.y, DECK_Z + 0.02), 0.30, 0.26)
     rect_blob(props, M["blob_box"], "PierShadow", PIER_X0 - 0.15, PIER_X1 + 0.15, PIER_Y0 - 0.1,
               shore_y(0.5 * (PIER_X0 + PIER_X1)) + 0.4, 0.008)
+    bend_world()
     cam = build_camera(world)
 
-    # render: EEVEE, one sample (no anti aliasing), no shadows or effects, Standard view so hex colours hold
+    # render: EEVEE, no shadows or effects, Standard view so hex colours hold.
+    # Default: anti aliased 1200x720 (clean geometry, textures stay low resolution and bilinear).
+    # --native: 400x240, one sample, no pixel filter (aliased, like the hardware), then a 3x nearest upscale.
     sc.render.engine = "BLENDER_EEVEE"
-    sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = RES_X, RES_Y, 100
-    try:
-        sc.render.filter_size = 0.0
-    except Exception:
-        sc.render.filter_size = 0.01
+    rx, ry = (NATIVE_X, NATIVE_Y) if native else (RES_X, RES_Y)
+    sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = rx, ry, 100
+    build_clouds(world, M, cam)
     ee = sc.eevee
-    ee.taa_render_samples = 1
+    if native:
+        try:
+            sc.render.filter_size = 0.0
+        except Exception:
+            sc.render.filter_size = 0.01
+        ee.taa_render_samples = 1
+    else:
+        sc.render.filter_size = 1.5
+        ee.taa_render_samples = SAMPLES
     for attr in ("use_shadows", "use_gtao", "use_bloom", "use_ssr", "use_raytracing", "use_volumetric_shadows"):
         if hasattr(ee, attr):
             try:
@@ -1220,13 +1341,14 @@ def check(info):
     bpy.context.view_layer.update()           # refresh matrix_world before projecting
     cam = info["cam"]
     ok = True
+    rx, ry = sc.render.resolution_x, sc.render.resolution_y
     ground = max(terrain_h(cam.location.x, cam.location.y), 0.0)
     print(f"camera height above ground/water: {cam.location.z - ground:.2f} m")
     ok &= cam.location.z - ground > 0.5
     subjects = {
         "villager head": VILLAGER + Vector((0, 0, 0.74)),
         "villager feet": VILLAGER,
-        "rod tip": VILLAGER + Vector((1.55, 0.25, 1.62)),
+        "rod tip": VILLAGER + ROD_TIP,
         "bobber": BOBBER,
         "pier near end": Vector((0.5 * (PIER_X0 + PIER_X1), PIER_Y0, DECK_Z)),
         "pier land end": Vector((0.5 * (PIER_X0 + PIER_X1), PIER_Y1, DECK_Z)),
@@ -1235,16 +1357,16 @@ def check(info):
     for i, c in enumerate(info["crowns"]):
         subjects[f"palm crown {i}"] = c
     for name, p in subjects.items():
-        v = world_to_camera_view(sc, cam, p)
-        px, py = v.x * RES_X, (1 - v.y) * RES_Y
+        v = world_to_camera_view(sc, cam, bend_point(p))
+        px, py = v.x * rx, (1 - v.y) * ry
         inside = 0 <= v.x <= 1 and 0 <= v.y <= 1 and v.z > 0
         print(f"  {name:16s} screen ({px:6.1f}, {py:6.1f}) px  {'in frame' if inside else 'OUT OF FRAME'}")
         if name in ("villager head", "villager feet", "rod tip", "bobber") and not inside:
             ok = False
     # character size on screen
-    a = world_to_camera_view(sc, cam, VILLAGER)
-    b = world_to_camera_view(sc, cam, VILLAGER + Vector((0, 0, 1.03)))
-    print(f"villager height on screen: {(b.y - a.y) * RES_Y:.1f} px of {RES_Y}")
+    a = world_to_camera_view(sc, cam, bend_point(VILLAGER))
+    b = world_to_camera_view(sc, cam, bend_point(VILLAGER + Vector((0, 0, 1.03))))
+    print(f"villager height on screen: {(b.y - a.y) * ry:.1f} px of {ry} ({100 * (b.y - a.y):.0f}% of the frame)")
     tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in sc.objects if o.type == "MESH")
     for grp, names in (("villager", ("Head", "Hair", "Eyes", "Blush", "Body", "Shorts", "Shoes", "Hands", "Rod")),
                        ("one palm", ("PalmTrunk", "PalmFronds", "Coconuts"))):
@@ -1276,10 +1398,19 @@ def main():
     p.add_argument("--check", action="store_true")
     p.add_argument("--save")
     p.add_argument("--render")
-    p.add_argument("--upscale", type=int, default=3)
+    p.add_argument("--native", action="store_true", help="400x240 aliased hardware look, plus a nearest upscale")
+    p.add_argument("--upscale", type=int, default=3, help="nearest neighbour factor for --native")
     p.add_argument("--water", choices=sorted(WATER), default="day")
+    p.add_argument("--pitch", type=float, help=f"camera pitch in degrees (default {CAM_PITCH})")
+    p.add_argument("--dist", type=float, help=f"camera distance in metres (default {CAM_DIST})")
+    p.add_argument("--lens", type=float, help=f"focal length in mm, 36 mm wide sensor (default {LENS})")
+    p.add_argument("--radius", type=float, help=f"rolling log radius in metres (default {LOG_RADIUS})")
     a = p.parse_args(argv)
-    info = build(a.water)
+    g = globals()
+    for arg, name in (("pitch", "CAM_PITCH"), ("dist", "CAM_DIST"), ("lens", "LENS"), ("radius", "LOG_RADIUS")):
+        if getattr(a, arg) is not None:
+            g[name] = getattr(a, arg)
+    info = build(a.water, a.native)
     if a.check:
         check(info)
     if a.save:
@@ -1296,7 +1427,7 @@ def main():
         t = time.time()
         bpy.ops.render.render(write_still=True)
         print(f"rendered {out} in {time.time() - t:.1f}s")
-        if a.upscale > 1:
+        if a.native and a.upscale > 1:
             root, ext = os.path.splitext(out)
             upscale(out, f"{root}_x{a.upscale}{ext}", a.upscale)
 
