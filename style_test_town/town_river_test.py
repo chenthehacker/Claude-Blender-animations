@@ -47,17 +47,24 @@ SAMPLES = 16
 
 SUN = Vector((0.0, -0.34, 0.94)).normalized()   # E frontal key from the camera side (section 2)
 LUT_SHADOW_SRGB = (0.54, 0.56, 0.65)            # M NL rock, section 2
-LUT_LIGHT_SRGB = (1.46, 1.38, 1.20)             # M upper bound, section 2
+# The measured light end (1.46, 1.38, 1.20) is an UPPER BOUND that includes painted texture variation (section 2).
+# Applied as lighting on top of painted textures it double counts and reads as shine, so the light term is kept
+# small here: estimate, matched by eye to NL#949 and NL#951 (no hot spots on matte surfaces).
+LUT_LIGHT_SRGB = (1.10, 1.08, 1.04)
 RIM_TINT = "#C8B4E6"                            # E tint, gain M: +22% displayed, about 1.5x linear (section 2)
 RIM_LINEAR_GAIN = 0.5
 BLOB_W50, BLOB_EXTENT = 0.38, 0.43              # M section 3, in P
 BLOB_ASPECT_ON_SCREEN = 1.35                    # M section 3
 BLOB_TINT_LIN = (0.018, 0.028, 0.032)           # E dark blue grey blend target (section 3 audit: blue must rise)
-BLOB_CORE_ALPHA = 0.86                          # derived below: R and G fall to about 0.45 of the lime grass
+# Core alpha solved so G falls to about 0.46 of the retail grass #5A964C (lin G 0.305 to 0.060 with target 0.028):
+# a = (0.305 - 0.060) / (0.305 - 0.028) = 0.885. Blue is multiplied less, as measured (section 3).
+BLOB_CORE_ALPHA = 0.88
 
 PAL = {
     "sky_top": "#2135E7", "sky_low": "#4078DA",                         # M retail NL#940, NL#939
-    "grass": "#92DB10", "grass_dark": "#82CC09", "grass_light": "#A1E917",  # M retail NL#941 to 945
+    # M retail stream capture supplied by the user (compressed 958x575 game area): near grass median #568F4F to
+    # #5D9D49, p10 #137434 to #287D36, printed patches p90 #9DCA64, far ground #9FCE60 (haze). Medium confidence.
+    "grass": "#5A964C", "grass_dark": "#1E7834", "grass_light": "#9DCA64", "haze": "#9FCE60",
     "cliff_lit": "#FFCEAE", "cliff_shade": "#BA8B8B",                   # M section 4.2
     "water": "#3A75B4", "water_shallow": "#6BBEF0", "foam": "#FFFFFF",  # M section 4.3 (foam E)
     "foliage": "#4A9C52", "foliage_dark": "#287046", "foliage_light": "#82D362",  # M section 7.3
@@ -71,7 +78,8 @@ PAL = {
     "flower_a": "#FFF6E0", "flower_b": "#FFE15A", "flower_centre": "#F0A040",  # E pastel (keep red unique)
 }
 
-GRASS_PRESS = {"grass": "#188050", "grass_dark": "#02613E", "grass_light": "#2A9A5E"}   # M press builds (light E)
+GRASS_PRESS = {"grass": "#188050", "grass_dark": "#02613E", "grass_light": "#2A9A5E", "haze": "#94CC78"}  # M press
+GRASS_EMOTE = {"grass": "#92DB10", "grass_dark": "#82CC09", "grass_light": "#A1E917", "haze": "#A1E917"}  # M NL#941 to 945
 
 GRASS_Z, WATER_Z, BED_Z = 0.0, -0.42, -0.75
 
@@ -145,6 +153,23 @@ CAM_H, CAM_D = solve_camera()
 LOG_R = calibrate_radius(CAM_H, CAM_D)
 
 
+def tangent_distance(R, h, d):
+    """Camera distance to the point where the line of sight grazes the bent ground (the visible ground edge)."""
+    best, bp = 90.0, None
+    for th in np.linspace(1e-4, math.pi / 2, 4000):
+        y, z = R * math.sin(th), R * math.cos(th) - R
+        dep = math.degrees(math.atan2(h - z, y + d))
+        if dep < best:
+            best, bp = dep, (y, z)
+    return math.hypot(bp[0] + d, h - bp[1])
+
+
+_NEAR = math.hypot(CAM_D, CAM_H)                      # camera to the player's feet
+_FAR = tangent_distance(LOG_R, CAM_H, CAM_D)
+HAZE_NEAR = _NEAR + 0.5 * (_FAR - _NEAR)              # far 40 to 50% of the visible ground (section 2)
+HAZE_FAR = _FAR
+
+
 def bend_array(co):
     th = co[:, 1] / LOG_R
     r = LOG_R + co[:, 2]
@@ -181,9 +206,99 @@ def grain(img_rgb, amount=0.025):
 
 
 def tex_grass():
-    w = h = 128
+    """Mottled base plus a printed lattice of soft lighter diamonds (retail capture: lighter yellow green patches on
+    a jittered grid; press NL#949: a fine triangle print). 10 x 10 motifs per tile: one every 0.29 P."""
+    w = h = 160
+    n = 0.6 * fbm(w, h, 4, 3, RNG) + 0.4 * fbm(w, h, 20, 1, RNG)
+    col = ramp(0.25 + 0.55 * n, [PAL["grass_dark"], PAL["grass"], PAL["grass"]])
+    yy, xx = np.mgrid[0:h, 0:w]
+    cell = 12
+    nc = w // cell
+    jit = RNG.uniform(-3.5, 3.5, (nc, nc, 2))
+    print_mask = np.zeros((h, w))
+    dark_mask = np.zeros((h, w))
+    for i in range(nc):
+        for j in range(nc):
+            cx = (j * cell + (cell / 2 if i % 2 else 0) + cell / 2 + jit[i, j, 0]) % w
+            cy = i * cell + cell / 2 + jit[i, j, 1]
+            dx = np.minimum(np.abs(xx - cx), w - np.abs(xx - cx))
+            dy = np.minimum(np.abs(yy - cy), h - np.abs(yy - cy))
+            r = RNG.uniform(2.2, 3.8)
+            d = (dx + dy) / r                        # diamond
+            print_mask = np.maximum(print_mask, smoothstep(1.2, 0.8, d) * RNG.uniform(0.25, 0.6))
+            # small darker triangle beside it (fine print, press NL#949)
+            tx, ty = (cx + cell / 2) % w, (cy + cell / 3) % h
+            ddx = np.minimum(np.abs(xx - tx), w - np.abs(xx - tx))
+            ddy = (yy - ty + h / 2) % h - h / 2
+            tri = (ddy > -1.6) & (ddy < 1.6) & (ddx < (1.6 - ddy) * 0.9)
+            dark_mask = np.maximum(dark_mask, tri * RNG.uniform(0.15, 0.35))
+    light = hexc(PAL["grass_light"])
+    dark = hexc(PAL["grass_dark"])
+    col = col * (1 - print_mask[..., None]) + light * print_mask[..., None]
+    col = col * (1 - dark_mask[..., None]) + dark * dark_mask[..., None]
+    fine = fbm(w, h, 40, 2, RNG) - 0.5                 # blade level mottle
+    col = np.clip(col * (1 + 0.22 * fine[..., None]), 0, 1)
+    col = grain(col, 0.06)
+    return make_image("T_Grass", np.clip(col, 0, 1))
+
+
+def tex_rock():
+    w = h = 64
     n = 0.6 * fbm(w, h, 4, 3, RNG) + 0.4 * fbm(w, h, 16, 1, RNG)
-    return make_image("T_Grass", ramp(n, [PAL["grass_dark"], PAL["grass"], PAL["grass_light"]]))
+    v = np.linspace(0, 1, h)[:, None]
+    col = ramp(0.25 + 0.5 * n + 0.2 * (1 - v), ["#7E7590", PAL["rock"], "#C9C3D2"])
+    return make_image("T_Rock", grain(col, 0.05))
+
+
+def tex_leaves():
+    """Leaf clump card: five serrated leaves fanning out, dark base to light tip, painted vein. The alpha is a
+    smooth field so bilinear filtering plus the alpha test gives clean edges."""
+    w = h = 96
+    yy, xx = np.mgrid[0:h, 0:w] / (h - 1)
+    col = np.zeros((h, w, 3))
+    alpha = np.zeros((h, w))
+    for k in range(5):
+        ang = math.radians(-70 + 35 * k + RNG.uniform(-8, 8))
+        dx, dy = math.sin(ang), -math.cos(ang)
+        rx, ry = xx - 0.5, yy - 0.85
+        along = rx * dx + ry * dy                    # 0 at the base, about 0.7 at the tip
+        across = rx * dy - ry * dx
+        L = 0.62 + RNG.uniform(-0.05, 0.05)
+        t = np.clip(along / L, 0, 1)
+        width = 0.15 * np.sin(np.pi * t) ** 0.8 * (0.85 + 0.15 * np.abs(np.sin(t * 30)))
+        field = smoothstep(0.012, -0.012, np.abs(across) - width) * (along > 0) * (along < L)
+        leafcol = ramp(0.15 + 0.75 * t + 0.1 * (RNG.random() - 0.5), [PAL["foliage_dark"], PAL["foliage"], PAL["foliage_light"]])
+        vein = smoothstep(0.012, 0.004, np.abs(across)) * (t > 0.05) * (t < 0.9)
+        leafcol = leafcol * (1 - 0.25 * vein[..., None])
+        sel = field > alpha
+        col[sel] = leafcol[sel]
+        alpha = np.maximum(alpha, field)
+    return make_image("T_Leaves", grain(col, 0.04), alpha)
+
+
+def tex_flower(main, blotch):
+    """Five rounded petals, two tone with a dark central blotch and a small yellow eye (generic garden flower)."""
+    w = h = 64
+    yy, xx = (np.mgrid[0:h, 0:w] - 31.5) / 31.5
+    r = np.hypot(xx, yy)
+    a = np.arctan2(yy, xx)
+    petal_r = 0.62 + 0.30 * np.abs(np.cos(2.5 * a))
+    alpha = smoothstep(0.03, -0.03, r - petal_r)
+    t = np.clip(r / petal_r, 0, 1)
+    col = ramp(t, [blotch, blotch, main, main])
+    col = col * (0.85 + 0.15 * t)[..., None]
+    eye = smoothstep(0.16, 0.10, r)
+    col = col * (1 - eye[..., None]) + hexc("#F2C94C") * eye[..., None]
+    lines = smoothstep(0.04, 0.0, np.abs(np.sin(5 * a))) * (t < 0.7) * (t > 0.2)
+    col = col * (1 - 0.2 * lines[..., None])
+    return make_image(f"T_Flower_{main}", grain(col, 0.03), alpha)
+
+
+def tex_flat(name, cols, amount=0.035, base=4):
+    """Painted fill: gentle mottle plus felt grain (NL surfaces always carry texture, section 5.3)."""
+    w = h = 32
+    n = fbm(w, h, base, 2, RNG)
+    return make_image(name, grain(ramp(0.3 + 0.4 * n, cols), amount))
 
 
 def tex_wall():
@@ -378,7 +493,20 @@ def mat(name, color=None, image=None, rim=0.0, cutout=False, uv_scale=None, uv_n
     g.inputs[1].default_value = rim
     em = nt.nodes.new("ShaderNodeEmission")
     link(nt, g.outputs[0], em.inputs["Color"])
-    link(nt, em.outputs[0], out.inputs["Surface"])
+    shader = em.outputs[0]
+    if cutout and alpha is not None:
+        gt = nt.nodes.new("ShaderNodeMath")
+        gt.operation = "GREATER_THAN"
+        gt.inputs[1].default_value = 0.5
+        link(nt, alpha, gt.inputs[0])
+        tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+        mx = nt.nodes.new("ShaderNodeMixShader")
+        link(nt, gt.outputs[0], mx.inputs[0])
+        link(nt, tr.outputs[0], mx.inputs[1])
+        link(nt, shader, mx.inputs[2])
+        shader = mx.outputs[0]
+        m.surface_render_method = "DITHERED"
+    link(nt, shader, out.inputs["Surface"])
     return m
 
 
@@ -461,8 +589,21 @@ def terrain_mat(T):
     g = nt.nodes.new("ShaderNodeGroup")
     g.node_tree = LUT
     link(nt, mx.outputs[2], g.inputs[0])
+    # haze: far 40 to 50% of the visible ground drifts toward a light yellow green (section 2; the user's retail
+    # capture shows the same drift, far ground #9FCE60), mixed up to 0.8 by camera distance
+    cd = nt.nodes.new("ShaderNodeCameraData")
+    hz = nt.nodes.new("ShaderNodeMapRange")
+    hz.interpolation_type = "SMOOTHSTEP"
+    link(nt, cd.outputs["View Distance"], hz.inputs["Value"])
+    hz.inputs["From Min"].default_value, hz.inputs["From Max"].default_value = HAZE_NEAR, HAZE_FAR
+    hz.inputs["To Min"].default_value, hz.inputs["To Max"].default_value = 0.0, 0.8
+    hm = nt.nodes.new("ShaderNodeMix")
+    hm.data_type = "RGBA"
+    link(nt, hz.outputs["Result"], hm.inputs[0])
+    link(nt, g.outputs[0], hm.inputs[6])
+    hm.inputs[7].default_value = (*lin(hexc(PAL["haze"])), 1)
     em = nt.nodes.new("ShaderNodeEmission")
-    link(nt, g.outputs[0], em.inputs["Color"])
+    link(nt, hm.outputs[2], em.inputs["Color"])
     link(nt, em.outputs[0], out.inputs["Surface"])
     return m
 
@@ -481,7 +622,7 @@ def water_mat(T):
     mx.inputs[6].default_value = (*lin(hexc(PAL["water"])), 1)
     mx.inputs[7].default_value = (*lin(hexc(PAL["water_shallow"])), 1)
     mp = nt.nodes.new("ShaderNodeMapping")
-    mp.inputs["Scale"].default_value = (0.55, 0.40, 1)
+    mp.inputs["Scale"].default_value = (0.9, 0.65, 1)
     link(nt, nt.nodes.new("ShaderNodeTexCoord").outputs["Object"], mp.inputs["Vector"])
     t = nt.nodes.new("ShaderNodeTexImage")
     t.image, t.interpolation = T["caustic"], "Linear"
@@ -489,7 +630,7 @@ def water_mat(T):
     cm = nt.nodes.new("ShaderNodeMath")
     cm.operation = "MULTIPLY"
     link(nt, t.outputs["Color"], cm.inputs[0])
-    cm.inputs[1].default_value = 0.35            # lines about +18% at p95 over the median (section 4.3)
+    cm.inputs[1].default_value = 0.5             # lines about +18% at p95 over the median (section 4.3)
     mx2 = nt.nodes.new("ShaderNodeMix")
     mx2.data_type = "RGBA"
     link(nt, cm.outputs[0], mx2.inputs[0])
@@ -552,67 +693,121 @@ def build_water(col, M):
     return mesh_object("Water", bm, col, [M["water"]], smooth=False)
 
 
+def leaf_cards(bm, uv, center, radius, n, size, rng, squash=0.9):
+    """Leaf clump cards over a sphere (Fibonacci points), facing outward, randomly rolled. Their normals follow the
+    sphere, so the LUT shades the canopy as a volume while the cut edges stay jagged."""
+    c = Vector(center)
+    ga = math.pi * (3 - math.sqrt(5))
+    for i in range(n):
+        zz = 1 - 2 * (i + 0.5) / n
+        rr = math.sqrt(max(0.0, 1 - zz * zz))
+        nrm = Vector((rr * math.cos(ga * i), rr * math.sin(ga * i), zz))
+        if nrm.z < -0.55:
+            continue                                 # underside: hidden, skip
+        p = c + Vector((nrm.x, nrm.y, nrm.z * squash)) * radius
+        u, w = B.frame_of(nrm)
+        roll = rng.uniform(0, 2 * math.pi)
+        a1 = u * math.cos(roll) + w * math.sin(roll)
+        a2 = nrm.cross(a1)
+        sz = size * rng.uniform(0.85, 1.15)
+        vs = [bm.verts.new(p + (a1 * sx + a2 * sy) * sz * 0.5 + nrm * 0.03 * sz)
+              for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        f = bm.faces.new(vs)
+        for lp, q in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+            lp[uv].uv = q
+
+
 def build_tree(col, M, x, y, height, rng):
     z0 = terrain_h(x, y)
     bm, uv = new_bm()
-    bm_tube(bm, uv, [(x, y, z0 - 0.1), (x, y, z0 + height * 0.55)], [0.12, 0.08], 7, cap_end=True)
-    mesh_object("TreeTrunk", bm, col, [M["bark"]])
-    bm, uv = new_bm()
     top = z0 + height * 0.55
+    bm_tube(bm, uv, [(x, y, z0 - 0.1), (x, y, z0 + 0.12), (x, y, top)], [0.17, 0.12, 0.08], 8, cap_end=True)
+    mesh_object("TreeTrunk", bm, col, [M["bark"]])
+    lobes = []
     for k in range(3):
         a = 2 * math.pi * k / 3 + rng.uniform(0, 1)
-        c = (x + 0.18 * math.cos(a), y + 0.18 * math.sin(a), top + 0.28 + 0.08 * k)
-        bm_sphere(bm, uv, c, 0.42 + 0.06 * rng.random(), scale=(1.05, 1.05, 0.9), segs=14, rings=8)
-    bm_sphere(bm, uv, (x, y, top + 0.62), 0.36, segs=14, rings=8)
-    mesh_object("TreeCrown", bm, col, [M["foliage"]])
+        lobes.append(((x + 0.22 * math.cos(a), y + 0.22 * math.sin(a), top + 0.30 + 0.08 * k), 0.40))
+    lobes.append(((x, y, top + 0.66), 0.34))
+    bm, uv = new_bm()
+    for c, r in lobes:
+        bm_sphere(bm, uv, c, r * 0.82, scale=(1, 1, 0.9), segs=12, rings=7)        # dark core fills gaps
+    mesh_object("TreeCore", bm, col, [M["foliage_core"]])
+    bm, uv = new_bm()
+    for c, r in lobes:
+        leaf_cards(bm, uv, c, r, 46, 0.36, rng)
+    mesh_object("TreeLeaves", bm, col, [M["leaves"]])
     blob(col, M["contact"], "TreeShadow", (x, y, z0 + 0.012), 0.55, 0.55)
 
 
 def build_flowers(col, M, x, y, rng):
+    """A clump about 0.45 P wide: a rosette of leaf cards with painted flower head cards on short stems."""
     z0 = terrain_h(x, y)
     bm, uv = new_bm()
-    bm2, uv2 = new_bm()
-    bm3, uv3 = new_bm()
-    for k in range(5):
-        a = 2 * math.pi * k / 5 + rng.uniform(0, 0.6)
-        px, py = x + 0.19 * math.cos(a), y + 0.16 * math.sin(a)
-        hgt = 0.12 + 0.04 * rng.random()
-        bm_tube(bm, uv, [(px, py, z0), (px, py, z0 + hgt)], [0.012, 0.010], 4)
-        bm_sphere(bm, uv, (px + 0.03, py, z0 + 0.03), 0.04, scale=(1.4, 0.7, 0.3), segs=6, rings=3)
-        for pk in range(5):
-            pa = 2 * math.pi * pk / 5
-            bm_sphere(bm2 if k % 2 else bm3, uv2 if k % 2 else uv3,
-                      (px + 0.035 * math.cos(pa), py + 0.035 * math.sin(pa), z0 + hgt), 0.026,
-                      scale=(1, 1, 0.45), segs=6, rings=3)
-        bm_sphere(bm, uv, (px, py, z0 + hgt + 0.012), 0.018, segs=6, rings=3, mat=1)
-    mesh_object("FlowerLeaves", bm, col, [M["leaf"], M["flower_c"]])
-    mesh_object("FlowerPetalsA", bm2, col, [M["flower_a"]])
-    mesh_object("FlowerPetalsB", bm3, col, [M["flower_b"]])
-    blob(col, M["contact"], "FlowerShadow", (x, y, z0 + 0.01), 0.2, 0.2)
+    for k in range(9):                                   # rosette leaves, tilted up 25 deg
+        a = 2 * math.pi * k / 9 + rng.uniform(-0.2, 0.2)
+        d = Vector((math.cos(a), math.sin(a), 0))
+        up = Vector((0, 0, 1))
+        base = Vector((x, y, z0 + 0.01)) + d * 0.03
+        tip_dir = (d * math.cos(0.45) + up * math.sin(0.45)).normalized()
+        side = d.cross(up).normalized()
+        L, W = 0.20 * rng.uniform(0.85, 1.1), 0.12
+        vs = [bm.verts.new(base - side * W / 2), bm.verts.new(base + side * W / 2),
+              bm.verts.new(base + side * W / 2 + tip_dir * L), bm.verts.new(base - side * W / 2 + tip_dir * L)]
+        f = bm.faces.new(vs)
+        for lp, q in zip(f.loops, ((0.3, 0.0), (0.7, 0.0), (0.95, 0.75), (0.05, 0.75))):
+            lp[uv].uv = q
+    mesh_object("FlowerLeaves", bm, col, [M["leaves"]])
+    for k in range(4):
+        a = 2 * math.pi * k / 4 + rng.uniform(0, 0.5)
+        px, py = x + 0.11 * math.cos(a), y + 0.09 * math.sin(a)
+        hgt = 0.10 + 0.05 * rng.random()
+        bm, uv = new_bm()
+        bm_tube(bm, uv, [(px, py, z0), (px, py, z0 + hgt)], [0.010, 0.008], 4)
+        mesh_object("FlowerStem", bm, col, [M["stem"]])
+        bm, uv = new_bm()
+        # head card faces up and toward the camera (south), tilted 40 deg from flat
+        nrm = Vector((0, -math.sin(math.radians(40)), math.cos(math.radians(40))))
+        a1 = Vector((1, 0, 0))
+        a2 = nrm.cross(a1)
+        c = Vector((px, py, z0 + hgt + 0.01))
+        sz = 0.13
+        vs = [bm.verts.new(c + (a1 * sx + a2 * sy) * sz * 0.5) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        f = bm.faces.new(vs)
+        for lp, q in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+            lp[uv].uv = q
+        mesh_object("FlowerHead", bm, col, [M["flower_a"] if k % 2 else M["flower_b"]])
+    blob(col, M["contact"], "FlowerShadow", (x, y, z0 + 0.01), 0.24, 0.24)
 
 
 def build_rock(col, M, x, y, s):
     z0 = terrain_h(x, y)
-    bm = bmesh.new()
+    bm, uv = new_bm()
     res = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=s,
                                      matrix=Matrix.Translation((x, y, z0 + 0.35 * s)) @
-                                     Matrix.Diagonal((1.25, 1.0, 0.75, 1.0)))
+                                     Matrix.Diagonal((1.25, 1.0, 0.75, 1.0)), calc_uvs=True)
     rng = np.random.default_rng(4)
     for v in res["verts"]:
         v.co += Vector(rng.uniform(-0.05, 0.05, 3)) * s
+    for f in bm.faces:
+        for lp in f.loops:
+            lp[uv].uv = ((lp.vert.co.x - x) * 2.0, (lp.vert.co.z - z0) * 2.0 + (lp.vert.co.y - y))
     mesh_object("Rock", bm, col, [M["rock"]], smooth=False)       # facets visible on props (section 2)
     blob(col, M["contact"], "RockShadow", (x, y, z0 + 0.01), 1.3 * s, 1.1 * s)
 
 
 def build_bush(col, M, x, y, r, rng):
     z0 = terrain_h(x, y)
+    lobes = [((x + 0.45 * r * math.cos(a), y + 0.35 * r * math.sin(a), z0 + 0.55 * r), 0.6 * r)
+             for a in (2 * math.pi * k / 5 for k in range(5))]
+    lobes.append(((x, y, z0 + 0.9 * r), 0.6 * r))
     bm, uv = new_bm()
-    for k in range(5):
-        a = 2 * math.pi * k / 5
-        bm_sphere(bm, uv, (x + 0.45 * r * math.cos(a), y + 0.35 * r * math.sin(a), z0 + 0.55 * r),
-                  0.6 * r, segs=14, rings=8)
-    bm_sphere(bm, uv, (x, y, z0 + 0.9 * r), 0.6 * r, segs=14, rings=8)
-    mesh_object("Bush", bm, col, [M["foliage"]])
+    for c, rr in lobes:
+        bm_sphere(bm, uv, c, rr * 0.82, segs=12, rings=7)
+    mesh_object("BushCore", bm, col, [M["foliage_core"]])
+    bm, uv = new_bm()
+    for c, rr in lobes:
+        leaf_cards(bm, uv, c, rr, 40, 0.30, rng)
+    mesh_object("BushLeaves", bm, col, [M["leaves"]])
 
 
 # Horizon tree line beyond the bend tangent so trunk bases sink (section 9 rule 3); 5 trees (rule 5: 4 to 6).
@@ -768,22 +963,32 @@ def build(native=False):
     LUT = build_lut()
     rng = np.random.default_rng(3)
     T = {"grass": tex_grass(), "wall": tex_wall(), "caustic": tex_caustic(), "foliage": tex_foliage(),
-         "bark": tex_bark(), "face": tex_face(), "hair": tex_hair(), "shirt": tex_shirt(), "bobber": tex_bobber()}
+         "bark": tex_bark(), "face": tex_face(), "hair": tex_hair(), "shirt": tex_shirt(), "bobber": tex_bobber(),
+         "rock": tex_rock(), "leaves": tex_leaves(),
+         "flower_a": tex_flower("#F4F0FF", "#5B3C8C"), "flower_b": tex_flower("#FFE15A", "#7A4A1E"),
+         "skin": tex_flat("T_Skin", [PAL["skin_shade"], PAL["skin"], PAL["skin"]], 0.02, 2),
+         "shorts": tex_flat("T_Shorts", ["#26347A", PAL["shorts"], "#3B4C9E"]),
+         "shoe": tex_flat("T_Shoe", ["#D8D8E0", PAL["shoe"], "#FFFFFF"], 0.02),
+         "rod": tex_flat("T_Rod", ["#A86E2C", PAL["rod"], "#D8A050"], 0.03),
+         "core": tex_flat("T_LeafCore", [PAL["foliage_dark"], PAL["foliage_dark"], PAL["foliage"]], 0.05, 6),
+         "stem": tex_flat("T_Stem", [PAL["foliage_dark"], PAL["foliage"]], 0.03)}
     contact_alpha = 1.0 - 0.7     # trunk base patches: ratio about 0.7 (section 3), as a blend toward the tint
     M = {
         "terrain": terrain_mat(T), "water": water_mat(T),
-        "foliage": mat("M_Foliage", image=T["foliage"], uv_scale=(2, 2)),
+        "foliage_core": mat("M_LeafCore", image=T["core"], uv_scale=(3, 3)),
+        "leaves": mat("M_Leaves", image=T["leaves"], cutout=True),
         "bark": mat("M_Bark", image=T["bark"]),
-        "leaf": mat("M_Leaf", color=PAL["foliage"]), "flower_c": mat("M_FlowerC", color=PAL["flower_centre"]),
-        "flower_a": mat("M_FlowerA", color=PAL["flower_a"]), "flower_b": mat("M_FlowerB", color=PAL["flower_b"]),
-        "rock": mat("M_Rock", color=PAL["rock"]),
+        "stem": mat("M_Stem", image=T["stem"]),
+        "flower_a": mat("M_FlowerA", image=T["flower_a"], cutout=True),
+        "flower_b": mat("M_FlowerB", image=T["flower_b"], cutout=True),
+        "rock": mat("M_Rock", image=T["rock"]),
         "face": mat("M_Face", image=T["face"], rim=1.0),
         "hair": mat("M_Hair", image=T["hair"], rim=1.0),
         "shirt": mat("M_Shirt", image=T["shirt"], rim=1.0),
-        "shorts": mat("M_Shorts", color=PAL["shorts"], rim=1.0),
-        "skin": mat("M_Skin", color=PAL["skin"], rim=1.0),
-        "shoe": mat("M_Shoe", color=PAL["shoe"], rim=1.0),
-        "rod": mat("M_Rod", color=PAL["rod"]),
+        "shorts": mat("M_Shorts", image=T["shorts"], rim=1.0, uv_scale=(2, 2)),
+        "skin": mat("M_Skin", image=T["skin"], rim=1.0),
+        "shoe": mat("M_Shoe", image=T["shoe"], rim=1.0),
+        "rod": mat("M_Rod", image=T["rod"]),
         "line": unlit("M_Line", "#F0F0F0"),
         "bobber": mat("M_Bobber", image=T["bobber"]),
         "foam": unlit("M_Foam", "#CFEFFF"),
@@ -896,7 +1101,8 @@ def qa(png, info):
     cf, cg = sample(pf), sample(pg)
     ratio = cf / np.maximum(cg, 1e-6)
     print(f"QA blob: shadow sRGB {tuple(int(c * 255) for c in cf)} vs grass {tuple(int(c * 255) for c in cg)}; "
-          f"R, G ratios {ratio[0]:.2f}, {ratio[1]:.2f} (target about 0.45), B ratio {ratio[2]:.2f} (must rise, above 1)")
+          f"R, G ratios {ratio[0]:.2f}, {ratio[1]:.2f} (target about 0.45), B ratio {ratio[2]:.2f} "
+          f"(blue multiplied less than R and G; above 1 only on lime grass)")
 
 
 def main():
@@ -906,9 +1112,13 @@ def main():
     p.add_argument("--render")
     p.add_argument("--native", action="store_true", help="400x240, one sample, then a 3x nearest upscale")
     p.add_argument("--save")
-    p.add_argument("--grass", choices=("retail", "press"), default="retail",
-                   help="retail: lime from retail emote captures; press: E3 build green (section 4.2)")
+    p.add_argument("--grass", choices=("retail", "press", "emote"), default="retail",
+                   help="retail: user's retail stream capture; press: E3 build green; emote: lime emote crops")
     a = p.parse_args(argv)
+    if a.grass == "emote":
+        PAL.update(GRASS_EMOTE)
+        global BLOB_CORE_ALPHA
+        BLOB_CORE_ALPHA = 0.86
     if a.grass == "press":
         PAL.update(GRASS_PRESS)
         # press grass is teal green, not lime: solve the blend target so each channel falls to about 0.48 (sRGB)

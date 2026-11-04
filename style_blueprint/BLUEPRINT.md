@@ -656,3 +656,22 @@ Consistency checks (section 12 against the body):
   M because they rest on press builds; the retail grass correction rests on four retail emote captures (R).
 * Writing rules: a scan of all prose outside code, hex codes and file names found no dash or hyphen used as
   punctuation or in compound words in v2; the v3 additions were scanned the same way.
+
+## 15. Addendum after the first blueprint test scene (style_test_town)
+
+New evidence and corrections found while building `style_test_town/town_river_test.py`:
+* Retail NL grass (new source: a retail stream capture supplied by the user, game area 958x575, compressed, so M not
+  H): near grass median #568F4F to #5D9D49 (hue 106 to 113, S 0.45 to 0.54, V 0.56 to 0.62), dark p10 #137434 to
+  #287D36, lighter printed diamond patches p90 #9DCA64; far ground brightens to #9FCE60. This supersedes the lime
+  #92DB10 as the default retail grass: the lime comes only from emote close up crops (NL#941 to 945) and, as a full
+  frame ground, breaks the section 7.1 envelope (43% neon pixels in a test render versus under 2% in captures).
+* Retail NL haze: the same capture shows the far ground drifting to #9FCE60, close to the press haze target #94CC78
+  (section 2), so haze is likely present in retail too (M, one frame).
+* LUT light end: the measured (1.46, 1.38, 1.20) is an upper bound that includes painted texture variation. Used as a
+  lighting multiplier on top of painted textures it reads as shine; the test scene uses (1.10, 1.08, 1.04), an
+  estimate matched by eye to NL#949 and NL#951.
+* Surface detail target, measured on the 21 NL 400x240 captures with the section 7.1 method family: local grain
+  (median of |L minus its 3x3 mean| over the frame) median 2.95 (p25 2.02, p75 3.75); edge density median 0.096;
+  mean saturation 0.555; mean value 0.654. Flat colour materials and smooth sphere foliage scored 0.37 grain; painted
+  textures on every material, leaf clump cards and printed grass raised it to 1.63 with saturation 0.561 and value
+  0.669 inside the capture range. Every material needs a painted texture; no flat fills.
