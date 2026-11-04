@@ -119,7 +119,7 @@ the feet with no offset (A, vA, H). CF#882 balloon shadow straight down (by eye)
 | width at 50% / full extent, in P | 0.38 P / 0.43 P (A 0.30/0.38 REVISED) | 50% width about 0.40 P (40 to 46 px vs about 110 px players); 10% extent 0.6 to 0.7 P |
 | profile | quick drop to about 0.7 over 3 px, then a gentle cone to the core; 10 to 90% edge about 10 px (about 0.09 P) | soft plateau plus long ramps; 10 to 90% edge about 22 px (0.2 P); not a 6 px cone |
 | on screen aspect | 1.3 to 1.4 : 1 (A's 2:1 REVISED) | similar (by eye) |
-| trees and props | NL#946 soft dark patch under trunk base, ratio about 0.7, irregular; NL#951 rock contact band (by eye) | cannot confirm |
+| trees and props | EVERY grounded object gets one (section 15): canopy shadow about 0.65 of the canopy width, centred under the canopy (no sun offset), soft irregular edge, luminance 0.77 to 0.84 of open grass near the rim and darker toward the trunk (NL#946); ground under flower clumps 0.68 (NL#946); rock contact band dark, extending past the rock (NL#946, 951). Same dark blue grey blend as the player blob (R and G fall more than B). M (one E3 2010 frame for the numbers, by eye on NL#951, 953) | cannot confirm |
 
 Confidence: NL H (four retail frames); CF M (press plus one in game frame by eye).
 
@@ -150,7 +150,7 @@ Audit [Au] (`audit/nl_blob2.py`: horizontal profile at the sole row, normalised 
 | CF city | pale horizon #7B94BC | | vC (CF#877). M |
 | NL E3 2010 press | bright cyan #45C5FF (top #3BBBFF) | #50D0FF to #58D4F8 | vC, A, vA (NL#946, 947, 949, 951, 953); [Au] rows 0 to 40 (body plus band) #48CCF8 to #4DCDFF: CONFIRMED. H for that build |
 | NL E3 2011 press | saturated blue to violet #213EED (NL#963), #3356F1 (957), #6378EB (956), #6D4FFA (955), #7942FE (964, possibly evening) | | vC. H for that build |
-| NL retail / near retail | deep blue #2135E7 (h 234, S 0.86, V 0.91) on retail NL#940; #242CE6 on NL#939 (Nintendo Direct 2012) | lower sky #4078DA to #6894D9 near a cloud (NL#939) | [S] `synth/sky_retail.py`, vC; [Au] NL#940 #2139E8, NL#939 #2323EF (strict blue mask): CONFIRMED within 9 levels. M (two small frames). Use the deep blue for an NL retail look; cyan only for an "early NL" look |
+| NL retail / near retail | deep blue #2135E7 (h 234, S 0.86, V 0.91) on retail NL#940; #242CE6 on NL#939 (Nintendo Direct 2012); clouds (NL#939): thin soft low contrast wisps, core #5790D9, brightest #6FA2E1, against #3044DF, not white puffs (white puffy clouds are key art only). L (one 200x140 frame) | lower sky #4078DA to #6894D9 near a cloud (NL#939) | [S] `synth/sky_retail.py`, vC; [Au] NL#940 #2139E8, NL#939 #2323EF (strict blue mask): CONFIRMED within 9 levels. M (two small frames). Use the deep blue for an NL retail look; cyan only for an "early NL" look |
 | NL snow night, evening | snow #4E56B1 under night light (NL#961); evening sky #7942FE (NL#964) | | vA. M |
 
 ### 4.2 Ground and grass
@@ -675,3 +675,15 @@ New evidence and corrections found while building `style_test_town/town_river_te
   mean saturation 0.555; mean value 0.654. Flat colour materials and smooth sphere foliage scored 0.37 grain; painted
   textures on every material, leaf clump cards and printed grass raised it to 1.63 with saturation 0.561 and value
   0.669 inside the capture range. Every material needs a painted texture; no flat fills.
+* Object shadows (second test pass): without them shrubs, flowers, trees and rocks read as pasted on. Measured on
+  NL#946 against open grass #12804E: under the canopy #1C6840 to #185F3E (luminance 0.77 to 0.84; R rises because the
+  grass R is near zero, G and B fall to 0.74 to 0.82), under a flower clump #185436 (0.68). Canopy shadow width about
+  0.65 of the canopy width, centred, irregular soft edge (by eye). Implementation that reproduced the targets on the
+  render (`town_river_test.py --render` QA): decal discs with the player blob blend colour, core alpha 0.72 (contact:
+  flowers 0.32 P radius, rock 1.75 x its radius, trunk base 0.40 P) and 0.68 (canopy), noise wobble 0.10 to 0.16 on
+  the radius; measured on the render: flower ground 0.68, canopy rim 0.85.
+* Trees (by eye on NL#946, 953): fat flared trunk (base radius about 0.30 P, top 0.14 P), short (canopy starts at
+  about 0.42 of the tree height), wide canopy of leaf clump cards; near trees have their crown cut by the top edge,
+  horizon trees have their base hidden by the bend.
+* Clouds: retail NL#939 shows thin low contrast wisps (see 4.1). Placed as unbent cards along camera rays beyond the
+  bent ground so they only show inside the thin sky strip.

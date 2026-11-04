@@ -59,6 +59,13 @@ BLOB_TINT_LIN = (0.018, 0.028, 0.032)           # E dark blue grey blend target 
 # Core alpha solved so G falls to about 0.46 of the retail grass #5A964C (lin G 0.305 to 0.060 with target 0.028):
 # a = (0.305 - 0.060) / (0.305 - 0.028) = 0.885. Blue is multiplied less, as measured (section 3).
 BLOB_CORE_ALPHA = 0.88
+# Object shadows, measured on NL#946 (E3 2010, the only frame with a near tree on open grass; M):
+# canopy shadow about 0.65 of the canopy width, centred under it, soft irregular edge, luminance 0.77 to 0.84 of
+# open grass near its rim and darker toward the trunk; ground under flower clumps 0.68; rock contact band dark.
+# Same blend target as the player blob. Core alpha for a displayed ratio k on #5A964C (lin G 0.305):
+# a = (0.305 - lin(150 k)) / (0.305 - 0.028): k 0.66 gives 0.65 (contact), k 0.75 gives 0.52 (canopy).
+CONTACT_ALPHA, CANOPY_ALPHA = 0.72, 0.68      # tuned on the render to hit the measured ratios
+CANOPY_SHADOW_FRAC = 0.65
 
 PAL = {
     "sky_top": "#2135E7", "sky_low": "#4078DA",                         # M retail NL#940, NL#939
@@ -521,7 +528,7 @@ def unlit(name, color):
     return m
 
 
-def blob_mat(name, core_alpha, tint_lin, inner=0.76):
+def blob_mat(name, core_alpha, tint_lin, inner=0.76, wobble=0.0):
     """Section 3: blend toward a dark blue grey (a multiply cannot raise blue on lime grass). Alpha profile:
     full core, falling to 0 at the outer radius, 50% at about 0.88 of it (w50 / extent = 0.38 / 0.43)."""
     m = bpy.data.materials.new(name)
@@ -536,9 +543,26 @@ def blob_mat(name, core_alpha, tint_lin, inner=0.76):
     ln = nt.nodes.new("ShaderNodeVectorMath")
     ln.operation = "LENGTH"
     link(nt, sub.outputs["Vector"], ln.inputs[0])
+    dist = ln.outputs["Value"]
+    if wobble:
+        # irregular, leafy outline (NL#946 canopy and flower shadows are soft but not round)
+        nz = nt.nodes.new("ShaderNodeTexNoise")
+        nz.inputs["Scale"].default_value = 4.0
+        nz.inputs["Detail"].default_value = 2.0
+        link(nt, tc.outputs["UV"], nz.inputs["Vector"])
+        ad = nt.nodes.new("ShaderNodeMath")
+        ad.operation = "MULTIPLY_ADD"
+        link(nt, nz.outputs["Fac"], ad.inputs[0])
+        ad.inputs[1].default_value = wobble
+        link(nt, dist, ad.inputs[2])
+        sb = nt.nodes.new("ShaderNodeMath")
+        sb.operation = "SUBTRACT"
+        link(nt, ad.outputs[0], sb.inputs[0])
+        sb.inputs[1].default_value = 0.5 * wobble
+        dist = sb.outputs[0]
     mr = nt.nodes.new("ShaderNodeMapRange")
     mr.interpolation_type = "SMOOTHSTEP"
-    link(nt, ln.outputs["Value"], mr.inputs["Value"])
+    link(nt, dist, mr.inputs["Value"])
     mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = 0.5, 0.5 * inner
     mr.inputs["To Min"].default_value, mr.inputs["To Max"].default_value = 0.0, core_alpha
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
@@ -720,14 +744,15 @@ def leaf_cards(bm, uv, center, radius, n, size, rng, squash=0.9):
 def build_tree(col, M, x, y, height, rng):
     z0 = terrain_h(x, y)
     bm, uv = new_bm()
-    top = z0 + height * 0.55
-    bm_tube(bm, uv, [(x, y, z0 - 0.1), (x, y, z0 + 0.12), (x, y, top)], [0.17, 0.12, 0.08], 8, cap_end=True)
+    # NL trees (NL#946, 953, by eye): fat flared trunk, short, canopy starting low and wide
+    top = z0 + height * 0.42
+    bm_tube(bm, uv, [(x, y, z0 - 0.1), (x, y, z0 + 0.10), (x, y, top)], [0.30, 0.19, 0.14], 9, cap_end=True)
     mesh_object("TreeTrunk", bm, col, [M["bark"]])
     lobes = []
-    for k in range(3):
-        a = 2 * math.pi * k / 3 + rng.uniform(0, 1)
-        lobes.append(((x + 0.22 * math.cos(a), y + 0.22 * math.sin(a), top + 0.30 + 0.08 * k), 0.40))
-    lobes.append(((x, y, top + 0.66), 0.34))
+    for k in range(4):
+        a = 2 * math.pi * k / 4 + rng.uniform(0, 1)
+        lobes.append(((x + 0.30 * math.cos(a), y + 0.30 * math.sin(a), top + 0.32 + 0.06 * k), 0.46))
+    lobes.append(((x, y, top + 0.72), 0.40))
     bm, uv = new_bm()
     for c, r in lobes:
         bm_sphere(bm, uv, c, r * 0.82, scale=(1, 1, 0.9), segs=12, rings=7)        # dark core fills gaps
@@ -736,7 +761,10 @@ def build_tree(col, M, x, y, height, rng):
     for c, r in lobes:
         leaf_cards(bm, uv, c, r, 46, 0.36, rng)
     mesh_object("TreeLeaves", bm, col, [M["leaves"]])
-    blob(col, M["contact"], "TreeShadow", (x, y, z0 + 0.012), 0.55, 0.55)
+    half_w = 0.30 + 0.46                                # lobe offset plus lobe radius
+    rr = CANOPY_SHADOW_FRAC * half_w
+    blob(col, M["canopy"], "TreeShadow", (x, y, z0 + 0.012), rr, rr * 0.9)
+    blob(col, M["contact"], "TrunkContact", (x, y, z0 + 0.016), 0.40, 0.36)
 
 
 def build_flowers(col, M, x, y, rng):
@@ -776,7 +804,7 @@ def build_flowers(col, M, x, y, rng):
         for lp, q in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
             lp[uv].uv = q
         mesh_object("FlowerHead", bm, col, [M["flower_a"] if k % 2 else M["flower_b"]])
-    blob(col, M["contact"], "FlowerShadow", (x, y, z0 + 0.01), 0.24, 0.24)
+    blob(col, M["contact"], "FlowerShadow", (x, y, z0 + 0.01), 0.32, 0.28)
 
 
 def build_rock(col, M, x, y, s):
@@ -792,7 +820,7 @@ def build_rock(col, M, x, y, s):
         for lp in f.loops:
             lp[uv].uv = ((lp.vert.co.x - x) * 2.0, (lp.vert.co.z - z0) * 2.0 + (lp.vert.co.y - y))
     mesh_object("Rock", bm, col, [M["rock"]], smooth=False)       # facets visible on props (section 2)
-    blob(col, M["contact"], "RockShadow", (x, y, z0 + 0.01), 1.3 * s, 1.1 * s)
+    blob(col, M["contact"], "RockShadow", (x, y - 0.02, z0 + 0.01), 1.75 * s, 1.45 * s)
 
 
 def build_bush(col, M, x, y, r, rng):
@@ -808,10 +836,13 @@ def build_bush(col, M, x, y, r, rng):
     for c, rr in lobes:
         leaf_cards(bm, uv, c, rr, 40, 0.30, rng)
     mesh_object("BushLeaves", bm, col, [M["leaves"]])
+    blob(col, M["canopy"], "BushShadow", (x, y, z0 + 0.012), 1.25 * r, 1.05 * r)
+    blob(col, M["contact"], "BushContact", (x, y, z0 + 0.016), 0.9 * r, 0.75 * r)
 
 
 # Horizon tree line beyond the bend tangent so trunk bases sink (section 9 rule 3); 5 trees (rule 5: 4 to 6).
 TREES = [(-3.6, 11.5, 2.0), (-1.4, 12.6, 2.1), (0.5, 11.4, 1.9), (5.6, 11.8, 2.0), (-5.6, 12.4, 2.1)]
+NEAR_TREES = [(-2.75, 2.5, 1.8)]   # mid ground tree: its canopy shadow sits on visible ground
 FLOWERS = [(-1.25, 1.35), (-2.0, -0.15), (0.75, 2.6)]   # rule 5: 2 to 5 clumps, 0.4 to 0.5 P wide
 
 PLAYER = Vector((0.0, 0.0, 0.0))
@@ -944,6 +975,69 @@ def build_sky():
     link(nt, bg.outputs[0], out.inputs["Surface"])
 
 
+def tex_cloud():
+    """Thin soft wisps (retail NL#939: low contrast streaks, core #5790D9, brightest #6FA2E1, against #3044DF)."""
+    w, h = 256, 64
+    yy, xx = np.mgrid[0:h, 0:w]
+    u, v = xx / (w - 1), yy / (h - 1)
+    a = np.zeros((h, w))
+    for k in range(7):
+        cx, cy = RNG.uniform(0.15, 0.85), RNG.uniform(0.35, 0.65)
+        sx, sy = RNG.uniform(0.12, 0.28), RNG.uniform(0.08, 0.16)
+        a = np.maximum(a, np.exp(-(((u - cx) / sx) ** 2 + ((v - cy) / sy) ** 2)))
+    a = a * (0.75 + 0.25 * fbm(w, h, 8, 2, RNG))
+    a = smoothstep(0.15, 0.85, a) * 0.9
+    col = ramp(a, ["#5790D9", "#6FA2E1", "#8FB8EA"])
+    return make_image("T_Cloud", col, a)
+
+
+def cloud_mat(img):
+    m = bpy.data.materials.new("M_Cloud")
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    t = nt.nodes.new("ShaderNodeTexImage")
+    t.image, t.interpolation, t.extension = img, "Linear", "CLIP"
+    em = nt.nodes.new("ShaderNodeEmission")
+    link(nt, t.outputs["Color"], em.inputs["Color"])
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mx = nt.nodes.new("ShaderNodeMixShader")
+    link(nt, t.outputs["Alpha"], mx.inputs[0])
+    link(nt, tr.outputs[0], mx.inputs[1])
+    link(nt, em.outputs[0], mx.inputs[2])
+    link(nt, mx.outputs[0], out.inputs["Surface"])
+    m.surface_render_method = "BLENDED"
+    return m
+
+
+# screen x, screen y (from the bottom), width as a share of the frame: inside the thin sky strip, between crowns
+CLOUDS = [(0.08, 0.955, 0.30), (0.40, 0.975, 0.26), (0.74, 0.96, 0.34)]
+
+
+def build_clouds(col, M, cam, dist=80.0):
+    """Cloud cards along camera rays far beyond the bent ground, so they only show over the sky (not bent)."""
+    sc = bpy.context.scene
+    bpy.context.view_layer.update()
+    mw = cam.matrix_world
+    tr, br, bl, tl = [mw @ v for v in cam.data.view_frame(scene=sc)]
+    org = mw.translation
+    for i, (sx, sy, wf) in enumerate(CLOUDS):
+        d = (bl.lerp(br, sx).lerp(tl.lerp(tr, sx), sy) - org).normalized()
+        c = org + d * dist
+        width = (tr - tl).length * dist / (tl - org).length * wf
+        right = (tr - tl).normalized()
+        up = right.cross(d).normalized()
+        if up.z < 0:
+            up = -up
+        hw, hh = width / 2, width * 0.25 / 2
+        bm, uv = new_bm()
+        vs = [bm.verts.new(c + right * a * hw + up * b * hh) for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        f = bm.faces.new(vs)
+        for lp, q in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+            lp[uv].uv = q
+        mesh_object(f"Cloud{i}", bm, col, [M["cloud"]], smooth=False)
+
+
 def build_camera(col):
     cd = bpy.data.cameras.new("Cam")
     cd.lens, cd.sensor_height, cd.sensor_fit = FOCAL, SENSOR_H, "VERTICAL"
@@ -964,7 +1058,7 @@ def build(native=False):
     rng = np.random.default_rng(3)
     T = {"grass": tex_grass(), "wall": tex_wall(), "caustic": tex_caustic(), "foliage": tex_foliage(),
          "bark": tex_bark(), "face": tex_face(), "hair": tex_hair(), "shirt": tex_shirt(), "bobber": tex_bobber(),
-         "rock": tex_rock(), "leaves": tex_leaves(),
+         "rock": tex_rock(), "leaves": tex_leaves(), "cloud": tex_cloud(),
          "flower_a": tex_flower("#F4F0FF", "#5B3C8C"), "flower_b": tex_flower("#FFE15A", "#7A4A1E"),
          "skin": tex_flat("T_Skin", [PAL["skin_shade"], PAL["skin"], PAL["skin"]], 0.02, 2),
          "shorts": tex_flat("T_Shorts", ["#26347A", PAL["shorts"], "#3B4C9E"]),
@@ -993,7 +1087,9 @@ def build(native=False):
         "bobber": mat("M_Bobber", image=T["bobber"]),
         "foam": unlit("M_Foam", "#CFEFFF"),
         "blob": blob_mat("M_Blob", BLOB_CORE_ALPHA, BLOB_TINT_LIN),
-        "contact": blob_mat("M_Contact", contact_alpha * 1.6, BLOB_TINT_LIN, inner=0.35),
+        "contact": blob_mat("M_Contact", CONTACT_ALPHA, BLOB_TINT_LIN, inner=0.70, wobble=0.10),
+        "canopy": blob_mat("M_CanopyShadow", CANOPY_ALPHA, BLOB_TINT_LIN, inner=0.55, wobble=0.16),
+        "cloud": cloud_mat(T["cloud"]),
     }
     world = bpy.data.collections.new("World")
     sc.collection.children.link(world)
@@ -1001,7 +1097,7 @@ def build(native=False):
     build_terrain(world, M)
     build_water(world, M)
     # horizon tree line (section 9 rule 3) and a few nearer trees on both sides of the river (4 to 6 trees)
-    for x, y, hgt in TREES:
+    for x, y, hgt in TREES + NEAR_TREES:
         build_tree(world, M, x, y, hgt, rng)
     for x, y in FLOWERS:
         build_flowers(world, M, x, y, rng)
@@ -1018,6 +1114,7 @@ def build(native=False):
 
     rx_, ry_ = NATIVE if native else RES
     sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = rx_, ry_, 100
+    build_clouds(world, M, cam)
     sc.render.engine = "BLENDER_EEVEE"
     ee = sc.eevee
     if native:
@@ -1059,7 +1156,7 @@ def check(info):
     b = world_to_camera_view(sc, cam, bend_point(PLAYER + Vector((0, 0, 1.0))))
     print(f"player share {b.y - a.y:.3f} (target {PLAYER_SHARE}), feet row {1 - a.y:.3f} (target {FEET_ROW})")
     for x, y, hgt in TREES:
-        top = bend_point(Vector((x, y, terrain_h(x, y) + hgt * 0.55 + 0.98)))
+        top = bend_point(Vector((x, y, terrain_h(x, y) + hgt * 0.42 + 1.12)))
         base = bend_point(Vector((x, y, terrain_h(x, y))))
         vt, vb = world_to_camera_view(sc, cam, top), world_to_camera_view(sc, cam, base)
         print(f"  tree ({x}, {y}): crown top row {1 - vt.y:.3f}, base row {1 - vb.y:.3f}, column {vt.x:.3f}")
@@ -1081,7 +1178,7 @@ def qa(png, info):
     nwhite = float(((v > 0.92) & (s < 0.12)).mean())
     print(f"QA envelope: neon {neon:.3%}, near black {nblack:.3%}, near white {nwhite:.3%} (each under 2%)")
     # horizon: per column, last sky row from the top (sky = blue dominant and dark red channel)
-    sky = (px[..., 2] > 0.6) & (px[..., 0] < 0.45) & (px[..., 2] > px[..., 1] + 0.1)
+    sky = (px[..., 2] > 0.6) & (px[..., 2] > px[..., 0] + 0.2) & (px[..., 2] > px[..., 1] + 0.1)   # sky or cloud
     rows = []
     for x in range(int(w * 0.40), int(w * 0.60)):
         col = sky[:, x]
@@ -1099,6 +1196,16 @@ def qa(png, info):
         x, y = int(p.x * w), int((1 - p.y) * h)
         return px[max(0, y - 1):y + 2, max(0, x - 1):x + 2].reshape(-1, 3).mean(0)
     cf, cg = sample(pf), sample(pg)
+    # object shadows (section 3): flower clump ground and near tree canopy shadow vs open grass beside them
+    L = lambda c: 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    for name, at_, ref, target in (
+            ("flower clump ground", (FLOWERS[0][0] + 0.12, FLOWERS[0][1] - 0.14),
+             (FLOWERS[0][0] + 0.12, FLOWERS[0][1] - 0.75), "0.68"),
+            ("tree canopy shadow rim", (NEAR_TREES[0][0] + 0.05, NEAR_TREES[0][1] - 0.37),
+             (NEAR_TREES[0][0] + 1.25, NEAR_TREES[0][1] - 0.37), "0.77 to 0.84 near the rim, darker inside")):
+        ps = world_to_camera_view(sc, cam, bend_point(Vector((at_[0], at_[1], 0.0))))
+        pr = world_to_camera_view(sc, cam, bend_point(Vector((ref[0], ref[1], 0.0))))
+        print(f"QA {name}: luminance ratio {L(sample(ps)) / max(L(sample(pr)), 1e-6):.2f} (NL#946 {target})")
     ratio = cf / np.maximum(cg, 1e-6)
     print(f"QA blob: shadow sRGB {tuple(int(c * 255) for c in cf)} vs grass {tuple(int(c * 255) for c in cg)}; "
           f"R, G ratios {ratio[0]:.2f}, {ratio[1]:.2f} (target about 0.45), B ratio {ratio[2]:.2f} "
