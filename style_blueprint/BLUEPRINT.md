@@ -698,3 +698,23 @@ New evidence and corrections found while building `style_test_town/town_river_te
   head) covering top, back and sides down to the ear tops, with a zigzag fringe of about 6 teeth across the forehead;
   soft pink cheeks. Hair texture: low contrast mottle plus a sheen band, not stripes radiating from the crown (those
   read as a melon on a UV sphere).
+* Lighting and shadows (fourth test pass, compared side by side with NL#946):
+  * Key light as a camera side headlight along the reversed view direction, 35 deg above the ground (section 2:
+    brightest band central on round forms, falloff toward every silhouette edge). The earlier near overhead key
+    (elevation about 70 deg) left trunks and rocks flat lit.
+  * Shadows MULTIPLY the ground (Transparent BSDF tint in Blended mode) so the painted grass runs through them, as in
+    NL#946. Alpha blending toward a flat dark colour reads as a pasted sticker; keep it only for lime grass, where blue
+    must rise. Displayed core multipliers used (converted to linear by the 2.2 power): player (0.54, 0.54, 0.68),
+    contact (0.58, 0.58, 0.72), canopy (0.58, 0.60, 0.72); render QA: player R and G 0.44 and 0.49, flower ground 0.71,
+    canopy rim 0.86 (targets 0.45, 0.68, 0.77 to 0.84). Profiles: player plateau 0.75 of the radius, contact 0.60,
+    canopy 0.40 with a wobbly edge.
+* Fish silhouettes (reference captures supplied by the user, by eye): a soft teardrop about 3 times as long as wide,
+  round head (toward the bobber or the direction of travel), widest about 0.3 of the length from the head, straight
+  taper to a pointed tail; dark (#0E2448) at about 0.6 opacity so the caustic lines show through. Draw it after the
+  water: give the water object a far origin, because EEVEE sorts Blended objects by origin distance.
+* Bark: painted swirl knots (concentric rings with a light centre, about 0.1 to 0.14 of the texture width) with the
+  vertical grain streaks bending around them, plus darker crevices (NL#946, 953 by eye).
+* Grain QA image: `style_test_town/grain_compare.py` puts a render beside reference captures with a heat map of
+  |L minus its 3x3 mean| and the median. Last run, all resized to 400x240: ours 1.76 (flat pixels 23%), retail stream
+  capture 1.64 (20%, softened by the stream upscale), NL#946 press 4.62 (10%). Flattest areas left: hair cap, skin,
+  open water.

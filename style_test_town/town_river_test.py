@@ -45,7 +45,9 @@ RES = (1200, 720)            # 5:3 game frame at 3x, clean (section 12.2 item 11
 NATIVE = (400, 240)
 SAMPLES = 16
 
-SUN = Vector((0.0, -0.34, 0.94)).normalized()   # E frontal key from the camera side (section 2)
+# Key light from the camera side ("headlight", section 2: brightest band central on round forms, falloff toward
+# every silhouette edge, no left or right bias): along the reversed view direction, 35 deg above the ground.
+SUN = Vector((0.0, -math.cos(math.radians(35.0)), math.sin(math.radians(35.0)))).normalized()
 LUT_SHADOW_SRGB = (0.54, 0.56, 0.65)            # M NL rock, section 2
 # The measured light end (1.46, 1.38, 1.20) is an UPPER BOUND that includes painted texture variation (section 2).
 # Applied as lighting on top of painted textures it double counts and reads as shine, so the light term is kept
@@ -64,7 +66,14 @@ BLOB_CORE_ALPHA = 0.88
 # open grass near its rim and darker toward the trunk; ground under flower clumps 0.68; rock contact band dark.
 # Same blend target as the player blob. Core alpha for a displayed ratio k on #5A964C (lin G 0.305):
 # a = (0.305 - lin(150 k)) / (0.305 - 0.028): k 0.66 gives 0.65 (contact), k 0.75 gives 0.52 (canopy).
-CONTACT_ALPHA, CANOPY_ALPHA = 0.72, 0.68      # tuned on the render to hit the measured ratios
+CONTACT_ALPHA, CANOPY_ALPHA = 0.72, 0.68      # tuned on the render to hit the measured ratios (blend mode)
+# Multiply mode (default): shadows darken the ground and keep its painted texture (NL#946: the grass print runs
+# through every shadow; a blend toward a flat colour reads as a sticker). Displayed (sRGB) core ratios, measured:
+# player blob R = G about 0.46, blue multiplied less (0.62); flower ground 0.68; canopy darker inside, 0.77 to 0.84
+# at the rim. Blue is lifted relative to R and G, as measured. A multiply cannot raise blue, so the lime "emote"
+# grass keeps the blend mode.
+SHADOW_MUL = {"blob": (0.54, 0.54, 0.68), "contact": (0.58, 0.58, 0.72), "canopy": (0.58, 0.60, 0.72)}
+SHADOW_MODE = "multiply"
 CANOPY_SHADOW_FRAC = 0.65
 
 PAL = {
@@ -256,6 +265,15 @@ def tex_rock():
     n = 0.6 * fbm(w, h, 4, 3, RNG) + 0.4 * fbm(w, h, 16, 1, RNG)
     v = np.linspace(0, 1, h)[:, None]
     col = ramp(0.25 + 0.5 * n + 0.2 * (1 - v), ["#7E7590", PAL["rock"], "#C9C3D2"])
+    yy, xx = np.mgrid[0:h, 0:w]
+    for k in range(4):                                   # painted cracks: thin dark wandering lines
+        x0, y0 = RNG.uniform(0, w), RNG.uniform(0, h)
+        ang = RNG.uniform(0, math.pi)
+        for t in np.linspace(0, 22, 60):
+            ang += RNG.uniform(-0.25, 0.25)
+            x0, y0 = (x0 + math.cos(ang) * 0.4) % w, (y0 + math.sin(ang) * 0.4) % h
+            d = np.hypot(xx - x0, yy - y0)
+            col = np.where((d < 0.9)[..., None], col * 0.72, col)
     return make_image("T_Rock", grain(col, 0.05))
 
 
@@ -345,10 +363,25 @@ def tex_foliage():
 
 
 def tex_bark():
-    w, h = 32, 64
-    u = np.linspace(0, 1, w)[None, :] * np.ones((h, 1))
-    g = 0.5 + 0.5 * np.sin(2 * np.pi * (u * 5 + 0.3 * fbm(w, h, 2, 2, RNG)))
-    return make_image("T_Bark", ramp(0.25 + 0.5 * g, [PAL["wood_dark"], PAL["wood"], PAL["wood_light"]]))
+    """Painted bark (NL#946, 953 by eye): warm wood, vertical grain streaks that bend around one or two swirl knots
+    (concentric rings, light centre), darker crevices. 96 x 192 so the knots stay readable on a fat trunk."""
+    w, h = 96, 192
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    u, v = xx / w, yy / h
+    knots = [(0.12, 0.62, 0.13, 0.08), (0.40, 0.30, 0.10, 0.06), (0.63, 0.70, 0.14, 0.08), (0.88, 0.40, 0.09, 0.06)]
+    warp = np.zeros((h, w))
+    ring = np.zeros((h, w))
+    for cx, cy, rx, ry in knots:
+        du = (u - cx + 0.5) % 1.0 - 0.5
+        d = np.sqrt((du / rx) ** 2 + ((v - cy) / ry) ** 2)
+        warp += np.exp(-d * 1.2) * np.sign(du) * 0.06
+        inside = d < 1.6
+        ring = np.where(inside, np.maximum(ring, (0.5 + 0.5 * np.cos(d * 9.0)) * smoothstep(1.6, 0.6, d)), ring)
+    streak = 0.5 + 0.5 * np.sin(2 * np.pi * ((u + warp) * 9 + 0.6 * fbm(w, h, 3, 2, RNG)))
+    crevice = smoothstep(0.12, 0.0, np.abs(((u + warp) * 9 + 0.6 * fbm(w, h, 3, 2, RNG)) % 1.0 - 0.5) - 0.38)
+    t = 0.45 + 0.22 * (streak - 0.5) + 0.42 * (ring - 0.3) - 0.35 * crevice + 0.1 * (fbm(w, h, 8, 2, RNG) - 0.5)
+    col = ramp(t, [PAL["wood_dark"], PAL["wood"], PAL["wood_light"]])
+    return make_image("T_Bark", grain(col, 0.04))
 
 
 def tex_face():
@@ -531,6 +564,30 @@ def unlit(name, color):
     em = nt.nodes.new("ShaderNodeEmission")
     em.inputs["Color"].default_value = (*lin(hexc(color)), 1)
     link(nt, em.outputs[0], out.inputs["Surface"])
+    return m
+
+
+def shadow_mat(name, key, inner=0.2, wobble=0.0):
+    """Multiply decal: Transparent BSDF tinted by mix(white, core multiply, profile). Ratios are converted from
+    displayed (sRGB) to linear with the exact curve on a mid ground value, then raised as needed."""
+    if SHADOW_MODE != "multiply":
+        alpha = {"blob": BLOB_CORE_ALPHA, "contact": CONTACT_ALPHA, "canopy": CANOPY_ALPHA}[key]
+        return blob_mat(name, alpha, BLOB_TINT_LIN, inner=max(inner, 0.45), wobble=wobble)
+    mul_lin = tuple(k ** 2.2 for k in SHADOW_MUL[key])
+    m = blob_mat(name, 1.0, (0, 0, 0), inner=inner, wobble=wobble)
+    nt = m.node_tree
+    mr = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeMapRange" and n.inputs["To Max"].default_value == 1.0)
+    out = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeOutputMaterial")
+    for n in [n for n in nt.nodes if n.bl_idname in ("ShaderNodeBsdfTransparent", "ShaderNodeEmission", "ShaderNodeMixShader")]:
+        nt.nodes.remove(n)
+    mx = nt.nodes.new("ShaderNodeMix")
+    mx.data_type = "RGBA"
+    link(nt, mr.outputs["Result"], mx.inputs[0])
+    mx.inputs[6].default_value = (1, 1, 1, 1)
+    mx.inputs[7].default_value = (*mul_lin, 1)
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    link(nt, mx.outputs[2], tr.inputs["Color"])
+    link(nt, tr.outputs[0], out.inputs["Surface"])
     return m
 
 
@@ -763,7 +820,12 @@ def build_water(col, M):
     for j in range(len(ys) - 1):
         for i in range(16):
             bm.faces.new((rows[j][i], rows[j][i + 1], rows[j + 1][i + 1], rows[j + 1][i]))
-    return mesh_object("Water", bm, col, [M["water"]], smooth=False)
+    # origin far up river: EEVEE sorts blended objects by origin distance, so the water is drawn before the fish
+    # silhouette, which then reads clearly through it
+    o = Vector((2.8, 24.0, WATER_Z))
+    for v in bm.verts:
+        v.co -= o
+    return mesh_object("Water", bm, col, [M["water"]], smooth=False, loc=o)
 
 
 def leaf_cards(bm, uv, center, radius, n, size, rng, squash=0.9):
@@ -1020,11 +1082,23 @@ def build_player(col, M):
     bm_tube(bm, uv, [grip - Vector((0.1, 0.0, 0.07)), tip], [0.018, 0.007], 6, v0=0.0, v1=1.0)
     mesh_object("Rod", bm, col, [M["rod"]])
     bob = Vector((2.35, 0.55, WATER_Z + 0.02))
-    bm, uv = new_bm()                                    # fish shadow: dark spindle a little below the surface
+    # fish shadow: a soft teardrop a little below the surface, round head toward the bobber, pointed tail
+    # (reference captures supplied by the user: length about 3x width, widest about 0.3 from the head, by eye)
     fc = Vector((2.05, 1.25, WATER_Z - 0.06))
-    bm_sphere(bm, uv, fc, 0.16, scale=(0.55, 1.0, 0.18), segs=12, rings=5,
-              rot=Vector((0, 1, 0)).rotation_difference((bob - fc).normalized()))
-    mesh_object("FishShadow", bm, col, [M["fish"]], smooth=True)
+    head_dir = (bob - fc)
+    head_dir.z = 0
+    head_dir.normalize()
+    sdir = Vector((-head_dir.y, head_dir.x, 0))
+    Lf = 0.55
+    bm, uv = new_bm()
+    vs = [bm.verts.new(c) for c in (fc + head_dir * Lf * 0.5 + sdir * Lf * 0.25, fc + head_dir * Lf * 0.5 - sdir * Lf * 0.25,
+                                    fc - head_dir * Lf * 0.5 - sdir * Lf * 0.25, fc - head_dir * Lf * 0.5 + sdir * Lf * 0.25)]
+    f = bm.faces.new([bm.verts.new(v.co - fc) for v in vs])
+    for v in vs:
+        bm.verts.remove(v)
+    for lp, q in zip(f.loops, ((1, 1), (1, 0), (0, 0), (0, 1))):
+        lp[uv].uv = q
+    mesh_object("FishShadow", bm, col, [M["fish"]], smooth=False, loc=fc)
     bm, uv = new_bm()
     pts = []
     for k in range(7):
@@ -1045,6 +1119,38 @@ def build_player(col, M):
         bm.faces.new((ring[i], ring[20 + i], ring[20 + j], ring[j]))
     mesh_object("Ripple", bm, col, [M["foam"]], smooth=False)
     return head_c, bob
+
+
+def tex_fish():
+    """Teardrop alpha: u along the body (1 = head), v across. Round head, widest at 0.3 from the head, straight
+    taper to a pointed tail; soft edge."""
+    w, h = 128, 48
+    yy, xx = np.mgrid[0:h, 0:w]
+    u, v = xx / (w - 1), (yy / (h - 1) - 0.5) * 2
+    t = 1 - u                                            # 0 at the head tip, 1 at the tail tip
+    half = np.where(t < 0.3, np.sqrt(np.clip(1 - ((0.3 - t) / 0.3) ** 2, 0, 1)), np.clip((1 - t) / 0.7, 0, 1) ** 0.9)
+    edge = half * 0.9 - np.abs(v)
+    a = smoothstep(-0.05, 0.12, edge) * 0.62
+    return make_image("T_Fish", np.ones((h, w, 3)) * hexc("#0E2448"), a)
+
+
+def fish_mat():
+    m = bpy.data.materials.new("M_Fish")
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    t = nt.nodes.new("ShaderNodeTexImage")
+    t.image, t.interpolation, t.extension = tex_fish(), "Linear", "CLIP"
+    em = nt.nodes.new("ShaderNodeEmission")
+    link(nt, t.outputs["Color"], em.inputs["Color"])
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mx = nt.nodes.new("ShaderNodeMixShader")
+    link(nt, t.outputs["Alpha"], mx.inputs[0])
+    link(nt, tr.outputs[0], mx.inputs[1])
+    link(nt, em.outputs[0], mx.inputs[2])
+    link(nt, mx.outputs[0], out.inputs["Surface"])
+    m.surface_render_method = "BLENDED"
+    return m
 
 
 def blob(col, m, name, center, rx, ry):
@@ -1188,10 +1294,10 @@ def build(native=False):
         "bobber": mat("M_Bobber", image=T["bobber"]),
         "foam": unlit("M_Foam", "#CFEFFF"),
         "nose": mat("M_Nose", image=tex_flat("T_Nose", ["#B84838", PAL["nose"], "#E06A55"], 0.02, 2), rim=1.0),
-        "fish": unlit("M_Fish", "#0E2448"),
-        "blob": blob_mat("M_Blob", BLOB_CORE_ALPHA, BLOB_TINT_LIN),
-        "contact": blob_mat("M_Contact", CONTACT_ALPHA, BLOB_TINT_LIN, inner=0.70, wobble=0.10),
-        "canopy": blob_mat("M_CanopyShadow", CANOPY_ALPHA, BLOB_TINT_LIN, inner=0.55, wobble=0.16),
+        "fish": fish_mat(),
+        "blob": shadow_mat("M_Blob", "blob", inner=0.75),
+        "contact": shadow_mat("M_Contact", "contact", inner=0.60, wobble=0.10),
+        "canopy": shadow_mat("M_CanopyShadow", "canopy", inner=0.40, wobble=0.16),
         "cloud": cloud_mat(T["cloud"]),
     }
     world = bpy.data.collections.new("World")
@@ -1328,8 +1434,9 @@ def main():
     a = p.parse_args(argv)
     if a.grass == "emote":
         PAL.update(GRASS_EMOTE)
-        global BLOB_CORE_ALPHA
+        global BLOB_CORE_ALPHA, SHADOW_MODE
         BLOB_CORE_ALPHA = 0.86
+        SHADOW_MODE = "blend"
     if a.grass == "press":
         PAL.update(GRASS_PRESS)
         # press grass is teal green, not lime: solve the blend target so each channel falls to about 0.48 (sRGB)
