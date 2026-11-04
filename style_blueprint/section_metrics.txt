@@ -1,0 +1,43 @@
+game    n  satμ  valμ   neon  hard  binA   uniqC sil1%  outl peaks  section
+CF     7  0.83  0.84  0.279  0.14  1.00     467    37  0.94     3  Artwork > Environment
+CF     1  0.26  0.79  0.001  0.16  1.00   60882   nan   nan     3  Artwork > Miscellaneous
+CF    17  0.36  0.76  0.057  0.04  0.53   57022    62  0.75     3  Artwork > Players
+CF    11  0.47  0.86  0.084  0.14  1.00    1745    40  1.02     3  Artwork > Prima Games villager renders
+CF     7  0.54  0.64  0.009  0.02  1.00  304034   nan   nan     3  Artwork > Scenes
+CF    53  0.43  0.69  0.009  0.04  0.42   68403    51  0.65     2  Artwork > Special characters
+CF     8  0.59  0.57  0.000  0.15  0.00    4852    27  0.69     4  Artwork > Special characters > Icons
+CF   210  0.50  0.69  0.029  0.19  0.00    2339    39  0.72     3  Artwork > Villagers
+CF    11  0.37  0.76  0.008  0.03  1.00  270803   nan   nan     3  Artwork > Wallpapers
+CF    16  0.47  0.71  0.020  0.04  0.94  264832    17  0.52     3  Box art and media
+CF    12  0.19  0.92  0.003  0.20  1.00  104962   nan   nan     2  Box art and media > Instruction booklet page
+CF     5  0.55  0.60  0.000  0.08  0.20    7444    40  0.64     3  Logos
+CF     2  0.32  0.73  0.016  0.02  1.00  658422   nan   nan     2  Miscellaneous
+CF     7  0.47  0.64  0.007  0.08  1.00   66587   nan   nan     3  Screenshots
+CF    12  0.54  0.55  0.005  0.09  1.00   96872   nan   nan     4  Screenshots > E3 2008
+CF    36  0.54  0.63  0.000  0.19  0.94      15    22  0.72     8  Sprites and models > Icons
+CF    21  0.50  0.69  0.002  0.10  0.00     219    21  1.27     4  Sprites and models > Large icons
+CF     2  0.63  0.76  0.151  0.10  1.00     153   nan   nan     3  Sprites and models > Miscellaneous
+CF    18  0.73  0.59  0.000  0.19  0.94   51917    21  0.96     5  Sprites and models > Objects
+CF    16  0.50  0.70  0.042  0.20  0.00    7426    55  0.80     3  Sprites and models > Players
+CF   346  0.56  0.81  0.000  0.19  1.00      16   nan   nan     3  Sprites and models > Shirt textures
+CF    58  0.57  0.62  0.000  0.06  0.97   52134    39  0.49     4  Sprites and models > Special characters
+CF    26  0.51  0.63  0.020  0.02  0.15   21020    42  0.73     3  Sprites and models > Villagers
+NL    10  0.19  0.66  0.000  0.00  1.00   17306   nan   nan     2  Artwork > Concept art
+NL    37  0.54  0.80  0.037  0.04  1.00  504064   nan   nan     3  Artwork > Miscellaneous
+NL    10  0.39  0.66  0.001  0.15  0.00   93746    52  1.21     5  Artwork > Player
+NL    57  0.41  0.64  0.000  0.16  0.00  127316    46  1.19     4  Artwork > Special characters
+NL   333  0.35  0.73  0.000  0.09  0.09   27951    44  1.16     3  Artwork > Villagers
+NL    11  0.79  0.77  0.070  0.25  0.00   35563    28  1.10     3  Artwork > Wildlife
+NL    15  0.40  0.76  0.021  0.03  1.00  531891   nan   nan     3  Box art and media
+NL     6  0.26  0.83  0.002  0.08  1.00  351986   nan   nan     2  Box art and media > Instruction booklet page
+NL     5  0.15  0.84  0.013  0.07  0.80   95277    10  0.89     2  Consoles
+NL     3  0.55  0.85  0.131  0.07  0.00    7004    32  1.43     4  Logos
+NL   333  0.43  0.77  0.013  0.19  1.00    2877    35  0.94     4  Models > Villagers
+NL     9  0.68  0.69  0.247  0.18  1.00    9468     9  1.23     1  Screenshots
+NL     8  0.57  0.65  0.001  0.19  1.00   53498   nan   nan     3  Screenshots > Promotional and pre-release screenshots > E3 2010
+NL    13  0.51  0.68  0.001  0.18  1.00   57919   nan   nan     2  Screenshots > Promotional and pre-release screenshots > E3 2011
+NL     1  0.61  0.57  0.002  0.01  1.00   65424   nan   nan     3  Screenshots > Promotional and pre-release screenshots > Tokyo Game Show 2010
+NL    13  0.50  0.67  0.009  0.21  0.00     547    29  1.01     4  Sprites > Character/Question icons
+NL    98  0.67  0.66  0.000  0.14  0.00     114    23  0.43     5  Sprites > Item icons
+NL     9  0.54  0.81  0.004  0.20  0.44     697    17  0.98     3  Sprites > Location signs
+NL     7  0.55  0.71  0.000  0.12  0.29     211    22  1.07     6  Sprites > Miscellaneous
