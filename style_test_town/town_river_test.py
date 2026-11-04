@@ -76,9 +76,11 @@ PAL = {
     "water": "#3A75B4", "water_shallow": "#6BBEF0", "foam": "#FFFFFF",  # M section 4.3 (foam E)
     "foliage": "#4A9C52", "foliage_dark": "#287046", "foliage_light": "#82D362",  # M section 7.3
     "wood": "#E4A560", "wood_dark": "#A1693B", "wood_light": "#FFD391",   # M section 7.3
-    "skin": "#FFD1A8", "skin_shade": "#CE8F79",                         # M section 7.3
+    "skin": "#FDDBB2", "skin_shade": "#CE8F79",       # M skin: median of retail NL#941, 942, 944, 945 (shade 7.3)
     "rock": "#9992A2",                                                  # M section 4.2
-    "hair": "#6B4A35", "hair_light": "#8E6648",                         # E (original character)
+    "hair": "#7A5450", "hair_light": "#9A706A",       # M hair median of retail NL#941 to 945 (light E)
+    "nose": "#CF5846",                                # M retail NL#941, 945 nose nub
+    "underwater": "#A0A5AB", "water_deep": "#3B6DAC", # M NL#957 submerged post just below the line, then water
     "shirt": "#3F8FD0", "shirt_light": "#8EC6F0", "shorts": "#2F3E8C", "shoe": "#F2F2F2",  # E
     "eye": "#1E1A28", "blush": "#E08A76",                               # E eye; M blush range section 5.3
     "bobber": "#E0473A", "rod": "#C88838", "rod_band": "#585888",       # E accent red; rod structure section 5.3
@@ -362,18 +364,22 @@ def tex_face():
         col[e < 1] = hexc(PAL["eye"])
         g = ((u - cu + 0.006) / 0.008) ** 2 + ((v - cv - 0.03) / 0.022) ** 2
         col[g < 1] = 1.0
-        b = ((u - (0.5 + side * 0.11)) / 0.035) ** 2 + ((v - 0.37) / 0.035) ** 2
-        col = np.where((b < 1)[..., None], col * 0.6 + hexc(PAL["blush"]) * 0.4, col)
+        b = np.sqrt(((u - (0.5 + side * 0.115)) / 0.045) ** 2 + ((v - 0.36) / 0.05) ** 2)
+        k = smoothstep(1.0, 0.3, b)[..., None] * 0.45                     # soft pink cheeks (retail captures)
+        col = col * (1 - k) + hexc(PAL["blush"]) * k
     m = ((u - 0.5) / 0.022) ** 2 + ((v - 0.33) / 0.012) ** 2
     col[m < 1] = hexc("#B0503C")
     return make_image("T_Face", grain(col, 0.02))
 
 
 def tex_hair():
-    w, h = 64, 32
-    u = np.linspace(0, 1, w)[None, :] * np.ones((h, 1))
-    s = 0.5 + 0.5 * np.sin(2 * np.pi * u * 12 + 1.5 * fbm(w, h, 4, 1, RNG))
-    return make_image("T_Hair", grain(ramp(0.3 + 0.5 * s, [PAL["hair"], PAL["hair_light"]]), 0.03))
+    """Soft painted hair: low contrast strand mottle (no pole stripes) and a lighter sheen band (by eye)."""
+    w, h = 64, 64
+    n = 0.6 * fbm(w, h, 6, 2, RNG) + 0.4 * fbm(w, h, 24, 1, RNG)
+    v = np.linspace(0, 1, h)[:, None] * np.ones((1, w))
+    sheen = np.exp(-((v - 0.72) / 0.08) ** 2)
+    col = ramp(0.35 + 0.3 * n + 0.35 * sheen, [PAL["hair"], PAL["hair"], PAL["hair_light"]])
+    return make_image("T_Hair", grain(col, 0.03))
 
 
 def tex_shirt():
@@ -626,8 +632,33 @@ def terrain_mat(T):
     link(nt, hz.outputs["Result"], hm.inputs[0])
     link(nt, g.outputs[0], hm.inputs[6])
     hm.inputs[7].default_value = (*lin(hexc(PAL["haze"])), 1)
+    # below the water line: first a pale blue grey cast, then the deep water colour by depth (NL#957)
+    ua = nt.nodes.new("ShaderNodeAttribute")
+    ua.attribute_name = "under"
+    wet = nt.nodes.new("ShaderNodeMath")
+    wet.operation = "GREATER_THAN"
+    link(nt, ua.outputs["Fac"], wet.inputs[0])
+    wet.inputs[1].default_value = 0.001
+    c1 = nt.nodes.new("ShaderNodeMix")
+    c1.data_type = "RGBA"
+    k1 = nt.nodes.new("ShaderNodeMath")
+    k1.operation = "MULTIPLY"
+    link(nt, wet.outputs[0], k1.inputs[0])
+    k1.inputs[1].default_value = 0.45
+    link(nt, k1.outputs[0], c1.inputs[0])
+    link(nt, hm.outputs[2], c1.inputs[6])
+    c1.inputs[7].default_value = (*lin(hexc(PAL["underwater"])), 1)
+    dp = nt.nodes.new("ShaderNodeMapRange")
+    dp.interpolation_type = "SMOOTHSTEP"
+    link(nt, ua.outputs["Fac"], dp.inputs["Value"])
+    dp.inputs["From Min"].default_value, dp.inputs["From Max"].default_value = 0.0, UNDER_FADE_DEPTH
+    c2 = nt.nodes.new("ShaderNodeMix")
+    c2.data_type = "RGBA"
+    link(nt, dp.outputs["Result"], c2.inputs[0])
+    link(nt, c1.outputs[2], c2.inputs[6])
+    c2.inputs[7].default_value = (*lin(hexc(PAL["water_deep"])), 1)
     em = nt.nodes.new("ShaderNodeEmission")
-    link(nt, hm.outputs[2], em.inputs["Color"])
+    link(nt, c2.outputs[2], em.inputs["Color"])
     link(nt, em.outputs[0], out.inputs["Surface"])
     return m
 
@@ -662,8 +693,24 @@ def water_mat(T):
     mx2.inputs[7].default_value = (*lin(hexc(PAL["water_shallow"])), 1)
     em = nt.nodes.new("ShaderNodeEmission")
     link(nt, mx2.outputs[2], em.inputs["Color"])
-    link(nt, em.outputs[0], out.inputs["Surface"])
+    # translucent surface (section 4.3: NL water shows posts and tyres below the line, NL#957, 967). What lies
+    # underneath is darkened by depth in its own material (terrain "under" attribute), so the surface alpha can
+    # stay low: more see through at the banks, denser in the middle.
+    al = nt.nodes.new("ShaderNodeMapRange")
+    link(nt, at.outputs["Fac"], al.inputs["Value"])
+    al.inputs["To Min"].default_value, al.inputs["To Max"].default_value = WATER_ALPHA_MID, WATER_ALPHA_EDGE
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mxs = nt.nodes.new("ShaderNodeMixShader")
+    link(nt, al.outputs["Result"], mxs.inputs[0])
+    link(nt, tr.outputs[0], mxs.inputs[1])
+    link(nt, em.outputs[0], mxs.inputs[2])
+    link(nt, mxs.outputs[0], out.inputs["Surface"])
+    m.surface_render_method = "BLENDED"
     return m
+
+
+WATER_ALPHA_EDGE, WATER_ALPHA_MID = 0.45, 0.70        # E tuned on the render
+UNDER_FADE_DEPTH = 0.25                              # E: NL#957 posts fade out within a short depth (about 0.2 P)
 
 
 # --------------------------------------------------------------------------
@@ -676,6 +723,7 @@ def build_terrain(col, M):
     uv = bm.loops.layers.uv.new("UVMap")
     uvw = bm.loops.layers.uv.new("UVWall")
     wl = bm.verts.layers.float.new("wall")
+    ud = bm.verts.layers.float.new("under")
     grid = []
     for y in ys:
         row = []
@@ -683,6 +731,7 @@ def build_terrain(col, M):
             z = terrain_h(x, y)
             v = bm.verts.new((x, y, z))
             v[wl] = float(smoothstep(-0.03, -0.12, z))
+            v[ud] = float(max(0.0, WATER_Z - z))
             row.append(v)
         grid.append(row)
     for j in range(len(ys) - 1):
@@ -860,18 +909,26 @@ def build_player(col, M):
     def at(f, s, z):
         return PLAYER + fwd * f + side * s + Vector((0, 0, z))
 
-    head_c = at(0, 0, 0.75)
-    # head with face decal: own UVs, u around (0.5 = facing direction), v bottom to top
+    # head: wider than tall (by eye on retail NL#941 to 945), 16 x 10 (section 5.2: 12 to 16 segments)
+    head_c = at(0, 0, 0.76)
+    HX, HY, HZ = 0.215, 0.235, 0.205                     # depth, width, height radii
+
+    def surf(az_deg, lat_deg, out=0.0):
+        """Point on the head ellipsoid (az 0 = facing direction, positive toward the player's left)."""
+        az, la = math.radians(az_deg), math.radians(lat_deg)
+        loc = Vector(((HX + out) * math.cos(la) * math.cos(az), (HY + out) * math.cos(la) * math.sin(az),
+                      (HZ + out) * math.sin(la)))
+        return head_c + R.to_3x3() @ loc
+
     bm = bmesh.new()
     uv = bm.loops.layers.uv.new("UVMap")
-    res = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=8, radius=0.21,
-                                    matrix=Matrix.Translation(head_c) @ R @ Matrix.Diagonal((1.0, 1.08, 1.0, 1.0)))
+    res = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=1.0,
+                                    matrix=Matrix.Translation(head_c) @ R @ Matrix.Diagonal((HX, HY, HZ, 1.0)))
     for f in {f for v in res["verts"] for f in v.link_faces}:
         for lp in f.loops:
-            d = (R.inverted() @ (lp.vert.co - head_c)).normalized()
-            u = 0.5 + math.atan2(d.y, d.x) / (2 * math.pi)
-            lp[uv].uv = (u, 0.5 + math.asin(max(-1, min(1, d.z))) / math.pi)
-        # fix the seam behind the head
+            d = R.inverted() @ (lp.vert.co - head_c)
+            d = Vector((d.x / HX, d.y / HY, d.z / HZ)).normalized()
+            lp[uv].uv = (0.5 + math.atan2(d.y, d.x) / (2 * math.pi), 0.5 + math.asin(max(-1, min(1, d.z))) / math.pi)
         us = [lp[uv].uv.x for lp in f.loops]
         if max(us) - min(us) > 0.5:
             for lp in f.loops:
@@ -879,28 +936,67 @@ def build_player(col, M):
                     lp[uv].uv.x += 1.0
     mesh_object("Head", bm, col, [M["face"]])
 
+    # nose: a small red orange nub below the eyes, about 0.07 of the head width (retail NL#941, 945)
     bm, uv = new_bm()
-    hres = bmesh.ops.create_uvsphere(bm, u_segments=14, v_segments=8, radius=0.225,
-                                     matrix=Matrix.Translation(head_c + Vector((0, 0, 0.025))) @ R @
-                                     Matrix.Diagonal((1.0, 1.1, 1.0, 1.0)), calc_uvs=True)
-    kill = []
-    for f in {f for v in hres["verts"] for f in v.link_faces}:
-        c = R.inverted() @ (f.calc_center_median() - head_c)
-        # fringe: keep alternating front faces lower, so the shell edge itself forms the zigzag (section 5.2)
-        ang = math.atan2(c.y, c.x)
-        tooth = (int((ang + math.pi) / (2 * math.pi) * 14) % 2) == 0
-        front_ok = c.x > 0 and c.z > (0.03 if tooth else 0.09)
-        if not (c.z > 0.09 or front_ok or (c.x < -0.05 and c.z > -0.16) or
-                (c.x < 0.06 and c.z > -0.04 and abs(c.y) > 0.18)):
-            kill.append(f)
+    nc = surf(0, -15, 0.004)
+    bm_sphere(bm, uv, nc, 0.020, scale=(0.75, 1.0, 0.85), segs=8, rings=5, rot=R.to_quaternion())
+    mesh_object("Nose", bm, col, [M["nose"]])
+
+    # ears: round skin discs at the sides, eye to cheek height, about 0.19 of the head width (retail captures)
+    bm, uv = new_bm()
+    for sgn in (-1, 1):
+        c = surf(sgn * 92, -15, 0.006)
+        n = (c - head_c).normalized()
+        rot = Vector((1, 0, 0)).rotation_difference(n)
+        bm_sphere(bm, uv, c, 0.050, scale=(0.6, 0.9, 1.0), segs=10, rings=6, rot=rot)
+    mesh_object("Ears", bm, col, [M["skin"]])
+
+    # hair: a shell 0.022 off the head; vertices below the hairline are pulled up onto it, so the zigzag fringe
+    # (6 teeth across the forehead) is an exact edge, the sides stop at the ear tops, the back covers the nape.
+    def hairline(az):
+        a_ = abs(az)
+        if a_ <= 52:
+            phase = (az + 52) / (104 / 6)                 # 6 teeth
+            tooth = abs((phase % 1.0) - 0.5) * 2          # 1 at tooth tips, 0 between
+            return 12 + 9 * (1 - tooth)
+        if a_ <= 70:                                       # temple: fringe height down to the ear top
+            t = (a_ - 52) / 18
+            return 16 * (1 - t) + 1 * t
+        if a_ <= 120:
+            return 1.0
+        t = min(1.0, (a_ - 120) / 40)
+        return 1 * (1 - t) - 38 * t
+
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    off = 0.022
+    hres = bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=14, radius=1.0,
+                                     matrix=Matrix.Diagonal((1.0, 1.0, 1.0, 1.0)), calc_uvs=True)
+    moved = set()
+    for v in hres["verts"]:
+        az = math.degrees(math.atan2(v.co.y, v.co.x))
+        la = math.degrees(math.asin(max(-1, min(1, v.co.z))))
+        hl = hairline(az)
+        if la < hl:
+            la = hl
+            moved.add(v)
+        v.co = surf(az, la, off) - head_c
+        v.co = v.co + head_c
+    kill = [f for f in bm.faces if all(v in moved for v in f.verts)]
     bmesh.ops.delete(bm, geom=kill, context="FACES")
     mesh_object("Hair", bm, col, [M["hair"]])
 
-    bm, uv = new_bm()                                    # torso (shirt strip front block), arms
-    bm_tube(bm, uv, [at(0, 0, 0.30), at(0, 0, 0.55)], [0.13, 0.10], 8, v0=0.75, v1=1.0, cap_end=True, cap_start=True)
+    bm, uv = new_bm()                                    # torso (shirt), short sleeves
+    bm_tube(bm, uv, [at(0, 0, 0.29), at(0, 0, 0.45), at(0, 0, 0.565)], [0.125, 0.115, 0.085], 8, v0=0.75, v1=1.0,
+            cap_end=True, cap_start=True)
     for s in (-1, 1):
-        bm_tube(bm, uv, [at(0, s * 0.11, 0.50), at(0.17, s * 0.05, 0.40)], [0.04, 0.035], 6, v0=0.0, v1=0.24)
+        bm_sphere(bm, uv, at(0, s * 0.10, 0.52), 0.045, segs=8, rings=5)          # shoulder
+        bm_tube(bm, uv, [at(0, s * 0.11, 0.52), at(0.07, s * 0.10, 0.46)], [0.045, 0.042], 6, v0=0.0, v1=0.24)
     mesh_object("Body", bm, col, [M["shirt"]])
+    bm, uv = new_bm()                                    # forearms (skin) to the mitten hands
+    for s in (-1, 1):
+        bm_tube(bm, uv, [at(0.06, s * 0.10, 0.47), at(0.18, s * 0.045, 0.40)], [0.032, 0.028], 6)
+    mesh_object("Forearms", bm, col, [M["skin"]])
     bm, uv = new_bm()
     bm_tube(bm, uv, [at(0, 0, 0.22), at(0, 0, 0.32)], [0.125, 0.13], 8, cap_start=True)
     mesh_object("Shorts", bm, col, [M["shorts"]])
@@ -924,6 +1020,11 @@ def build_player(col, M):
     bm_tube(bm, uv, [grip - Vector((0.1, 0.0, 0.07)), tip], [0.018, 0.007], 6, v0=0.0, v1=1.0)
     mesh_object("Rod", bm, col, [M["rod"]])
     bob = Vector((2.35, 0.55, WATER_Z + 0.02))
+    bm, uv = new_bm()                                    # fish shadow: dark spindle a little below the surface
+    fc = Vector((2.05, 1.25, WATER_Z - 0.06))
+    bm_sphere(bm, uv, fc, 0.16, scale=(0.55, 1.0, 0.18), segs=12, rings=5,
+              rot=Vector((0, 1, 0)).rotation_difference((bob - fc).normalized()))
+    mesh_object("FishShadow", bm, col, [M["fish"]], smooth=True)
     bm, uv = new_bm()
     pts = []
     for k in range(7):
@@ -1086,6 +1187,8 @@ def build(native=False):
         "line": unlit("M_Line", "#F0F0F0"),
         "bobber": mat("M_Bobber", image=T["bobber"]),
         "foam": unlit("M_Foam", "#CFEFFF"),
+        "nose": mat("M_Nose", image=tex_flat("T_Nose", ["#B84838", PAL["nose"], "#E06A55"], 0.02, 2), rim=1.0),
+        "fish": unlit("M_Fish", "#0E2448"),
         "blob": blob_mat("M_Blob", BLOB_CORE_ALPHA, BLOB_TINT_LIN),
         "contact": blob_mat("M_Contact", CONTACT_ALPHA, BLOB_TINT_LIN, inner=0.70, wobble=0.10),
         "canopy": blob_mat("M_CanopyShadow", CANOPY_ALPHA, BLOB_TINT_LIN, inner=0.55, wobble=0.16),
@@ -1162,7 +1265,8 @@ def check(info):
         print(f"  tree ({x}, {y}): crown top row {1 - vt.y:.3f}, base row {1 - vb.y:.3f}, column {vt.x:.3f}")
     tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in sc.objects if o.type == "MESH")
     pl = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in sc.objects
-             if o.type == "MESH" and o.name.split(".")[0] in ("Head", "Hair", "Body", "Shorts", "Legs", "Shoes", "Hands"))
+             if o.type == "MESH" and o.name.split(".")[0] in ("Head", "Hair", "Body", "Shorts", "Legs", "Shoes", "Hands",
+                                                               "Nose", "Ears", "Forearms"))
     print(f"triangles: player {pl}, scene {tris}")
 
 

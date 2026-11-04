@@ -173,7 +173,7 @@ Audit [Au] (`audit/nl_blob2.py`: horizontal profile at the sole row, normalised 
 |---|---|---|
 | colours | sea #25549A (CF#871), near bank #3275A7, river #2886C5 / #2B6DA5, shallow #2A88AF | sea #3A75B4 to #3D7ABB; shallow shore #6BBEF0; far sea #96B8F9 (haze) |
 | caustics | tiled cellular line texture; period 185 px (y 250) to 227 px (y 450) in an 832 px frame; lines +18% at p95, +39% at p99 over the water median; soft 15 to 20 px ramps | cellular, period 115 to 120 px at y 210 to 230 of 240 (NL#960); gentle swells |
-| opacity | opaque, no visible bottom | transparent enough to show pier posts and tyres (NL#957, 967, press) |
+| opacity | opaque, no visible bottom | TRANSLUCENT near the surface: submerged posts and tyres stay visible (NL#957, 967, press). NL#957 column through a post: wood #F5B272 above the line, then #A0A5AB, #808BA4, #5F7BA5 just below, reaching the water #3B6DAC within about 12 px (roughly 0.2 P): a pale blue grey cast first, then the water colour by depth. Fish read as dark shapes under the surface. M (one press frame) |
 | shoreline (CF#871 x 720, top to bottom) | dry sand (231,203,139); light wet (231,215,163) 16 px; darker wet (211,195,151) 12 px; foam (168 to 190, 221 to 224, 218 to 230) 3 to 4 px; smooth ramp to (39,103,152) over 40 px | white foam band at least 5 px at the sand line (NL#949) |
 | source | A, vA (H for CF#871; NL M, press); [Au] CF#871 sea #25539A: CONFIRMED | A, vA, vC; [Au] near water rows 120 to 240: NL#957 #396FAD, NL#960 #3A72AF, 3 to 5% darker than #3A75B4: CONFIRMED within 8 levels |
 
@@ -687,3 +687,14 @@ New evidence and corrections found while building `style_test_town/town_river_te
   horizon trees have their base hidden by the bend.
 * Clouds: retail NL#939 shows thin low contrast wisps (see 4.1). Placed as unbent cards along camera rays beyond the
   bent ground so they only show inside the thin sky strip.
+* Water (third test pass): the surface is a Blended mix of the water colour and transparency (alpha 0.45 at the banks,
+  0.70 mid river, estimates tuned by eye), and everything under the line darkens in its own material by depth below
+  the water line, stored before the bend: a 0.45 blend toward #A0A5AB at the line, then toward #3B6DAC over 0.25 P
+  (NL#957). A dark fish silhouette (#0E2448, unlit, 0.06 P down) shows the translucency.
+* Player head (retail NL#941, 942, 944, 945, emote crops, by eye plus pixel medians): skin median #FDDBB2; hair
+  #7A5450; head wider than tall (radii used: width 0.235 P, height 0.205 P, depth 0.215 P); nose a small red orange
+  nub #CF5846 just below the eye line, about 0.07 of the head width; ears round skin discs at the sides at eye to
+  cheek height, about 0.19 of the head width, left visible below the hair; hair a separate shell (0.022 P off the
+  head) covering top, back and sides down to the ear tops, with a zigzag fringe of about 6 teeth across the forehead;
+  soft pink cheeks. Hair texture: low contrast mottle plus a sheen band, not stripes radiating from the crown (those
+  read as a melon on a UV sphere).
