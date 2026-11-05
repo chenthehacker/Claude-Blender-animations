@@ -1936,9 +1936,12 @@ def build_materials(atmos):
         boil = looped_noise(nt, vmath(nt, "MULTIPLY", p, (0.35, 0.35, 1.0)), (0.12, 0.05, 0.0), 1.0, 4.0, 0.6)
         foam_n = looped_noise(nt, vmath(nt, "MULTIPLY", p, (1.2, 1.2, 1.0)), (0.2, 0.1, 0.0), 1.2, 5.0, 0.65)
         rel = separate(nt, vmath(nt, "SUBTRACT", p, (WRECK_AT.x, WRECK_AT.y, 0.0)))
-        hull_d = nmath(nt, "MAXIMUM", nmath(nt, "SUBTRACT", nmath(nt, "ABSOLUTE", rel["X"]), WRECK_L / 2 - 2.0),
-                       nmath(nt, "SUBTRACT", nmath(nt, "ABSOLUTE", rel["Y"]), WRECK_B / 2 - 1.0))
-        over = map_range(nt, hull_d, 2.5, -1.0)                              # over the wreck (a soft edge)
+        bow = nmath(nt, "POWER", nmath(nt, "MAXIMUM", nmath(nt, "SUBTRACT", nmath(nt, "DIVIDE", rel["X"], WRECK_L / 2), 0.55),
+                                       0.0), 1.6)
+        hw = nmath(nt, "MULTIPLY", nmath(nt, "MULTIPLY_ADD", bow, -0.88 / 0.45 ** 1.6, 1.0), WRECK_B / 2 - 0.6)
+        hull_d = nmath(nt, "MAXIMUM", nmath(nt, "SUBTRACT", nmath(nt, "ABSOLUTE", rel["X"]), WRECK_L / 2 - 1.0),
+                       nmath(nt, "SUBTRACT", nmath(nt, "ABSOLUTE", rel["Y"]), hw))
+        over = map_range(nt, hull_d, 1.6, -1.2)                              # over the wreck (a soft edge)
         shadow = nmath(nt, "MULTIPLY", over, map_range(nt, boil, 0.3, 0.7, 0.75, 0.95))
         churn = nmath(nt, "MULTIPLY", map_range(nt, boil, 0.55, 0.72), nmath(nt, "MULTIPLY_ADD", over, 0.8, 0.2))
         foam = nmath(nt, "MULTIPLY", map_range(nt, foam_n, 0.62, 0.74), nmath(nt, "MULTIPLY_ADD", churn, 0.7, 0.04))
@@ -2042,7 +2045,7 @@ def build_materials(atmos):
         spots = map_range(nt, voronoi(nt, p, 60.0), 0.14, 0.07)
         spots = nmath(nt, "MULTIPLY", spots, nmath(nt, "MULTIPLY", map_range(nt, x, 0.7, 0.85), map_range(nt, z, 0.2, 0.4)))
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", spots, 0.8), col, srgb(14, 12, 10))
-        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "lip", "Fac"), 0.6), col, srgb(130, 104, 86))
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", attr(nt, "lip", "Fac"), 0.3), col, srgb(118, 98, 76))
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
         nt.links.new(uw_base(nt, col, caustic=0.6), b.inputs["Base Color"])
         _feed(nt, b.inputs["Roughness"], map_range(nt, n1, 0.0, 1.0, 0.5, 0.7, smooth=False))
@@ -2070,7 +2073,7 @@ def build_materials(atmos):
         return psdf(nt, uw_base(nt, col, caustic=0.4), rough=0.45, sss=0.25, sss_scale=0.02, alpha=0.96)
     M.goliath_fin = mat("GoliathFin", goliath_fin)
     M.throat = mat("GoliathThroat", lambda nt: psdf(nt, color_ramp(nt, attr(nt, "zrel", "Fac"),
-                   [(0.0, srgb(56, 24, 22)), (1.0, srgb(118, 66, 58))]), rough=0.35, sss=0.4, sss_scale=0.02, coat=0.6))
+                   [(0.0, srgb(22, 10, 9)), (1.0, srgb(70, 38, 32))]), rough=0.6, sss=0.3, sss_scale=0.02, coat=0.1))
     M.gill = mat("GoliathGillRaker", lambda nt: psdf(nt, srgb(150, 40, 40), rough=0.4, sss=0.5, sss_scale=0.01))
 
     def eye(nt):
@@ -2458,12 +2461,12 @@ def goliath_curves():
 
     def u_of(x):
         return (L / 2 - x) / L
-    top_u = pchip([(0.0, 0.010), (0.04, 0.030), (0.1, 0.058), (0.2, 0.088), (0.32, 0.106), (0.45, 0.110), (0.6, 0.097),
-                   (0.75, 0.068), (0.9, 0.047), (1.0, 0.041)])
-    bot_u = pchip([(0.0, -0.014), (0.07, -0.024), (0.15, -0.040), (0.22, -0.074), (0.32, -0.104), (0.45, -0.114),
-                   (0.6, -0.101), (0.75, -0.068), (0.9, -0.045), (1.0, -0.039)])
-    wid_u = pchip([(0.0, 0.030), (0.05, 0.050), (0.12, 0.068), (0.25, 0.080), (0.42, 0.082), (0.6, 0.067), (0.8, 0.038),
-                   (1.0, 0.020)])
+    top_u = pchip([(0.0, 0.016), (0.04, 0.028), (0.1, 0.046), (0.2, 0.072), (0.32, 0.092), (0.45, 0.098), (0.6, 0.090),
+                   (0.75, 0.066), (0.9, 0.047), (1.0, 0.041)])
+    bot_u = pchip([(0.0, -0.018), (0.07, -0.028), (0.15, -0.044), (0.22, -0.068), (0.32, -0.092), (0.45, -0.100),
+                   (0.6, -0.092), (0.75, -0.066), (0.9, -0.045), (1.0, -0.039)])
+    wid_u = pchip([(0.0, 0.044), (0.05, 0.062), (0.12, 0.080), (0.25, 0.090), (0.42, 0.088), (0.6, 0.072), (0.8, 0.040),
+                   (1.0, 0.021)])
     return (lambda x: top_u(u_of(x))), (lambda x: bot_u(u_of(x))), (lambda x: wid_u(u_of(x))), u_of
 
 
@@ -3298,6 +3301,23 @@ def build_wreck(col, M, origin, cut=False, name="Wreck"):
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
     loose = [v for v in bm.verts if not v.link_faces]
     bmesh.ops.delete(bm, geom=loose, context="VERTS")
+    # rust holes: relax the stair-stepped edges of the removed panels into smooth ragged outlines on the hull
+    edge_v = [v for v in bm.verts if any(e.is_boundary for e in v.link_edges)]
+    inner = []
+    for v in edge_v:
+        lx, lz = v.co.x - o.x, v.co.z - o.z
+        if 0.08 < lz < WRECK_H - 0.08 and abs(lx) < WRECK_L / 2 - 0.08 and abs(v.co.y - o.y) > 0.35:
+            nb = [e.other_vert(v) for e in v.link_edges if e.is_boundary]
+            if len(nb) == 2:
+                inner.append((v, nb))
+    for _ in range(8):
+        new = {}
+        for v, nb in inner:
+            new[v] = (v.co * 0.4 + (nb[0].co + nb[1].co) * 0.3)
+        for v, c in new.items():
+            lx, lz = c.x - o.x, c.z - o.z
+            side = 1.0 if c.y - o.y > 0 else -1.0
+            v.co = Vector((c.x, o.y + side * hull_hw(lx, lz), c.z))
     shell = finish(name + "Shell", bm, col, [M.rust])
     for p in shell.data.polygons:
         p.use_smooth = True
@@ -3607,8 +3627,9 @@ def camera_frames(st):
     for f in range(WHIP_IN, CUT1A):
         u = (f - WHIP_IN) / (CUT1A - WHIP_IN)
         k = 0.9 * ease(smoothstep(WHIP_IN, CUT1A - 50, f)) + 0.1 * u
-        cam = hole_w + Vector((-1.2 + 1.0 * k, -9.5 + 6.2 * k, 1.6 - 1.3 * k))
-        tgt = hole_w + Vector((0.0, 0.6, -0.1))
+        cam = hole_w + Vector((-1.6 + 3.3 * k, -9.5 + 6.4 * k, 1.6 - 1.4 * k))
+        mouth = mouth_of(*hook_goliath(f))
+        tgt = (hole_w + Vector((0.0, 0.6, -0.1))).lerp(mouth, ease(smoothstep(WHIP_IN + 20, CUT1A - 50, f)))
         q = look_at(cam, tgt, Z)
         if f < WHIP_IN + 6:
             kk = 1.0 - ease_out((f - WHIP_IN) / 6.0, 3.0)
@@ -3919,7 +3940,7 @@ def drift_silt(center, size, n, seed, f_lo, f_hi):
     for _ in range(n):
         p = Vector(center) + Vector((rng.uniform(-1, 1) * size[0], rng.uniform(-1, 1) * size[1], rng.uniform(-1, 1) * size[2]))
         v = Vector((rng.uniform(0.15, 0.35), rng.gauss(0, 0.05), rng.gauss(0, 0.03)))
-        sp.emit(rng.uniform(t0, t1), p, v, rng.uniform(3.0, 6.0), rng.uniform(0.004, 0.012))
+        sp.emit(rng.uniform(t0, t1), p, v, rng.uniform(3.0, 6.0), rng.uniform(0.0015, 0.0045))
     return sp
 
 

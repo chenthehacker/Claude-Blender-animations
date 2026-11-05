@@ -90,3 +90,8 @@ the sea and the light. It is not footage of Joyner's fish or of any real catch.
   found; the script says "turn the fish's head before it reaches the wreck" and "a whole fish for bait".
 - The record was caught from a dock on the Amelia River, not on a wreck; the film does not say it was a wreck catch.
 - The film runs about 44 s (paced to the voiceover) instead of 45 s.
+
+## Caption extras
+- "the heavyweight of wreck fishing": caption wording, not a ranking.
+- "as most fish do": Wainwright et al. (2007) describe suction feeding as the dominant prey capture mode in ray
+  finned fishes.
