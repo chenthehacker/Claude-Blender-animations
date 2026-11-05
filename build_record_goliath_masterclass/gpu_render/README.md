@@ -88,4 +88,7 @@ the time per frame in the render window after the first few frames and multiply 
 
 The cloud preview (preview_draft_12fps.mp4) was rendered from the same .blend at 50 percent resolution (540x960)
 and 16 samples, motion blur and depth of field on, every second frame only (12 fps, each frame shown twice), then
-scaled to 1080x1920 for playback, so it is softer, noisier and less smooth than the final.
+scaled to 1080x1920 for playback, so it is softer, noisier and less smooth than the final. It covers only the first
+14.1 s of the film (frames 1 to 339): the full draft would have taken about 6 more hours here, so it was stopped.
+Within that span 39 of the 170 draft frames are missing (from frame 155 on), and each gap repeats the previous frame,
+so parts of it play at about 6 fps. The soundtrack is cut at 14.1 s to match.
