@@ -64,6 +64,9 @@ Audio: `/root/bpyenv/bin/python offshore_audio.py events.json out.wav`, then FLA
    Every video gets this keyword led description (user rule): the opening sentence packs the main search terms,
    section headings reuse them naturally, a comment prompt, 3 to 5 hashtags at the end; also suggest a title
    (under 100 characters, main keyword first) in the reply.
+8. Voiceover script (user rule): every video's delivery includes the full voiceover script, exactly as the clips
+   were generated (`voiceover/VO_SCRIPT.txt`), given in the reply alongside the caption, with the clip lengths and
+   any lines changed from the brief.
 
 ## Blender 5.2 and EEVEE pitfalls (learned the hard way)
 
