@@ -1,0 +1,212 @@
+{
+ "fps": 24,
+ "frames": 1057,
+ "loop": true,
+ "cuts": [
+  7,
+  264,
+  476,
+  713,
+  969
+ ],
+ "hard_cuts": [
+  160,
+  588,
+  825,
+  892
+ ],
+ "whips": [
+  [
+   1,
+   7
+  ],
+  [
+   965,
+   975
+  ]
+ ],
+ "overlays": [
+  [
+   9,
+   "caption",
+   "In 1961, Lynn Joyner landed a *680 pound* goliath."
+  ],
+  [
+   160,
+   "caption",
+   "Still the *all tackle* world record."
+  ],
+  [
+   166,
+   "pin",
+   "goliath grouper"
+  ],
+  [
+   266,
+   "badge",
+   "WRECK CAVITY STRUCTURE"
+  ],
+  [
+   266,
+   "caption",
+   "They don't *chase bait.*"
+  ],
+  [
+   320,
+   "pin",
+   "dark cavity"
+  ],
+  [
+   324,
+   "pin",
+   "steel hull"
+  ],
+  [
+   350,
+   "caption",
+   "They hold on *wrecks and pilings.*"
+  ],
+  [
+   358,
+   "pin",
+   "crabs: their main prey"
+  ],
+  [
+   478,
+   "badge",
+   "THE HEAVY RIG"
+  ],
+  [
+   478,
+   "caption",
+   "Standard gear *won't hold.*"
+  ],
+  [
+   486,
+   "pin",
+   "whole fish bait"
+  ],
+  [
+   534,
+   "pin",
+   "heavy cable leader"
+  ],
+  [
+   588,
+   "caption",
+   "Cable leader, *big circle hook.*"
+  ],
+  [
+   594,
+   "pin",
+   "big circle hook"
+  ],
+  [
+   658,
+   "pin",
+   "crimped sleeve"
+  ],
+  [
+   713,
+   "badge",
+   "LOCK THE DRAG"
+  ],
+  [
+   713,
+   "caption",
+   "They feed by *suction.*"
+  ],
+  [
+   755,
+   "pin",
+   "suction strike"
+  ],
+  [
+   825,
+   "caption",
+   "Lock your drag *down hard.*"
+  ],
+  [
+   827,
+   "pin",
+   "rod doubled over"
+  ],
+  [
+   835,
+   "pin",
+   "drag locked"
+  ],
+  [
+   892,
+   "caption",
+   "Turn the head *before the wreck.*"
+  ],
+  [
+   916,
+   "pin",
+   "head turned"
+  ],
+  [
+   973,
+   "caption",
+   "Keep them *in the water.*"
+  ]
+ ],
+ "under": [
+  [
+   7,
+   825
+  ],
+  [
+   892,
+   969
+  ]
+ ],
+ "gape": [
+  98,
+  144
+ ],
+ "strike": 757,
+ "lock": 833,
+ "turn": 912,
+ "boat": [
+  825,
+  892
+ ],
+ "rig": [
+  476,
+  713
+ ],
+ "section": [
+  264,
+  476
+ ],
+ "vo_start": {
+  "1": 1,
+  "2": 270,
+  "3": 482,
+  "4": 719,
+  "5": 975
+ },
+ "vo_len": {
+  "1": 10.72,
+  "2": 8.32,
+  "3": 9.36,
+  "4": 10.16,
+  "5": 3.44
+ },
+ "vo_text": {
+  "1": "In 1961, Lynn Joyner hauled a 680 pound goliath grouper out of Florida waters. It's still the all tackle world record, more than sixty years later.",
+  "2": "Goliath groupers don't chase bait across open water. They hold tight to shipwrecks and bridge pilings, using dark cavities as ambush cover.",
+  "3": "To pull a giant away from iron structure, standard gear won't hold. Anglers use heavy cable leaders, big circle hooks, and a whole fish for bait.",
+  "4": "They feed by suction, flaring that huge mouth to inhale prey. Lock your drag down hard and turn the fish's head before it reaches the wreck, or it will break you off.",
+  "5": "Stop them early, keep them in the water, and remember..."
+ },
+ "beats": [
+  1,
+  264,
+  476,
+  713,
+  969
+ ]
+}

@@ -1,0 +1,9 @@
+Record goliath masterclass voiceover (ElevenLabs, voice "Mark, Natural Conversations", model eleven_v4).
+Sourced rewrites of the brief's script (see SOURCES.md). This is the text each clip was generated from.
+
+vo1  In 1961, Lynn Joyner hauled a 680 pound goliath grouper out of Florida waters. It's still the all tackle world record, more than sixty years later.
+vo2  Goliath groupers don't chase bait across open water. They hold tight to shipwrecks and bridge pilings, using dark cavities as ambush cover.
+vo3  To pull a giant away from iron structure, standard gear won't hold. Anglers use heavy cable leaders, big circle hooks, and a whole fish for bait.
+vo4  They feed by suction, flaring that huge mouth to inhale prey. Lock your drag down hard and turn the fish's head before it reaches the wreck, or it will break you off.
+vo5  Stop them early, keep them in the water, and remember...
+(loops back into vo1)
