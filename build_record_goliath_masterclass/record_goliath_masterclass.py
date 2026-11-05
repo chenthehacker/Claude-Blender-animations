@@ -2088,7 +2088,7 @@ def build_materials(atmos):
         """Small fish eye: silvery white sclera around a black pupil."""
         r = attr(nt, "eyer", "Fac")
         col = color_ramp(nt, r, [(0.0, srgb(2, 2, 3)), (0.66, srgb(2, 2, 3)), (0.69, srgb(200, 170, 96)),
-                                 (0.72, srgb(226, 228, 224)), (0.87, srgb(214, 218, 216)), (1.0, srgb(120, 126, 130))])
+                                 (0.72, srgb(150, 150, 140)), (0.87, srgb(120, 122, 118)), (1.0, srgb(80, 84, 86))])
         return psdf(nt, col, rough=0.05, coat=1.0, coat_rough=0.02, spec=0.8)
     M.small_eye = mat("SmallFishEye", small_eye)
 
@@ -2205,7 +2205,7 @@ def build_materials(atmos):
                     normal=bump(nt, nmath(nt, "MULTIPLY_ADD", n2, 0.6, n), 0.8, 0.05))
     M.rust = mat("RustedSteel", rust)
     M.barnacle = mat("Barnacle", lambda nt: psdf(nt, uw_base(nt, color_ramp(nt, noise(nt, tex_coord(nt, "Object"), 30.0),
-                     [(0.0, srgb(150, 146, 128)), (1.0, srgb(206, 200, 180))]), caustic=0.6), rough=0.7,
+                     [(0.0, srgb(70, 64, 52)), (1.0, srgb(128, 120, 100))]), caustic=0.4), rough=0.7,
                      normal=bump(nt, noise(nt, tex_coord(nt, "Object"), 80.0), 0.5, 0.003)))
 
     def seafan(nt):
@@ -2570,8 +2570,11 @@ def make_goliath(col, M, name="Goliath"):
     jaw.parent = body
     jaw.location = G_JAW_HINGE
     jaw.rotation_mode = "XYZ"
+    jaw.data.materials.append(M.throat)
     for p in jaw.data.polygons:
         p.use_smooth = True
+        if p.normal.z > 0.45:                            # the inside of the mouth
+            p.material_index = 1
     tb = bmesh.new()                                     # the throat: dark, red at the back (gill rakers)
     ellipsoid(tb, (0.0, 0.0, 0.0), (0.05, 0.05, 0.022), subdiv=3, mat=0)
     throat = finish(name + "Throat", tb, col, [M.throat])
@@ -3373,14 +3376,14 @@ def build_wreck(col, M, origin, cut=False, name="Wreck"):
         parts.append(cf)
     # barnacles over the shell (geometry nodes: points on the faces, a small cone on each, turned to the normal)
     bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=7, radius1=0.035, radius2=0.012, depth=0.035,
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=7, radius1=0.02, radius2=0.007, depth=0.02,
                           matrix=Matrix.Translation((0, 0, 0.012)))
     bar = finish(name + "BarnacleShape", bm, col, [M.barnacle])
     bar.hide_render = bar.hide_viewport = True
     ng, gi, go = new_group(name + "Barnacles", "GeometryNodeTree", [("Geometry", "NodeSocketGeometry")],
                            [("Geometry", "NodeSocketGeometry")])
     dist = ng.nodes.new("GeometryNodeDistributePointsOnFaces")
-    dist.inputs["Density"].default_value = 9.0
+    dist.inputs["Density"].default_value = 36.0
     ng.links.new(gi.outputs["Geometry"], dist.inputs["Mesh"])
     oi = ng.nodes.new("GeometryNodeObjectInfo")
     oi.inputs["Object"].default_value = bar
@@ -3391,8 +3394,8 @@ def build_wreck(col, M, origin, cut=False, name="Wreck"):
     ng.links.new(dist.outputs["Rotation"], inst.inputs["Rotation"])
     rv = ng.nodes.new("FunctionNodeRandomValue")
     rv.data_type = "FLOAT"
-    rv.inputs["Min"].default_value = 0.5
-    rv.inputs["Max"].default_value = 1.6
+    rv.inputs["Min"].default_value = 0.4
+    rv.inputs["Max"].default_value = 1.3
     ng.links.new(rv.outputs["Value"], inst.inputs["Scale"])
     join = ng.nodes.new("GeometryNodeJoinGeometry")
     ng.links.new(gi.outputs["Geometry"], join.inputs[0])
@@ -3651,8 +3654,8 @@ def camera_frames(st):
         near_cam = gp + Vector((-1.0, -4.6, 0.25))
         near_tgt = gp + Vector((-1.0, 0.0, 0.0))
         u = (f - CUT1 - 50) / max(1, CUT2 - CUT1 - 50)
-        wide_cam = XS + Vector((0.5 + 1.0 * max(0.0, u), -27.0 + 2.0 * ease(max(0.0, u)), Z0 + 4.8))
-        wide_tgt = XS + Vector((0.5 + 1.0 * max(0.0, u), 0.0, Z0 + 3.0))
+        wide_cam = XS + Vector((1.5 + 1.0 * max(0.0, u), -16.5 + 1.5 * ease(max(0.0, u)), Z0 + 4.2))
+        wide_tgt = XS + Vector((1.5 + 1.0 * max(0.0, u), 0.0, Z0 + 2.6))
         k = ease(smoothstep(CUT1 + 8, CUT1 + 50, f))
         cam = near_cam.lerp(wide_cam, k)
         tgt = near_tgt.lerp(wide_tgt, ease(smoothstep(CUT1 + 8, CUT1 + 42, f)))
@@ -3689,10 +3692,10 @@ def camera_frames(st):
         t = t_of(f)
         shake = Vector((0.004 * math.sin(t * 7.1), 0.003 * math.sin(t * 5.3 + 1), 0.004 * math.sin(t * 6.2 + 2)))
         shake *= 1.0 + 2.0 * smoothstep(LOCK_F - 2, LOCK_F + 2, f) * (1.0 - smoothstep(LOCK_F + 2, LOCK_F + 14, f))
-        cam = rm @ (Vector((-0.66, -0.2, 0.36)) + shake)
-        tgt = rm @ Vector((0.0, 0.12, 0.1))
+        cam = rm @ (Vector((-0.95, -0.45, 0.62)) + shake)
+        tgt = rm @ Vector((0.0, 0.35, 0.05))
         up = (rm.to_3x3() @ Vector((0, 0, 1))).normalized()
-        frames[f] = (cam, tgt, look_at(cam, tgt, up.lerp(Z, 0.6)), 32.0)
+        frames[f] = (cam, tgt, look_at(cam, tgt, up.lerp(Z, 0.6)), 26.0)
         fstop[f] = 2.8
     for f in range(CUT3C, CUT4):
         gp = gauss_smooth(lambda g: turn_goliath(g)[0], f, 8)
@@ -3856,9 +3859,9 @@ def key_scene_state(sc, world_vals, sun, key_l, bounce, cave):
                 aim(cave, hole_w + Vector((0.0, 0.8, -0.1)))
                 cave.data.energy = 320.0
         elif CUT1 <= f < CUT2:
-            key_l.location = XS + Vector((0.0, -22.0, Z0 + 14.0))
-            aim(key_l, XS + Vector((0.0, 2.0, Z0 + 2.0)))
-            key_l.data.energy = 9000.0
+            key_l.location = XS + Vector((-2.0, -12.0, Z0 + 10.0))
+            aim(key_l, XS + Vector((1.5, 1.0, Z0 + 2.5)))
+            key_l.data.energy = 16000.0
             p, fwd = xs_goliath(f)
             bounce.location = p + Vector((0.0, -4.0, 0.3))
             aim(bounce, p)
@@ -4022,9 +4025,9 @@ def build_overlays(hud, st):
               src="FWC · GULF AND CARIBBEAN FISHERIES INSTITUTE")
     hud.pin(lambda f: XS + Vector((4.8, 2.2, Z0 + TWEEN_Z - 0.4)), "dark cavity", CUT1 + 56, CUT2 - 10,
             dot_color=srgb(200, 160, 110), side=0.06, y_band=(-0.22, 0.32))
-    hud.pin(lambda f: XS + Vector((-6.0, 2.0, Z0 + WRECK_H - 1.0)), "steel hull", CUT1 + 60, s1 - 4,
+    hud.pin(lambda f: XS + Vector((-1.6, 3.5, Z0 + WRECK_H - 1.4)), "steel hull", CUT1 + 60, s1 - 4,
             dot_color=srgb(200, 160, 110), side=-0.05, y_band=(-0.22, 0.32))
-    hud.pin(lambda f: XS + Vector((-3.5, -5.6, SEABED_Z + 0.15)), "crabs: their main prey", s1 + 4, CUT2 - 10,
+    hud.pin(lambda f: XS + Vector((0.8, -5.3, SEABED_Z + 0.15)), "crabs: their main prey", s1 + 4, CUT2 - 10,
             dot_color=GOLD, side=0.05, rise=0.08, y_band=(-0.22, 0.32))
     hud.badge(2, "THE HEAVY RIG", "cable leader, circle hook, whole bait", CUT2 + 8, CUT3 - 8)
     hud.serif("Standard gear *won't hold.*", CUT2 + 6, CUT2B - 6, lines=["Standard gear", "*won't hold.*"],
@@ -4037,7 +4040,7 @@ def build_overlays(hud, st):
             dot_color=GOLD, side=-0.06, y_band=(-0.22, 0.3))
     hud.pin(lambda f: rig_point(rig, "cable", f), "heavy cable leader", CUT2 + int(span * 0.52), CUT2B - 8,
             dot_color=GOLD, side=0.06, y_band=(-0.22, 0.3))
-    hud.pin(lambda f: rig_point(rig, "bend", f), "big circle hook", CUT2B + 6, CUT2B + 6 + (CUT3 - CUT2B) // 2,
+    hud.pin(lambda f: rig_point(rig, "point", f), "big circle hook", CUT2B + 6, CUT2B + 6 + (CUT3 - CUT2B) // 2,
             dot_color=GOLD, side=0.06, y_band=(-0.22, 0.3))
     hud.pin(lambda f: rig_point(rig, "sleeve", f), "crimped sleeve", CUT2B + 8 + (CUT3 - CUT2B) // 2, CUT3 - 8,
             dot_color=GOLD, side=-0.06, rise=0.09, y_band=(-0.22, 0.3))
@@ -4371,7 +4374,7 @@ def build_scene():
     bm = bmesh.new()
     rng = random.Random(9)
     for _ in range(14):                                         # crabs on the sand by the wreck
-        c = XS + Vector((rng.uniform(-5.5, -1.5), rng.uniform(-6.5, -4.6), SEABED_Z + 0.06))
+        c = XS + Vector((rng.uniform(-1.0, 2.6), rng.uniform(-6.2, -4.4), SEABED_Z + 0.06))
         ellipsoid(bm, c, (0.09, 0.07, 0.035), subdiv=2)
         for s in (1, -1):
             for k in range(3):
