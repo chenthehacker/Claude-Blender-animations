@@ -2113,7 +2113,7 @@ def build_materials(atmos):
         return psdf(nt, uw_base(nt, col, caustic=0.3), rough=0.25, metal=0.5, coat=0.4)
     M.baitfish = mat("Baitfish", baitfish)
     M.crab = mat("Crab", lambda nt: psdf(nt, uw_base(nt, color_ramp(nt, map_range(nt, voronoi(nt, tex_coord(nt, "Object"), 30.0), 0.0, 0.3),
-                 [(0.0, srgb(160, 40, 34)), (1.0, srgb(214, 196, 160))]), caustic=0.4), rough=0.4, coat=0.5))
+                 [(0.0, srgb(120, 36, 28)), (1.0, srgb(132, 116, 92))]), caustic=0.15), rough=0.55, coat=0.1))
 
     # --- tackle ------------------------------------------------------------------------------------------------
     M.reel_gold = mat("ReelGold", lambda nt: psdf(nt, srgb(214, 168, 70), rough=0.22, metal=1.0, coat=0.3))
@@ -2576,7 +2576,7 @@ def make_goliath(col, M, name="Goliath"):
         if p.normal.z > 0.45:                            # the inside of the mouth
             p.material_index = 1
     tb = bmesh.new()                                     # the throat: dark, red at the back (gill rakers)
-    ellipsoid(tb, (0.0, 0.0, 0.0), (0.05, 0.05, 0.022), subdiv=3, mat=0)
+    ellipsoid(tb, (0.0, 0.0, 0.0), (0.05, 0.032, 0.02), subdiv=3, mat=0)
     throat = finish(name + "Throat", tb, col, [M.throat])
     throat.parent = body
     throat.location = (L / 2 - 0.07, 0.0, -0.03)
@@ -2601,9 +2601,8 @@ def make_goliath(col, M, name="Goliath"):
 def key_gape(g, f, gape, flare=0.0):
     """Open the mouth: gape 0 shut .. 1 fully open (the jaw drops about 38 degrees and the throat swells back)."""
     g["jaw"].rotation_euler = (0.0, math.radians(38.0) * gape, 0.0)
-    g["throat"].location = (G_L / 2 - 0.07 - 0.02 * gape, 0.0, -0.03 - 0.018 * gape)
-    s = 1.0 + 0.35 * gape
-    g["throat"].scale = (s, s * (1.0 + 0.2 * flare), s)
+    g["throat"].location = (G_L / 2 - 0.075 - 0.02 * gape, 0.0, -0.026 - 0.012 * gape)
+    g["throat"].scale = (1.0 + 0.15 * gape, 1.0 + 0.08 * gape + 0.08 * flare, 1.0 + 0.3 * gape)
     for i, po in enumerate(g["pects"]):
         sgn = 1 if i == 0 else -1
         po.rotation_euler = (sgn * math.radians(-8 - 25 * flare), math.radians(6), sgn * math.radians(-24 - 30 * flare))
@@ -4059,10 +4058,10 @@ def build_overlays(hud, st):
 
     def rod_pt(f):
         sc.frame_set(f)
-        return rod["reel"]["root"].matrix_world.translation.lerp(rod["ctrl"]["Mid"].matrix_world.translation, 0.55)
+        return rod["ctrl"]["Mid"].matrix_world.translation.copy()
     hud.pin(lambda f: mouth_of(*strike_goliath(f)), "suction strike", STRIKE_F - 2, CUT3B - 8, dot_color=PIN_RED,
             side=0.06, y_band=(-0.2, 0.3))
-    hud.pin(rod_pt, "rod doubled over", CUT3B + 2, CUT3C - 4, dot_color=GOLD, side=0.06, y_band=(-0.2, 0.3))
+    hud.pin(rod_pt, "rod doubled over", CUT3B + 2, CUT3C - 4, dot_color=GOLD, side=0.02, y_band=(-0.2, 0.3))
     hud.pin(lever_pt, "drag locked", LOCK_F + 2, CUT3C - 6, dot_color=PIN_RED, side=-0.06, rise=0.1, y_band=(-0.2, 0.3))
     hud.pin(lambda f: mouth_of(*turn_goliath(f)), "head turned", TURN_F + 4, CUT4 - 8, dot_color=GOLD, side=0.06,
             y_band=(-0.2, 0.3))
