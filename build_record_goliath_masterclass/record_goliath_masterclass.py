@@ -2100,7 +2100,7 @@ def build_materials(atmos):
                                   (0.72, srgb(72, 100, 84)), (1.0, srgb(40, 64, 60))])
         spot = nmath(nt, "MULTIPLY", map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", x, 0.76)), 0.025, 0.008),
                      map_range(nt, nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", z, 0.62)), 0.07, 0.03))
-        col = mix_rgb(nt, spot, base, srgb(10, 10, 12))
+        col = mix_rgb(nt, nmath(nt, "MULTIPLY", spot, 0.0), base, srgb(10, 10, 12))     # generic bait: no spot
         return psdf(nt, uw_base(nt, col, caustic=0.3), rough=0.22, metal=0.45, coat=0.6, coat_rough=0.08)
     M.jack = mat("JackCrevalle", jack)
     M.jack_fin = mat("JackFin", lambda nt: psdf(nt, uw_base(nt, srgb(214, 182, 70), caustic=0.2), rough=0.4, alpha=0.92))
@@ -3536,6 +3536,10 @@ def build_rig(col, M):
     col.objects.link(jk)
     jk.parent = piv
     jk.location = (0.0, 0.0, 0.0)
+    sub = jk.modifiers.new("Smooth", "SUBSURF")
+    sub.levels, sub.render_levels = 1, 2
+    for p in jk.data.polygons:
+        p.use_smooth = True
     bm = bmesh.new()
     hp = circle_hook_pts(1.25)
     off = Vector((0.03, 0.0, 0.035))
