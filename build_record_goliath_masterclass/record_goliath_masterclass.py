@@ -2680,7 +2680,7 @@ def jack_mesh(M, L=0.5):
                 [(t + 0.03 * L, 0.02 * L), (t - 0.1 * L, 0.17 * L), (t - 0.14 * L, 0.17 * L), (t - 0.06 * L, 0.0),
                  (t - 0.14 * L, -0.17 * L), (t - 0.1 * L, -0.17 * L), (t + 0.03 * L, -0.02 * L)]]
     return small_fish("JackCrevalle", M, M.jack, M.jack_fin, L, lambda u: top(u) * L, lambda u: bot(u) * L,
-                      lambda u: wid(u) * L, fins, nr=28, na=18, eye_r=0.04)
+                      lambda u: wid(u) * L, fins, nr=28, na=18, eye_r=0.027)
 
 
 def baitfish_mesh(M, L=0.22):
