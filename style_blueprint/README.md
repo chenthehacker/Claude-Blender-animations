@@ -15,3 +15,10 @@ How it was produced (November 2026):
 
 Paths such as `nook/...`, `synth/...` or `audit/...` in the blueprint refer to the session scratchpad where the
 measurement scripts ran; they are not part of this repository.
+
+Section 16 (November 2026) adds a screenshot corpus study: 16,939 images from Nookipedia (three category trees), Fandom
+(two category trees, original uploads via the API), Nintendo Life (83) and Neoseeker (447, from a page saved by the user);
+every pixel measured (5.48 Gpx, plus 1.72 Gpx of Fandom originals), every image viewed on 399 contact sheets by six
+reviewers, every number re measured by three verifiers, then a final audit (38 numbers, 6 corrected). It includes a shader
+layer stack per material (16.10) and a table of corrections to earlier sections (16.11). IDs written S#INDEX refer to that
+corpus; no images are stored here.

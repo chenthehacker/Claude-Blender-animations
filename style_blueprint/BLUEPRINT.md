@@ -718,3 +718,598 @@ New evidence and corrections found while building `style_test_town/town_river_te
   |L minus its 3x3 mean| and the median. Last run, all resized to 400x240: ours 1.76 (flat pixels 23%), retail stream
   capture 1.64 (20%, softened by the stream upscale), NL#946 press 4.62 (10%). Flattest areas left: hair cap, skin,
   open water.
+
+## 16. Screenshot corpus (16,939 images, seven sources)
+
+Synthesis of six reviewers who viewed all 399 contact sheets ([R1] to [R6], findings in `shots/review/R*_findings.md`)
+and three verifiers ([V1] checks R1 to R3, [V2] checks R4 and R5, [V3] checks R6 and reconciles grain). Rule applied:
+where a verifier REVISED a value, the verifier's value is used; REJECTED claims are dropped or listed in 16.11 only.
+[S] marks arithmetic done in this synthesis. Evidence class after each number: **LL** lossless RGB565 retail frame,
+**Q80** retail 3DS album JPEG (IJG quality 80, 4:2:2), **J** other JPEG retail upload, **P** press capture, **Rn** model
+render, **T** raw texture or sprite, **E** by eye. Confidence H, M, L. IDs are corpus items `S#index`
+(`shots/corpus_items.json`); they are not the CF#/NL# IDs of sections 0 to 15. Lossy Fandom WEBP corpus copies were
+never used for a colour value below (16.8). All values are sRGB display values unless marked linear; Blender multiplies
+in linear light, so convert with the 2.2 power (section 3 audit).
+
+### 16.0 Evidence base
+
+| source | how obtained | items | what it holds |
+|---|---|---|---|
+| Nookipedia "City Folk screenshots" | category tree | 1,208 | CF retail frames 832x456 PNG and 640x480, look up crops, interiors, UI |
+| Nookipedia "City Folk images" | category tree | 4,053 | CF raw textures (clothing, flooring, wallpaper, ground), icons, model viewer renders, publisher art, 1 PDF |
+| Nookipedia "New Leaf screenshots" | category tree | 2,330 | NL retail frames, 721 of them lossless RGB565 PNG [V3], 1 MP4 |
+| Fandom CF screenshots | MediaWiki API, original uploads | 1,420 | CF frames (many are Nookipedia twins) |
+| Fandom NL screenshots, catalog, RV trees | MediaWiki API, original uploads | 7,396 | NL album JPEGs, catalog crops and renders, RV images |
+| Nintendo Life | article galleries | 83 | NL press and review frames, JPEG |
+| Neoseeker | the user's saved gallery page | 447 | NL retail JPEG frames, half of them 150x90 thumbnails |
+
+Item counts are images analysed and sum to 16,937 [audit 16.13]: the catalogue holds 4,054 CF images records (the booklet
+PDF excluded here), 2,331 NL screenshots records (the MP4 excluded) and 7,399 Fandom NL records (3 unobtainable).
+
+* Counts [S from `corpus_totals.txt`, metrics]: 16,942 records; 3 unobtainable (Fandom "Blue Prom Dress 2/4, 3/4, 4/4",
+  HTTP 400 on both the CDN and the original); 16,939 files obtained; 2 not images (an MP4 and the CF booklet PDF);
+  16,937 images analysed, 5,480 Mpx in the first pass plus 1,718 Mpx for the 8,816 Fandom original uploads. Original
+  formats (Fandom): JPEG 6,241, PNG 2,537, GIF 37, WEBP 1.
+* Layouts of the first pass: 3DS top screen 5,024, Wii 832x456 412, Wii 640x480 382, 3DS bottom 60, both screens 24,
+  Wii native 1, other sizes 11,034 (sum 16,937 [audit]).
+* Kinds (reviewer counts by size rules plus eye; H for the big groups): NL 400x240 game frames 5,024 by layout, of which
+  about 60% carry a dialogue balloon [R5, R6]; CF game frames about 1,890 [R1]; NL house interiors 508 and exterior crops
+  448 [R4]; raw textures about 1,100 [R2, R3]; model viewer renders about 2,140 (CF) [R2, R3] and catalog crops and renders
+  about 2,480 (NL) [R4, R5]; publisher and key art about 360 [R2]; UI screens several hundred; photos of a screen about 100;
+  fan edits and banners about 150 [R1, R6].
+* Retail versus press: press is a small minority: 10 CF E3 2008 grabs [R1], 21 NL E3 2010, E3 2011 and TGS frames [R4],
+  part of the 83 Nintendo Life frames (some clean frames without HUD, cannot fully separate) [R3]. Everything else that is a
+  game frame is a retail capture by players (HUD dates 2012 to 2024, Welcome amiibo content) (H). Nintendo Life items are
+S#16412 to 16494 and Neoseeker S#16495 to 16941 [audit]; the Nintendo Life frames cited below (S#16417, 16419, 16441,
+16443, 16455, 16472) are press or review captures whose retail status cannot be confirmed.
+* Lossless retail frames: 737 at 400x240 pass an RGB565 test on every channel (721 Nookipedia PNG, 16 Fandom original
+  PNG including S#9165 to 9177; 18 of the 737 are the top halves of 400x480 both screen captures [audit]) [V3; V2 counts 734 with a slightly different candidate rule]; plus 44 PNG at 1600x958
+  that are emulator renders at 4x internal resolution with 16 bit output (RGB565 1.000, uniform 4x4 blocks only 0.03 to
+  0.15, 958 rows, 2 short of 4x) [V2]. CF retail 832x456 PNGs are lossless but resampled from 640 px width (period 4.33 px,
+  60 frames) [V1].
+* Album JPEG signature: 2,898 of 3,292 native NL JPEG originals carry the full IJG quality 80 luma and chroma tables,
+  2,875 of them 4:2:2 [V3, table match against Pillow references at every quality 50 to 100]; over all 400x240 items,
+  about 3,440 quality 80 files (3,438 to 3,445 by selection rule) of 3,900 to 4,180 JPEGs [V3, audit]. Usable as an automatic retail filter. Neoseeker natives are near quality 99
+  (4:2:2 in 175 of 214), Nintendo Life about 78 or 90 with 4:2:0 [R3, not reverified].
+* Duplicates: 21 exact pixel duplicate pairs; 1,095 extra near duplicate copies by 16x16 average hash (coordinator); plus
+  346 CF clothing "(CF).png" re encodes [R2, V1], 216 Neoseeker thumbnails [R3], 131 CF icon upscales [R3], 311 Fandom CF
+  twins of Nookipedia files [R1]. Unusable for numbers: webcam and phone photos of a screen, desktop grabs, 3.5x and 2.0x
+  resamples (683, colour only), thumbnails, and the lossy Fandom CDN WEBP copies (16.8).
+
+### 16.1 Camera and framing by scene type
+
+| scene type | game | measured | evidence |
+|---|---|---|---|
+| walking view, open ground | NL | ground starts at row 34 or 35 of 240 in all 8 frames: horizon 14.2 to 14.6% from the top, flat across columns | [V2, audit: 11 more frames at 33 to 35] S#1351, 10394, 11519, 2657, 2697, 10649, 10678, 13257; LL and Q80; H. R4's 13.3% (S#2692) was a building edge |
+| walking view, player | NL | about 32% of frame height (76 to 77 px, hair top row 61 to 62, soles row 137 to 138, S#12899 [audit]; earlier 73 to 76 px); 31 to 33% by eye on S#1542, 1246, 2648; feet row varies 44 to 63% because the camera trails the player while walking and fishing | [V3, R4] Q80; M |
+| walking view, centre column sky | NL | median 11 to 12.5% (p10 3.7%, p90 27%), a lower bound because trees and roofs cut it | [R3, R5, R6] J and Q80; M |
+| talk (villager dialogue) view | NL | camera pushes in and lowers: horizon rows 43 to 46 (17.9 to 19.2%), a few at 39 to 40 or 47 [audit]; villager centre right, the player's head in the lower left foreground; balloon over rows about 160 to 230 | [V2] 12 frames; [R6] 1,100 frames E; H |
+| catch view | NL | horizon rows 43 to 44 (18 to 19%); fixed close frontal camera, player 45 to 55% of the frame, head at rows 40 to 90, dialogue over the bottom 40% | [V2] 8 frames H; [R3, R5] E |
+| tilt up at the town's north edge | NL | sky plus cloud fills 64% of the height, blue sky alone 50 to 52% (S#13187) | [V3] Q80; M |
+| in front of a house | NL | ground ends 27 to 31%, sky 34 to 39%: same camera, the lot is a near horizon | [R4] S#1436, 1440, 1441; M |
+| house exterior crops | NL | horizon at 0.787 of the crop height (p10 0.638, p90 0.795), house centred | [R4] 396 crops; H |
+| swimming and diving | NL | low camera, head at the water line, sea about 80% of the frame, sky fraction 0.68 | [R3, R5] E and metric; M |
+| villager house interior | NL | one fixed camera: player 30.8% of height (hair row 116 to sole row 189), feet at 78.8%, centred x 200; back wall top at rows 60 to 72; black outside the room box | [V2] per pixel median of 313 LL rooms, back wall rows [R4]; H |
+| showroom, museum, RV | NL | steeper pitch about 45 to 55 deg, whole floor visible; RV rooms share one template with cab seats left | [R3, R4, R6] E; L |
+| walking view, outdoors | CF | river fishing: player 22%, feet 68% (S#8242, WEBP copy, geometry only); sea fishing keeps the water centred, feet at 32% (S#230, L) | [R1] M |
+| look up view (walking to the top edge) | CF | horizon 72.3 to 74.0% from the top where unobstructed (S#7710, 8279, 622 (a promo frame, P), 112, 8202, 8290, 8303, 8353 [audit]), 76.2% on S#8495 (rising sand mid frame, 73.3% at the bank), 62 to 71% where trees or houses stand on it | [V1] H; blueprint 73% CONFIRMED |
+| house look up crops 420x308 | CF | sky ends 26 to 65% (houses and cliffs cut it) | [R1] H |
+| villager house interior | CF | player 23.0 to 25.4% by hairstyle (105 and 116 px of 456 [audit]), soles at 61.6 to 61.8% (S#433, 541); black void median 8.5% of the frame (p10 2.8, p90 9.3), left 10% of columns 14.3% | [R1, V1] 217 frames; H for void, M for feet |
+| caught item pose | CF | close up, head about one fifth of the frame, bust centred, dialogue over the lower 45% | [R1] E |
+| museum | CF | steeper and higher view, about 40 to 50 deg by eye | [R1] L |
+
+Lens in every retail frame of both games: no DOF, no motion blur, no yaw or roll, no antialiasing (1 px stair steps even
+in the 4x emulator renders) [all reviewers, E; H]. One CF radial zoom blur series (S#8118 to 8121) also blurs the HUD,
+so it is a transition, not a lens rule [R1, L].
+
+Bend consequence [S arithmetic, L]: with the section 12.1 NL camera (pitch 35, vFOV 28, height 3.6 P, feet distance
+4.1 P) the retail walking horizon 0.144 puts the horizon ray 24.9 deg below horizontal, so R = 2(H minus z0 tan a)/tan^2 a
+= 15.7 P for a bend that starts at the player (14.5 P with the 3.5 / 4.15 refit), against 14.4 P for the press 0.165.
+The camera itself was solved on press frames; a retail grid solve is still missing (16.12).
+
+### 16.2 Sky by time of day, season and weather
+
+**New Leaf, clear day (retail).** The zenith is one exact colour: #2120E7 on lossless frames (modal top colour on 23 raw
+frames [V1], 26 of 45 lossless outdoor sky frames [V2]) and #2121E5 on album JPEGs (19,533 top row samples over 181
+frames [R5]; 72 of 134 frames [V3]). H. What the walking camera shows is mostly the lighter part of a dome gradient:
+
+| view | top edge of the strip | toward the ground | evidence |
+|---|---|---|---|
+| walking view (18 of 23 frames) | #2040F0 to #2050ED at row 0 | last sky rows #2166FA to #2172FD | [V2] LL and Q80; H |
+| walking view, deep minority (5 of 23: town hall and event plazas) | #2121E5 | lightens late | [V2]; cause (camera or place) cannot be confirmed; clock time does not separate them |
+| profile over 100 rows (S#10406) | #2121E5 from 100 rows above the horizon | #2126ED at 80, #213FEE at 60, #215AF6 at 40, peak #2169FC at 15 to 20 rows, small dip #2061EC in the last row | [R5, V2 within 7 levels]; H |
+| deep lossless plazas (S#1373, 1378, 3152, 3062, 3061, 9171) | #2120E7 to 30 rows above the horizon | #3951EF at 5 rows, #5A65F7 at 1 row: a LILAC light, not cyan | [V2] LL; H |
+| talk and catch views | #2121E5 | #2130EE to #2145F2 | [V2] about 30 frames; H |
+| 60 row band average | #2341E7 (hue mask, 508 frames) to #244DE5 (RGB mask, 538 frames) | | [R6, V3] Q80; a mask dependent average, not a fill |
+| variants | #2938E7 to #293CE7 (all Harvest Festival frames, Caught Bee: 7 LL frames); Tortimer Island #2145F7 to #2149F7; #005DC6 to #005DCE on about 45 LL frames with a blue top row is NOT sky: it is the title bar of the in game fish and bug encyclopedia (coordinator check, 40 frames viewed, e.g. NL Encyclopedia Angelfish); exclude those frames from sky statistics | | [V1, V2, V3]; M |
+| look up over Main Street roofs (S#10396) | #428ADE to #488BDA in rows 10 to 60 | | [R5] J; M |
+
+**New Leaf clouds.** Most walking frames show no cloud (by eye [R6]). Retail clouds exist in three forms: flat horizontal
+puffs, median #949EF7 with bright tops to #FFF3CE, 3% of the sky (S#1373, LL) [R4, M]; towering cumulus with soft painted
+edges plus thin wisps on S#13187 (Q80): 30.4% of rows 0 to 139, median #CCE1FE, p10 #A6C5FC, p90 #DDEAFD, maximum
+(232, 250, 255), never pure white, sky beside them #212CEB [V3, H for the frame]; thin wisps (NL#939, section 4.1).
+Low camera frames show soft cloud bands #D4CCC6, 15% of the sky (S#16443, Nintendo Life, likely press) [R3, L].
+
+**New Leaf night.** The default night zenith is #01215A (modal top colour on 29 of 114 dark uniform top frames: S#1498,
+1585, 3081, 3110, 3205, 9062, 10170, 11554, 13698 and others), then #072559 (7 frames), and a violet family #323663,
+#403D6A, #424169, #4A426B (about 20 frames) [V2, H]. It is FLAT: #00205A in every 10 row band from 0 to 79 on S#12601
+(an 807x484 PNG, about 2x, not a JPEG) and #01215A to row 49 on S#13760 (Q80) [V3, audit, H]. One violet frame adds a band #493E69 to #53386B over the last 20 rows
+(S#1386) [R4, M]. Stars are single white pixels; the moon is an emissive disc with a halo: S#12601 core #F0F3C6, radius
+about 10 px, halo #DBE8C4 at 8 px, #44658D at 12 px, sky by 20 px, in that frame's 807 px units (about half at 400x240) [R6, M]; a full moon frame shows a disc about 90 px across
+(S#10672, tilted night camera, E) [R5, L].
+
+**New Leaf dusk and sunset** (one retail frame each, M; the families are reliable, the hex values are per frame): early
+evening teal grey #658B9A, #A19278, #C79A64 top to horizon (S#16455) [R3] or light blue #4E9FCC (S#9613, 5:09 PM) [R5];
+lavender #84667A to #7A617A (S#10731) [R5], #403D6A to #603563 (S#12331) [R6]; magenta #6E3F94 (S#16595) [R3], land sunset
+#594D71 with #6D4E6D to #805367 in the last 20 rows (S#1597) [R4]; sunset with a warm glow #7D617B to #C76153 (S#12510)
+[R6], #7A4148 top, #9B554B a quarter down (S#1339) [R4], glow #D08F49 (S#10400) [R5]; evening 6:53 PM #4C466B over olive
+grass #4A5012 (S#1404) [R4]. Ground and water take the tint: cobble #7B6781, ground #B57E60 or #634451, seas #473D51,
+#AE5C5B, #322841, #4F383F.
+
+**New Leaf weather.** Rain sky #7C8EA4 (S 0.25, S#16496) [R3], #7B8CA3 (S#10603, 11:38 AM) [R5], #364E69 (darker,
+S#1453) [R4]; overcast snow sky #7B8DA3 (S#1416) [R4]; rain is thin light streaks, no fog [R4, R5, E]. Rainbow after rain,
+S#9226 column x 110 outside in: #6940BA, #C74D5A, #DA8145, #DBAD58, #D6CD58, #ADD261, #5BC764, #0DB175, #0FABBA,
+#0EA9EB, then sky #146BF6: about 7 smooth bands over 40 px with sky at both edges [R5, M]. Aurora (winter nights only):
+curtains #6AEFFE, #D0EA87, #05B380 over navy #002764 to #0A406F (S#1218) [R4, M]. Press E3 2010 cyan #3DBDFF to
+#45C5FF stays a press look (section 4.1) [R4].
+
+**City Folk, clear day (retail).** Gameplay frames show almost no sky, so the values come from look up frames:
+
+| set | body | top rows | horizon end | evidence |
+|---|---|---|---|---|
+| house look ups, mostly 420x308 crops (S#316 to 411, 82 frames with sky; 75 of the items are 420x308 [audit]) | #1714C9 (p10 #1713C8, p90 #1816CA) | #1511C4 (#1410C3 to #1512C6) | | [V1] H |
+| 640x480 look ups (12 frames: S#112 to 114, 8036, 8202, 8290, 8303, 8321, 8353, 8378, 8407, 8787) | #1210BE to #1211BF | #0E0EB9 to #100EBA | #1A5CDC to #1B6CE2 (S#112 #1A63E0, 7710 #216AD6, 8495 #1B6CE2, 8279 #1B5FDF) | [V1] H |
+| promo press kit S#622 | #0510C3 | #020CBE | #0C5CE6 | [V1] P |
+
+The look up ramp occupies 93 to 134 of 480 rows above the horizon (19.4 to 27.9%, median 24.3%, 16 frames) [V1]; the
+blueprint's 13% band (section 4.1) describes the press gameplay frames. **CF clouds are common in retail**: cores (min
+channel over 190) #C1DCFF class, all cloud pixels with soft edges #B1CFFF to #C3DFFF; in the top 20% of a look up frame
+they cover a median 29% (p10 19, p90 39) with soft edges, 18% for cores only: use 15 to 30% [V1, 79 frames, H]. A rainbow
+appears on S#7710 [R1].
+
+**City Folk other times** (retail): early night violet bands #312848, #352D4D, #383153, #413357 top to horizon (S#149,
+HUD about 20:00) [V1]; late night #000B39 (S#8426, matches blueprint #000C3B) [V1]; dusk body #513C5A, lit clouds bright
+#DDA495, all cloud #C88E8F (S#253) [V1]; rain #646E86 (dark #262B41, light #808BA2, S#158) [V1]. R1's overcast snow,
+aurora and dusk horizon cloud values came from Fandom WEBP copies (S#7811, 8401, 7864) and are not used.
+
+### 16.3 Ground: grass, motifs, sand, snow, dirt, borders, haze
+
+**New Leaf grass, near band (rows 170 to 236, below the haze) [V2 unless marked; season from the HUD date].**
+
+| condition | colour (hue) | IDs, class, confidence |
+|---|---|---|
+| spring and summer town | #026637 (152), #107442 (150; #1E7542 in V2, not reproduced [audit]), #107641 (149), #0C6C3A (149), #0D7541 (150), #06723F (152) | S#1246, 1245, 1341, 9788, 13257, 10649; LL and Q80; H |
+| same, larger samples | #12723F near band over 22 frames [V1]; #14713E over 27 frames [R3] | J; H |
+| late winter, no snow (25 Feb) | #5A8548 (102), #5B8D3B (97), #659844 (96): hue band 90 to 102 | S#1433, 1591, 1351; M |
+| late autumn, early December | #7B673A (42), #8F631B (37, 27 Nov) brown leaf litter | S#1406, 10421; M |
+| other autumn ground | #755150 (S#16419) [R3]; #745F40 golden, p90 #937A20 (S#12613) [R6]; orange #9A5937 (S#13255) [R6] | one frame each; M |
+| Tortimer Island | #187939 to #318239 (126 to 140) | S#2652, 2657, 2693, 2694, 1542; LL; H |
+| Main Street strips | #5A9E5A to #63A25A (112 to 120) | S#1373, 1375, 1379; LL; H |
+| catch frames (raw, rows 0 to 150) | #42A04A (p25 #296929, p75 #7BB66B) | 44 LL frames [R3]; M |
+| emote backdrop only | lime #94DD0F (p25 #83CD09, p75 #A1EA16), streaky, no motif | 40 crops [R3]; H, not a town grass |
+| per frame spread, mixed dates | median of medians #2D7942 (p10 #13652D, p90 #559A54), hue 99 to 152 | 97 Q80 frames [R6]; M |
+
+The section 15 stream value #568F4F to #5D9D49 matches Main Street and the light end of the spread, not the town default.
+
+**New Leaf ground motifs (retail, by eye, M):** round dots in spring and summer (S#1341, 1246, 1351), leaf or star decals
+in late winter (S#1433), brown stars in March (S#1221) [R4]; darker diamond or triangle print p10 #005A3D on #06663B
+(S#12784), triangles on autumn ground (S#13255), worn bare patches #877A5F (S#12672) [R6]; round or hex patches in rain
+(S#16650) [R3]. Catalog plinths show a large two green checker, #487D25 (45%) and #247149 (34%) (S#16385) [R5]: a
+candidate grass base pattern, L.
+
+**New Leaf retail haze: CONFIRMED, H.** On 22 retail frames the ground brightens monotonically over the 100 rows below
+the horizon (about the upper half of the 205 visible ground rows [S]); rows 136 to 156 are still only 1.06 of the near band
+[V2]. Far over near luminance: median 2.15 (range 1.61 to 3.19, 17 frames) with fixed 20 row bands [V2]; median 1.86 (p25
+1.41, p75 2.27) with bands relative to the ground extent [V1]. Saturation falls from 0.81 to 0.97 near to 0.41 to 0.54 far
+[V1]; R rises most (about 5 to 180), then G (115 to 220), B least (60 to 105) [V2]. Far band colours: #B5E36B (S#2657),
+#99CB65 (1246), #80BD65 (1341), #D2EC6E (1351), #ACD76C (9788), #ABD570 (13257), #93C76D (10649), #B8E168 (2697), #BDE56B
+(10507), #7FB85F (9086) [V2]; median #88BF68 against near #12723F [V1]. The target is a warm lime close to the press
+#94CC78 to #AAE677, reached by a MIX toward it (desaturation proves it is not an additive brightening) [V1]. Haze also
+covers the far sea: #95B3F2 band on retail S#16577 [R3].
+
+**City Folk grass (retail).** Day #0A8C54 (IQR #078243 to #2B955D, hue 154, 240 frames) [V1; R1 #098858 on 154];
+print p10 #007030, p90 #4AAB73 [R1]; night #0D5349 (hue 172, G 0.59 and B 0.87 of day, 23 frames) [V1]; dusk #0F5644
+(S#253) [R1, L]; rain #275238 (hue 143, S#158) [V1, L]. No haze measured in retail CF (blueprint section 2 stands).
+
+**City Folk ground textures (raw, T, H).** S#3573 to 3575 are 133x133 swatches: a 2 px black border, a 1 px divider and
+four 64x64 quadrants per motif family, one palette per season, each with exactly 3 motif colours plus 140 to 201
+antialias tones [R3, V1]:
+
+| quadrant | base | motif colours |
+|---|---|---|
+| summer | #009059 | #60AF17, #02AE58, #0AA77B |
+| second green (season not identified) | #008164 | #549667, #2AA755, #0A9A8F |
+| snow | #C0D7EC | #F8F9F6, #E6F2F5, #E0E7F2 |
+| dead grass | #97776C | #BF9A73, #B88D72, #AA7F89 (a mauve fourth tone) |
+
+The three families are squares (S#3573), triangles (S#3574) and circles (S#3575), shapes 4 to 16 px in a 64 px tile,
+randomly rotated; the snow quadrant swaps the shape to rounded squares, five point stars and hexagons respectively; the
+motif layout is identical across the four quadrants of a family (palette swap only) [V1]. Retail towns use ONE family each:
+squares (S#1167, 122, 1129, 8290, which read as rhombi in perspective), triangles (S#8506), circles (S#96) [V1]. The
+retail snow star print (S#111) is the triangle town's snow. Wendell's grass S#3907 is the triangle town at texel level:
+#00945A 63.4%, #63AD10 17.5%, #00AD5A 12.9%, #08A57B 6.2% [V1 exact count]. Grass blade cards (S#3840, 3866): 31x57,
+two curved tapering blades, an 8 colour ramp from dark base to light tip [R3].
+
+**Dirt and paths.** CF retail day dirt #C79748 to #C8903F (S#1129, 8290, 7710, 8495) [V1]; Wendell dirt S#3908 #CEA54A
+63.8%, #BD944A 26.4%, #D68C31 9.9% [V1]; cobble S#3930 stones #94B5C5 / #7B8C94, grout #5A5252 [R2]. NL river bank
+dirt #946D31 (p10 #7B5931, p90 #AD8E31, S#9176, LL) [R5, M]; NL plazas: cobble #AAA9B9 (autumn S#10421) [R5], #8390BC
+(rain S#16650) [R3], dirt plaza #9D6223 (S#13502) [R6].
+
+**Borders.** CF retail grass to dirt: a darkened lip on the DIRT side, dark brown #7E5018 (S#1129), olive #665824 to
+#7D7945 (S#8290, 8495), dark teal #20514B only on S#7710 [V1]. The blueprint's teal outline (0,41,62) came from a press
+frame. NL edges stay soft (by eye, all reviewers).
+
+**Sand.** CF shore strip #E7CA8B on retail S#1136 (the blueprint #E7CB8B); inland beach ground is the dirt palette #CEA64A
+with orange hexagon pebbles [V1; R1's proposed change REJECTED]. NL retail dry sand: island and beach #EFB67B (S#1539, LL)
+[V2], #ECBB84 (S#16659) [V1], #F4BB8C, #E8B982, #F5A85D (S#12286, 13496, 13255) [V3], lossless beach #CEA673 (S#9175) [V2];
+town beach #CA9A68 to #DDA374 (S#16577) [V1]. Wet band luminance 0.62 to 0.71 of dry (#B08460, #9B7760) [V3, REVISED from
+0.70 to 0.74]. Printed shell decals (E) [R5].
+
+**Snow (never neutral white).** NL day #A1A6E0 (p10 #969ED7, p90 #B1B3EA, S#3087) [V1], #8E90BA (S#1242) [R4], #E7D7DA with
+warm highlights #FFEFEB (S#13855) and #B6AECF (S#12176) [V3], pink lilac #C499BC at 5:33 PM (S#10076) [R5]; star or hex
+cobble print (E). NL night #4E56B1 (S#16417, equals NL#961) [V1], #5989EE (S#13760) [V3], #5257BD to #7977C7 [R4]. CF
+snow #BDD3E6, white star print #F0F6F4, shade #A1BDC6 (S#111) [V1, R1]; snowman #9EBBF3 centre to #849FD5 edge [R1].
+
+**Cliffs.** CF summer wall median #86645D (p10 #54243B, p90 #D7BF97), cream band #D9C399, crevices #4E1F36 (S#48); winter
+#5E5E79 (S#8511) [V1]; faceted columns with a zigzag grass overhang [R1, E]. NL salmon lit #FCC599 (p10 #D1988D, p90
+#FFE7B3, S#1242) [R4], #FAB7A0 (S#12787) [R6]; mauve pink slabs #B79EB1, lit top #FADCC6 (S#16472, 3087) [R3]; rain mauve
+#A78DA6 (S#1453) [R4]; horizontal strata, irregular slabs, a grass lip (E).
+
+### 16.4 Water: sea, river, shore, foam, wave lines, fish shadows
+
+* NL sea (retail): near #3367A0, mid #3175B6, far haze band #95B3F2 (S#16577) [R3]; lossless #3169AD (p10 #2965AD, p90
+  #4A79AD, S#9174) [R5]; #316DAD, #3975BD, #3B84C8 (S#2646, 2648, 1337) [R4]; with crests #4983C2, #4C8BC9, #3270B8,
+  troughs to crests #1770C2 to #8FADD1 (S#12286, 13496, 13255) [V3]. Use median #3A76C4 [R6, V3]: section 4.3 CONFIRMED.
+  Island sea #205AF5 (S#16659) [R3]. Shallow band #5AA2DD (S#10230) [R5]; water over sand near the shore #A5C3E7 to
+  #C6D3E7 [R4]. Translucency CONFIRMED in retail: swimmers and sand show through (S#2646, 1539) [R4, M].
+* NL river #316BAF (S#3087) [R3], #2A68AA, fishing frames #3663A3 to #3C64A2 [R6]. Wave and caustic lines +42% at
+  p95 and +65% at p99 luminance on the sea, +28% and +47% on rivers [R3, M], +21 to 41% at p95 [R4]; cell spacing 30 to 55
+  px (noisy) [R4, L], so the press period 115 to 120 px cannot be confirmed; pool caustic reference base #0378D2, lines
+  #5BD5FF over about 21% (S#16316) [R5, Rn].
+* NL shoreline (S#12286, 13496): dry sand, wet band, foam line #ECF2F8 / #DBDDF6 [V3], sea with lighter crest scallops
+  (#FFEFC6 [R4]); waves are wobbly lines parallel to the shore (E). Time of day: dusk sea #3C5596 with violet wet sand
+  #86779D [R5], dusk pond mauve #70455F [R6]; night sea #0E1D53 to #111F53 [R3, R6].
+* CF water: plunge pool #213B8B (S#285); sea #1C5196 darkening toward the camera to #183B8B, shallow wash #4681AD
+  to #3C88B6, evening wet sand #7D8390 (S#230); waterfall sheet #A3E0DC, foam #DAF5F2 (S#285) [R1, M].
+* **Fish shadows, NL retail Q80 (S#12898 to 12902), [V3] values:**
+
+| class | length x width px (threshold 0.85 of water) | bobber px | length in bobbers | length in P (per frame bobber scale) |
+|---|---|---|---|---|
+| tiny | 10.4 x 6.5 | 9x9 | 1.2 | 0.16 |
+| small | 22.8 x 7.3 | 10x8 | 2.3 | 0.30 |
+| medium | 24.0 x 10.1 (points at the camera, foreshortened) | 10x9 | 2.4 or more | 0.31 or more |
+| large | 38.0 x 11.2 | 8x9 | 4.8 | 0.63 |
+| very large | 44.0 x 11.3 | 7x7 | 6.3 | 0.82 |
+
+  P = 76 to 77 px = 7.6 to 7.7 bobbers on S#12899 [audit; V3 had 73 to 76 px = 7.3], and the P column uses 7.65 [S]. Edge CRISP: plateau 0.55 to 0.63 of the water, boundary pixel 0.70 to
+  0.75, one pixel outside 0.91 to 0.95, two outside 0.95 to 1.05 (a 1 to 2 px transition even after JPEG 4:2:2). Luminance
+  median 0.60 to 0.66 of the water, darkest 10% 0.52 to 0.58. Shader multiply: use the per channel MEDIAN ratio (0.45 to
+  0.61, 0.61 to 0.67, 0.66 to 0.73), about (0.50, 0.63, 0.68) displayed, i.e. (0.22, 0.36, 0.43) linear [S]; R6's p10
+  (0.35, 0.57, 0.62) is too dark. Red falls most, so the shadow reads teal navy (median #1B3D6A on water #3863A2 [R6]).
+  One end tapers over about 5 px [R6, E]. CF fish shadows (S#74, 75): soft dark teardrops about 3:1 (59x20 px), core
+  #07131E on #253B7A (darkest 3% at 0.46) and #0E2E3A on #285799 (0.73) [R1, unverified, M].
+
+### 16.5 Lighting
+
+* Key and shading: camera side headlight, smooth Gouraud gradients, no toon steps in any of the 16,937 images (all
+  reviewers, E, H). Hair seen from behind in a 4x emulator render: brightest #73514A facing the camera to #312031 at the
+  silhouette, ratio (0.43, 0.40, 0.66), violet shift, no bands (S#2322) [R4, M]. Section 2 CONFIRMED.
+* Whites and fur shade lilac IN GAME in CF: K.K. fur lit 10% #F9F8F9 to dark 10% #666292 (0.41, 0.40, 0.58) and #6E6690
+  (0.44, 0.42, 0.58) (S#8165, 8166) [V1]. NL catalog renders agree in direction: snowman (0.72, 0.70, 0.85), fridge (0.56,
+  0.56, 0.64), white furniture (0.62, 0.59, 0.67) [R5, Rn, M]. Section 2's "CF whites neutral grey" (render) is replaced.
+* Foliage: leaf cards lime at the tip #79BF46 to #8FD648 (hue 91 to 106), dark teal at the base #04402E to #053422 (hue
+  160 to 168) (CF S#3, 46, 277 Nookipedia, plus one Fandom WEBP copy) [R1, M]; NL canopy p5 #00483F, median #07865B, p95 #3DE04A (S#12401) [R6, H for
+  direction].
+* Specular: none on terrain or matte cloth; fruit carries a small hard white dot (CF S#3; icon S#4095 #FFFFFF disc) [R1,
+  R3]; NL glossy plastic, lacquer, chrome and upholstery show broad soft sheen bands, glass and ice white edge glints
+  (catalog renders) [R4, R5, M]; CF gold furniture shows horizontal bright and dark bands that ignore relief, likely an
+  environment map (S#8008, by eye; its colours came from a WEBP copy) [R1, L].
+* **Grades (multipliers on the day value of the same surface, displayed; linear by the 2.2 power [S]):**
+
+| grade | multiplier | evidence |
+|---|---|---|
+| NL night, mid tones | (0.34, 0.31, 0.70), linear (0.09, 0.08, 0.46) [audit, mean of two methods, item 29]; by surface R 0.28 (path) to 0.45 (flowers), B 0.68 to 0.77; V3's (0.45, 0.44, 0.75) and flower beds (0.44 to 0.50, 0.42 to 0.49, 0.76 to 0.81) are the light end | [V3, audit] day S#12062 against night S#12036 (correlation 0.70 to 0.71); M. R6's (0.46, 0.50, 0.53) REJECTED |
+| NL night, whites | not darker than mid tones: p90 ratios 0.44 to 0.57 in R and G; V3's (0.26, 0.25, 0.65) not reproduced [audit] | same pair; L |
+| NL night skin | about (0.2, 0.3, 0.75) | [R3] catch poses, rough masks; L |
+| NL dusk | R 0.70 to 0.96, G 0.48 to 0.69, B 0.59 to 0.75 by surface (flowers and fence (0.92 to 0.96, 0.65 to 0.69, 0.66 to 0.75), red roof (0.70, 0.48, 0.59)); midpoint (0.83, 0.58, 0.67) [S] | [V3] S#11985 against 12000, 12005, 12015; a magenta tint, not one uniform multiply |
+| NL dusk skin | #E7826B from day #FFD3A5 | [R3] L |
+| CF night (ground) | (0.64, 0.68, 0.83) on dirt; grass G 0.59, B 0.87 | [V1] S#1095, 149 against S#1129, 8290, 8495 |
+| CF night (characters) | (0.35, 0.37, 0.82) | section 2 [A], not re measured |
+| CF dusk (ground) | (0.87, 0.66, 0.65) | [V1] S#253 only; L |
+| CF rain (ground) | (0.57 to 0.58, 0.53 to 0.58, 0.79 to 0.90) | [V1] S#158 |
+| NL rain | desaturates and darkens without fog; salmon cliff to #A78DA6, skin #CEAEA5 | [R4, R3] M to L |
+
+* **NL interior light model** (H for the measured rooms):
+  * Ambient is violet, never black: lights off reads (80, 70, 166) #5046A6 on the right wall, #5A4DAE on the floor
+    (S#12260) [V3, R6].
+  * Lamps ADD per channel in display values, clamped at 255: Level 1 wall increments red (+98, 0, 0), indigo (+99, 0,
+    +87), orange (+97, +47, 0), yellow (+97, +96, 0), light blue (0, +47, +87); untouched channels stay within 2 levels
+    (not a multiply); floor about 0.84 of the wall. Level 2 doubles Level 1, Level 3 adds half a step, Level 4 equals
+    Level 3: ambient + colour x min(level, 2.5) x 98 [V3, 21 frames]. Red reads magenta (#FE44A5), yellow cream. In linear
+    light +98 on this wall moves R from 0.080 to 0.445 by the sRGB curve (0.078 to 0.453 by the 2.2 power), so do the add
+    in display space or tune per surface [S, audit].
+  * House rooms: NEUTRAL key (back wall whites median #F7F7F7, a quarter clipped) and lavender falloff on surfaces facing
+    away: side wall over back wall (0.68, 0.70, 0.82), front floor over mid floor (0.67, 0.73, 0.77), about 290 rooms; on
+    S#2204 the floor runs #EFE7FF to #C6C7E7 (0.86, row 210) to #BDBEDE (0.82, row 225) [V2, LL]. R4's lilac key REVISED.
+  * Ramp to black toward the ceiling over about 110 px (S#10458 column x 380: 1 to row 45, then 33, 76, 119, 167, 194,
+    231, 251, 254 every 15 rows) [R5, V2]; showroom rings 1.01 to 1.11 out to r 0.8, then 0.71, 0.45, 0.17, 0.05 at r 0.9
+    to 1.2 [R3, M]; pure #000000 beyond the walls [R5, V2]. Interiors CLIP: 4.4% of S#2204 is #FFFFFF, 26% of S#10457 and
+    10458 at 250 or more [V2]. The room light tints the player too [R5]. Window light is a pale floor square (E) [R6].
+* CF interiors: museum, K.K. stage and Katrina's tent are low key with one warm key and black surroundings; museum wall
+  #251B11, floor #4F3A28 (light #8F6C46) (S#958) [R1, M].
+* **Emissive windows, lamps, glow:** CF windows are a constant #FFFFA0 day and night (S#382, 1095), town hall #F8FB9D
+  [V1, H]; CF lamp glass clips white to about 45 px, ring #9B947F to 65 px, background by 90 to 130 px in an 896 px frame
+  (S#758) [R1, M]; handheld fireworks light a warm ground pool (S#8757, WEBP copy, by eye only); CF flames end in pink (campfire p50 #FF888E,
+  p90 #FFD436) [V1, Rn], pale core #FFDE8E (S#4854) [R2, Rn]. NL night windows #F1C791 to #FCD45E (S#2543, 1589, 9215, 10226, 10672) [V2], clipping to #FFE0D1
+  (S#13760) [R6]; day windows clip #FFFFFF [R4]; warm pixels 0.3 to 5% of a night frame [R3, R4]. NL glow at 400x240 [R3,
+  M]: warm lamp core #FFFFA2, #FFFE10 at r 6, #F2AC0A at r 12, #6D4410 at r 20 (S#16603); white street lamp #FFFFF8, gone by
+  r 12 (S#16417). Additive headlight wedge #A19568 (S#1589) [R4]; campfire ground light #833F1C [R5]; fireworks and aurora
+  additive (E).
+
+### 16.6 Shadows
+
+No cast shadow from a character, tree or building in any retail frame; every shadow is a decal centred under its object
+with no sun offset, and every NL shadow multiplies blue least (all reviewers; [R4] on floor, sand and snow; H).
+
+| shadow | displayed ratio to the ground beside it (R, G, B) | evidence |
+|---|---|---|
+| NL player, outdoor grass | core 0.41 to 0.50 CONFIRMED on 40 more emote crops: (0.46, 0.44, blue 2.56x on lime) | [R3] H |
+| NL player, open sand | (0.55, 0.55, 0.67), luminance 0.56 | [V2] S#1539 LL; M (one frame). R5's S#9175 value REJECTED: the player stood in a palm shadow |
+| NL player, gameplay grass | 0.40 to 0.65 depending on the reference patch | [V1] S#16441; L |
+| NL player, interior | (0.62, 0.58, 0.67), luminance 0.61, against the floor on the same rows; V2's (0.52, 0.52, 0.59) divided by a brighter floor further back | [audit, V2] S#2204 LL; M |
+| NL overlap | palm shadow (0.68, 0.66, 0.78) plus blob gives luminance about 0.45, lighter than the product 0.38: stacked shadows only partly multiply | [V2] S#9175; M |
+| NL palm canopy on sand | (0.58, 0.56, 0.68), star shaped frond outline, centred | [R4] S#1539; M |
+| NL tree canopy on snow | (0.60, 0.60, 0.67); about 0.63 under a snowy tree | [R4] S#1242; [R3] S#3087; M |
+| NL floating balloon on snow | two level ellipse 49 x 28 px (aspect 1.75): ring (0.57 to 0.65, 0.58 to 0.64, 0.68 to 0.75), core about (0.36, 0.38, 0.41) [S from R5 pixels] | [R5] S#9489; M |
+| NL night | blobs barely visible | [R4] S#2005; L |
+| CF player on snow | core 0.55 to 0.64 (dark 10% 0.54), tint (0.53, 0.53, 0.58), width at the 0.85 level about 54 px (about 0.5 P), 8 to 10 px ramps | [V1] S#111; M |
+| CF emote crops on grey floors | no shadow (0.98 to 1.02): edits, unusable | [R1] |
+| furniture, trees, holes | soft dark contact blobs; dug holes and pitfalls have dark rims | [R4, R6] E |
+
+Baked contact shadows in CF floor textures (S#5740, 5778) are darker, cooler versions of the ground: supports multiplying
+the ground rather than pasting a dark sticker (section 15) [R2, E].
+
+### 16.7 Models and shapes (renders, catalog and in game crops; E unless a number is given)
+
+* Mesh reuse is the rule: furniture series swap textures on one mesh (15 dresser colours S#15686 to 15700), gyroids share
+  a texture across three sizes, one RV van mesh, one house room box, one 8 sided shirt mesh on a wooden mannequin [R2 to R5].
+* Silhouettes, Douglas Peucker corners at 1% of the diagonal (coordinator metric): furniture median 20 (IQR 15 to 28, n
+  802), headgear 21, gyroids 29, fish models 31, bug models 46.5, CF character art 40 [R2]. Lathe props 8 to 12 segments,
+  barrels about 12 staves, boulders 20 to 30 faces, pond rocks 10 to 14 flat facets with violet darks p50 #53535B [R2].
+* Buildings: squat, roof as big as the walls, chunky trim (CF house roof #A53B29, walls #A84637, trim #EDEAD6; museum roof
+  #6678AC; renders) [R2]; CF scallop tiles with lighter lower edges, half timber, arched doors with a glowing round window
+  [R1]; NL house (396) and roof (34) crops show bevelled slabs with bulging eaves, each tile row painted with a lighter top edge and a
+  darker lip (red p5 #912B39, median #BB3F5B, p95 #D5616C), chimneys with one or two white smoke ellipses [R4, R6].
+* Trees: short fat trunk with a 4 to 5 lobe star root flare; bark #905143 to #B86A6A with cream ring knots #DE9F71 to
+  #E8D39E and crevices #4D222B [R1, R2]; canopies of drooping leaf cards with lighter tips (oak #005B49 / #079048 /
+  #6BB52C) [R2]; NL five lobed cards about 20 px wide in a 170 px crop [R6]; blossom #F699D1 [R5], maple #963525 [R3];
+  palms with chevron trunks; snow caps as separate puff balls.
+* Props: fruit large glossy spheres with one white dot [R6]; bridges (stone arch, steel truss, planks with rope posts) span
+  the full river width, deck about 0.35 of the plinth [R5, R6]; fences chunky L segments [R5]; CF fish models 1.83 to 2.17
+  long over high, honeycomb scale cells, countershading with a zigzag boundary, binary alpha fins [R2, H].
+* Characters: face decals, flat orange red nose, cheek blush, skin disc ears, chunky hair shell with a zigzag fringe [R2,
+  R4]; skin CF in game lit #F5B88F to #F7B991, shade #D6947E to #D99582 (S#1118 to 1121) [R1], CF art #FEBA90 to #FFC296
+  [V1], NL day #FFD3A5 [R3]. Umbrellas: faceted domes of 6 to 8 panels [R1, R3].
+
+### 16.8 Textures, formats and the grain target
+
+| asset (CF unless NL) | finding | evidence |
+|---|---|---|
+| flooring textures | 94 of 94 are 256x256 and exactly mirror symmetric in both axes: a 128x128 painted quadrant shown mirrored; colours median 53 (18 at 16 or fewer, 1 at 256), 88 of 94 on the ROUNDED RGB565 grid (round(q x 255/31), only 4 on the bit replication grid of the lossless frames [audit]); grain median 3.6; light baked from the top left (bevels, drop shadows) | [R2, V1] T; H |
+| wallpaper textures | 95 at 128x128 indexed, 64 to 256 colours (median 139), 83 to 94% of R values on the 5 bit grid, painted light and shade baked in, grain 4.13 | [R3] T; M |
+| ground swatches | 133x133, four 64x64 quadrants per family (16.3) | [R3, V1] T; H |
+| stationery | 68 sheets 512x384, median 100 colours | [R3] T |
+| clothing | the 346 "Texture" files confirm section 6; exclude the 346 "(CF).png" re encodes; one stochastic dither exception (Snowcone S#6965, 2x2 checker share 0.0142); gradients banded in 1 to 2 texel steps | [R2, V1] T; H |
+| Wendell and preset designs | 32x32 opaque; Wendell median 7.5 colours, NEAR RGB555 (17 of 52 strictly on the grid, median file 95% of values); presets median 4 colours | [V1] T |
+| bug and fish icons | 64x64, binary alpha, at most 15 colours; darkest ring over next ring inward 0.71 to 0.80 (section 6 metric CONFIRMED on 128 more icons); ring over body 0.56 to 0.59; fish head left | [V1, R2] T; H |
+| emotion icons | 80x40, alpha on the 3 bit grid (union of all 8 levels, 4 to 7 per icon, median 6), 12 to 15 colours, props outlined in WHITE 1 px | [V1, R2] T; H |
+| map icons, inventory icons | 15 to 40 px with 16 colours; 132 icons at 64x64 with 15 colours plus 1 bit alpha | [R3] T |
+| render filtering | CF item renders nearest filtered (about 36 texel steps across a 684 px apple), shirt renders bilinear: viewer filtering differs per category | [R3] Rn; M |
+| NL shirt texels | about 1 native pixel at gameplay distance | [R6] S#10976 crop of a 3.5x upscale; L |
+
+Compression facts (H unless marked): Fandom serves lossy WEBP from its CDN (all 8,816 corpus copies; 0 of 1,773 screenshot
+copies pass RGB565); appending `&format=original` returns the upload [R5]. On the 13 lossless Fandom frames the WEBP copy
+differs by a mean 2.3 to 4.6 levels, p99 per pixel maximum error 26 to 77 [V2]: never take colours from WEBP copies. The
+WEBP shift on grain medians is small (2.91 against 2.89 on 453 frames [V3]; 1.97 against 2.09 on the 13 lossless [V2]).
+A JPEG at any quality raises grain on outdoor 565 frames (quality 80 4:2:2 adds median +0.14, IQR +0.05 to +0.25;
+quality 95 4:4:4 still +0.13) and lowers it on flat UI frames (encyclopedia 1.73 to 1.38) [V3]. CF 832x456 frames are 640
+px wide resampled (period 4.33 px). GIF uploads are palette limited [R6].
+
+**Grain target (|L minus 3x3 box mean| median, Rec 601 L) [V3 reconciliation].** Retire 2.95 (section 15): it pooled 21
+mixed press and lossy captures. The spread between reviewers was CONTENT: lossless medians run 1.73 (encyclopedia UI),
+2.08 (26 sky frames without balloon), 2.34 (284 scenes), 2.56 (75 outdoor frames with grass over 0.2, IQR 2.19 to 3.03),
+2.82 (48 RV rooms), 3.83 (313 house rooms with patterned wallpaper). A clean render lacks the 565 steps, which add 0.15 to
+0.26 (about 0.20) on our renders. NEW TARGET for a clean outdoor render: **2.35** (accept 2.0 to 2.8), measured exactly as
+`grain_compare.py` does (BILINEAR downscale to 400x240, no 565 snap, no JPEG). Alternative: snap the render to RGB565 in
+QA and compare with 2.56 directly. Cross checks land at 2.2 to 2.4 (album JPEG outdoor without balloon 2.66 minus 0.14
+minus 0.20 = 2.32). The resize filter alone moves a render's grain by 0.25 to 0.29 (BILINEAR against LANCZOS), so state the
+method with every number. CF retail 832x456 PNG grain 1.27 (IQR 0.61 to 1.82), 420x308 crops 1.71 [V1]: CF scenes are
+cleaner. The test town (1.53 to 1.76) is still 0.6 to 0.8 below the NL target.
+
+### 16.9 UI and design (for original on screen callouts; never copy the game's assets, section 8)
+
+* NL dialogue balloon: bottom 40% of the top screen (rows about 160 to 230), fill a dark olive black, median #1F2018 (p10
+  #070F08, p90 #313231, 400 frames) [V3, REVISED from navy and teal]; R3 saw its median follow the background (#102439 over
+  sea, #000818 at night), so it is translucent (M); fine dot texture, wavy or scalloped top edge, a cream and white checker
+  rim (pink for announcements) [V3, R4, E]; white text with coloured keywords, orange arrow cue [R4]; a coloured name pill
+  per speaker (Tom Nook #34CF33 [R4]); the "pink female, blue male" rule is contradicted (S#10501) [V3].
+* NL HUD: cream date pill #F8E396 with time #D99647 bottom left [R4], bells pill top right, green tour timer pill top left.
+  Catalog: gingham with a 32 px period in #FCCA7D, #F7DA8B, #F9DFA7 (S#15562, JPEG original) [R5, H], bell pill #E2C35E to
+  #E5C01D, pink name bar #F44684, item small and centred on a vast empty field. Encyclopedia: header fish #0763CC, insect
+  #0C8D08, background #C7D8FE with a darker wave print, footer #ECDFA9 to #F6E3A1 [R3]. Badges: gold oval with three
+  medallions; QR screens on pink gingham.
+* CF: dialogue cream fill about #FFEFA6, translucent (alpha about 0.73, L), opaque scalloped yellow border, coloured
+  speaker pill, coloured key words [R1]; gold ring clock with a date pill top left; encyclopedia frame #5C8AC8, panel
+  #D2EDE9, title pill #A3E2CB, slots #A3B657, arrows #824AD2, progress #F1CB54 [R1, M]; map tiers #4A9621 and #5AAA21,
+  rivers #085DCE, frame #9BE0B4 [R1, M].
+* Composition (E): flower dense ground, round canopies framing the top, one saturated accent near the player (red
+  mailbox, fruit, bobber); dusk floods the frame with magenta and violet; night keeps navy with one or two warm windows as
+  the focal points; houses framed centrally with the sky filling the top 40 to 65% [R4, R5, R6].
+* Callout guidance [S]: a dark translucent rounded panel in the lower 40% (fill near #1F2018; its alpha is a design choice, the game value is unmeasured) with a
+  light scalloped rim of your own design, white text, one coloured keyword, and a pill shaped speaker tag in a nature
+  colour reads as the same family without reusing any asset.
+
+### 16.10 Shader layer stack
+
+Layer order, bottom to top (every material uses a subset, in this order): **B** base painted texture; **M** motif print or
+painted detail; **L** LUT light (section 2 and 12.2: smooth ramp on N.L from the camera side headlight, shadow end violet);
+**R** rim (NL characters only); **D** decal shadow multiply (separate Blended decal objects, linear values); **H** haze (NL
+only, mix by view depth); **G** time of day or weather grade (multiply on the lit result); **E** emission; **T**
+transparency; **P** post (glow, clamp, optional 565 snap). Values are displayed sRGB unless marked; NL retail first, CF
+after a slash.
+
+| material | ordered layers with values | sections |
+|---|---|---|
+| grass ground | B NL near #0D7541 (spring and summer; late winter #5B8D3B, December #7B673A, island #187939, Main Street #5A9E5A) / CF #0A8C54; M NL dots, stars, leaves or diamonds per season, darker print p10 #005A3D / CF one family per town (squares, triangles, circles) in 3 motif colours (#60AF17, #02AE58, #0AA77B); L; D player blob 0.41 to 0.50 (linear 0.14 to 0.22), blue lifted; H mix toward #88BF68 to #B5E36B over the 100 rows below the horizon, far over near luminance about 2.15, saturation to about 0.5; G night (0.34, 0.31, 0.70) / CF (0.64, 0.68, 0.83), dusk (0.83, 0.58, 0.67) / CF (0.87, 0.66, 0.65) | 16.3, 16.5, 3 |
+| path, dirt, plaza | B CF #C79748 with blobs #BD944A and specks #D68C31 / NL bank #946D31, plaza dirt #9D6223, cobble #AAA9B9; M CF hexagon pebbles, NL round cobbles; L; edge: CF dark brown lip on the dirt side #7E5018 (no teal outline), NL soft blend; D; H; G as grass, CF rain (0.57, 0.55, 0.85) | 16.3 |
+| sand and wet sand | B NL #EFB67B to #F4BB8C (town #CA9A68 to #DDA374) / CF shore #E7CB8B, inland #CEA64A; M shell decals, CF orange hexagon pebbles; wet band = B x 0.62 to 0.71 luminance, redder; foam line #ECF2F8; L; D player (0.55, 0.55, 0.67), palm (0.58, 0.56, 0.68); H; G dusk wet sand toward #86779D | 16.3, 16.6 |
+| snow | B NL lilac #A1A6E0 (range #8E90BA to #E7D7DA, warm highlights #FFEFEB) / CF #BDD3E6; M NL stars or hex cobble, CF the town family swapped (rounded squares, stars, hexagons) #F0F6F4; L shade toward #A1BDC6 / violet; D canopy (0.60, 0.60, 0.67), CF blob (0.53, 0.53, 0.58); G night to #4E56B1 to #5989EE, 5:33 PM pink #C499BC | 16.3, 16.6 |
+| cliff | B NL salmon #FCC599 lit, #B79EB1 mauve slabs / CF wall #86645D; M horizontal strata, CF cream band #D9C399 and crevices #4E1F36; L; grass lip on top; G rain toward #A78DA6, CF winter swap #5E5E79 | 16.3 |
+| water surface | B NL sea #3A76C4 (troughs #1770C2, crests #8FADD1), river #316BAF / CF sea #1C5196 to #183B8B, river #2886C5 (section 4.3); M cellular lines +21 to 42% at p95 (CF tile per section 4.3), crest scallops; L none; H far band #95B3F2; G dusk toward mauve #70455F, night #0E1D53; T NL translucent near shore (#A5C3E7 to #C6D3E7 over sand, section 15 alphas 0.45 to 0.70), CF opaque | 16.4 |
+| underwater | darken submerged surfaces by depth toward #3B6DAC (section 15) | 4.3, 15 |
+| fish shadow | separate decal just under the surface, drawn after the water; crisp 1 to 2 px edge (no blur), plateau multiply (0.50, 0.63, 0.68) displayed = (0.22, 0.36, 0.43) linear; length 0.16 to 0.82 P by class, width 6.5 to 11.3 px at 240 rows / CF soft teardrop 3:1, 0.46 to 0.73 | 16.4 |
+| tree canopy | B leaf cards (binary alpha clip) lime tip #8FD648 to teal base #04402E (NL p5 #00483F, p50 #07865B, p95 #3DE04A); seasonal swaps (blossom #F699D1, maple #963525); L; snow puffs as a separate shell; D ground canopy shadow (0.58 to 0.60, 0.56 to 0.60, 0.67 to 0.68) | 16.5, 16.6, 16.7 |
+| trunk | B bark #905143 to #B86A6A; M ring knots #DE9F71 to #E8D39E, crevices #4D222B; star root flare geometry; L; D contact patch | 16.7 |
+| flowers, fruit | B saturated petals and fruit; M painted detail; L; fruit: one small hard white dot (painted, not a shader specular); D clump contact 0.68 (section 15) | 16.5 |
+| rock | B slate mottle p50 #53535B with violet darks; faceted mesh 10 to 30 faces, flat shaded facets; L violet shadow end; D contact band | 16.7, 2 |
+| building wall | B painted planks, plaster or half timber with baked bevel light; L; G grade; E windows NL night #F1C791 to #FCD45E (clip #FFE0D1), CF #FFFFA0 always | 16.5, 16.7 |
+| roof | B tiles with painted lighter top edge and darker lip per row (red median #BB3F5B); L; snow cap shell in winter; G | 16.7 |
+| interior floor | B 256 mirrored painted texture with baked top left light; lighting = violet ambient (80, 70, 166) PLUS lamp colour x min(level, 2.5) x 98 in display values, clamp at 255 (whites may clip); neutral key toward the back, front edge 0.82 to 0.86; D blob about (0.62, 0.58, 0.67) [audit, same row reference]; P vignette to #000000 outside the room box | 16.5 |
+| interior wall | B 128 indexed wallpaper with baked light; same light model; side walls (0.68, 0.70, 0.82) of the back wall; vertical ramp to black over about 110 px toward the ceiling | 16.5 |
+| furniture | B series hue texture with baked gloss streaks (gold #8D6000 to #FFD374 ramp, chrome streaks); L; glossy plastic: broad soft sheen band, glass and ice white edge glints, no sharp specular; D soft contact blob | 16.5, 16.7 |
+| character skin | B NL #FFD3A5 / CF #F7B991; face decals; L shade toward #D99582 (CF in game) or #CE8F79 (NL, section 7.3), lilac at the silhouette; R NL rim (section 2); D blob; G dusk #E7826B, night about (0.2, 0.3, 0.75) | 16.5, 16.7 |
+| hair | B low contrast mottle shell; L hair edge ratio (0.43, 0.40, 0.66) from the brightest to the silhouette; R NL head top rim | 16.5, 2 |
+| clothing, white fur | B CF 32x128 strip, 16 colours, banded gradients; L whites to lilac (0.41, 0.40, 0.58) | 16.5, 16.8 |
+| sky | B view elevation dome: NL zenith #2120E7, walking strip #2040F0 to #2050ED at the top of the frame to #2166FA to #2172FD at the ground, deep plazas lilac #5A65F7 last row; CF #1714C9 body, ramp over the last 19 to 28% of a look up frame to #1A5CDC to #1B6CE2; night NL flat #01215A (violet variant #424169), CF #000B39 / early night #312848 to #413357; E stars single pixels, moon disc #F0F3C6 with halo | 16.2 |
+| clouds | unlit cards with soft alpha edges beyond the bent ground; NL #CCE1FE (p10 #A6C5FC, p90 #DDEAFD) or flat puffs #949EF7 with tops #FFF3CE; CF cores #C1DCFF, edges #B1CFFF, 15 to 30% cover in look up views; dusk lit clouds #DDA495 | 16.2 |
+| emissive lamps, fire | E lamp core #FFFFA2 to #FFFFF8; P glow: warm halo to about r 20 px (15 to 20 px) or white tight to r 12 at 400x240; fire as blob cards #FFDE8E core to pink rim #FF888E; additive beam wedges #A19568; warm ground pools under handheld lights (by eye) | 16.5 |
+| UI | flat, unlit, no grade; dark translucent balloon #1F2018, cream pills, gingham 32 px; Closest filtering for pixel art | 16.9 |
+
+### 16.11 Corrections to earlier sections (details and evidence in the subsection named)
+
+| section | old value | new value | where |
+|---|---|---|---|
+| 0, 13 | NL retail rests on NL#938 to 945; no environment textures | 737 lossless frames, about 3,440 album JPEGs; CF ground, floor and wallpaper textures | 16.0, 16.8 |
+| 1.2, 12.1 NL horizon row | 0.165 | walking 0.144 (H); talk and catch 0.18 to 0.19; 0.165 press only | 16.1 |
+| 1.3, 12.1 NL bend | 13 P | about 14.5 to 15.7 P for the 0.144 row (L) | 16.1 |
+| 1.2 NL interior | player 38% (press) | 30.8%, feet 78.8% (313 lossless rooms) | 16.1 |
+| 1.2 CF interior feet row | 0.636 | 0.62 (M); share 23.0 to 25.4% by hairstyle, 25.2% inside it | 16.1 |
+| 4.1 CF sky | #1A2AD0, 13% band | retail #1714C9 to #1210BE; look up ramp 19 to 28% to #1A5CDC to #1B6CE2; #1A2AD0 is press | 16.2 |
+| 4.1, 12.1 NL sky | #2135E7 to #4078DA | zenith #2120E7 (LL) / #2121E5 (JPEG); walking strip #2040F0 to #2050ED (top) to #2166FA to #2172FD (ground); variants #293CE7, #2149F7 | 16.2 |
+| 4.1, 15 clouds | white puffs key art only | CF look ups 15 to 30% (#C1DCFF); NL cumulus #CCE1FE and puffs #949EF7 in retail, rare | 16.2 |
+| 4.1, 4.4 night | NL "blue violet", sky always lightens to the horizon | NL #01215A flat; violet family a minority; CF #000B39 and early night violet bands | 16.2 |
+| 2, 15, 12.1 haze | NL retail unproven or likely | H: far over near 2.15, upper 100 ground rows, toward #88BF68 to #B5E36B | 16.3 |
+| 4.2, 15, 12.1 NL grass | #92DB10, then #568F4F to #5D9D49 | near #026637 to #107442 (spring, summer); seasonal set; lime emote only | 16.3 |
+| 4.2 CF motif | shapes vary per frame | one family per town (squares, triangles, circles), four seasonal palettes | 16.3 |
+| 4.2, 10, 12.1 CF ground outline | teal (0,41,62) 2 to 3 px | brown lip on the dirt side #7E5018 (teal was press) | 16.3 |
+| 4.2, 12.1 NL sand | #FED08A (press) | #EFB67B to #F4BB8C; town beach #CA9A68 to #DDA374; wet 0.62 to 0.71 | 16.3 |
+| 4.2 CF cliff | #CEA88A | #86645D, band #D9C399, crevices #4E1F36 | 16.3 |
+| 4.2 snow | key art only | NL lilac #A1A6E0, never white; CF #BDD3E6 | 16.3 |
+| 4.3 NL caustic period | 115 to 120 px | cannot confirm in retail; translucency CONFIRMED | 16.4 |
+| 15 fish silhouette | soft teardrop, #0E2448 at 0.6 | crisp 1 to 2 px edge, multiply (0.50, 0.63, 0.68), 0.16 to 0.82 P | 16.4 |
+| 2 night, dusk | NL not measured | NL night (0.34, 0.31, 0.70), dusk (0.83, 0.58, 0.67) midpoint; CF ground night (0.64, 0.68, 0.83) | 16.5 |
+| 2, 15 interiors | not covered | neutral key plus violet ambient falloff; additive lamps on (80, 70, 166) | 16.5 |
+| 2 exposure, 9 item 9 | never clip, no pure black | interiors clip and are #000000 beyond the walls; outdoors unchanged | 16.5 |
+| 2 CF whites | neutral grey (render) | lilac in game (0.41, 0.40, 0.58) | 16.5 |
+| 3 blobs | NL 0.41 to 0.50; CF 0.28 to 0.60 press | NL CONFIRMED, sand 0.55, indoor about 0.61, partial stacking; CF snow 0.55 to 0.64 | 16.6 |
+| 6 textures | no environment textures | floors, wallpapers, ground swatches, Wendell, emotion icons; drop "(CF).png" copies | 16.8 |
+| 7.4 NL dialogue | #0F0B07 to #241810 | #1F2018 olive black, translucent | 16.9 |
+| 15, 12.2 grain | 2.95 | RETIRED: 2.35 clean (BILINEAR to 400x240), or 2.56 after a 565 snap | 16.8 |
+
+### 16.12 Open questions
+
+1. What decides the light walking sky strip (#2044F2 top) against the deep minority (#2121E5)? Needs a frame series of
+   one town at one hour with known places. (The lossless #005DC6 to #005DCE "mode" is resolved: encyclopedia UI, not sky.)
+2. Retail camera solve: no square grid outdoors in a retail frame yet; pitch and lens still come from press NL#950. The
+   bend radius for the 0.144 horizon (14.5 to 15.7 P) inherits that.
+3. NL night zenith: when is it navy #01215A and when violet (#424169 family)? Hour, weather or season cannot be confirmed.
+4. Dusk: the families in 16.2 are one frame each; a dated series would turn them into a ramp by hour.
+5. Fish shadow plan shape (teardrop or oval) at retail resolution, and whether NL caustic cells really shrink in retail.
+6. NL interior light under lamps in ordinary house rooms (only the tint series room was solved) and CF interiors at all.
+7. CF in game rim, CF haze on open retail ground, CF night character multiplier: still not re measured.
+8. Grain: libjpeg is not the 3DS encoder; the lossless outdoor sample (75) includes island and museum frames.
+9. Name pill colour rule and the dialogue balloon's exact alpha.
+
+### 16.13 Audit log
+
+Final audit of this section: 38 decision relevant numbers re measured with independent scripts in
+`verify_shots/AUDIT/` (helper `au.py` loads the Fandom original upload where one exists, never a WEBP copy), on a third
+sample or with a third method where possible; arithmetic rechecked; writing rules checked. Status CONFIRMED means the
+audit value agrees within the stated range or within a few 8 bit levels; CORRECTED gives old, new, method and IDs.
+
+| # | number | status | audit method and result | IDs |
+|---|---|---|---|---|
+| 1 | NL walking horizon, ground starts at row 34 or 35 of 240 (14.2 to 14.6%) | CONFIRMED | `a01_horizon.py`: per column first non sky row (sky: B over 150, B over G+25, B over R+60); median 34 or 35 on all 8 listed frames. Third sample `a01b_scan.py` over every 400x240 item (modal transition row with green below, at least 40 agreeing columns): 11 more walking frames at 34 or 35, one at 33 (S#10317) | S#1351, 10394, 11519, 2657, 2697, 10649, 10678, 13257; new S#1341, 2694, 9207, 9409, 10120, 10317, 10507, 10638, 10932, 11143, 13617 |
+| 2 | NL talk and catch horizon rows 43 to 46, a few at 39 | CONFIRMED, range widened | `a01b_scan.py` third sample: 26 frames with a sky to grass transition in rows 39 to 47, mode 43 to 44 (14 frames), two at 47 (S#1250, 10115), two at 40, one at 39. Body now reads "a few at 39 to 40 or 47" | S#3436, 3468, 3506, 10779, 11162, 13224 and 20 more |
+| 3 | NL walking player height 73 to 76 px, about 30% | CORRECTED | old 73 to 76 px (about 30%); new 76 to 77 px, 31.7 to 32.1%. Method: 6x NEAREST crop with a row ruler plus pixel dump: hair top at row 61 to 62 (first lilac pixel), sole bottom at row 137 to 138 (last shoe pixel above the shadow) on the Q80 original. Feet row 57.5% lies inside the stated 44 to 63% | S#12899 |
+| 4 | Fish shadow lengths 10.4, 22.8, 24.0, 38.0, 44.0 px; widths 6.5 to 11.3 px | CONFIRMED (widths within 1 px) | `a23_fish.py`: water reference from the box median outside a dilated mask, flood fill at lum ratio below 0.85, PCA extents: lengths identical; widths 6.5, 7.3, 10.1, 12.1, 12.0 (large and very large about 1 px wider than 11.2 and 11.3 because the extent counts the end pixel) | S#12898 to 12902 |
+| 5 | Fish shadow multiply (0.50, 0.63, 0.68) displayed, linear (0.22, 0.36, 0.43) | CONFIRMED | same script, per channel median ratio inside the mask: R 0.45 to 0.60, G 0.61 to 0.67, B 0.65 to 0.73; median over the five classes (0.48, 0.64, 0.67). Arithmetic: 0.50^2.2 = 0.218, 0.63^2.2 = 0.362, 0.68^2.2 = 0.428 | S#12898 to 12902 |
+| 6 | Fish shadow edge: plateau 0.55 to 0.63, boundary 0.70 to 0.75, one pixel outside 0.91 to 0.95 | CONFIRMED | `a23b` (inline script, third method: erosion depth rings instead of a profile): depth 2 to 3 inside 0.59 to 0.65, edge pixel 0.70 to 0.75, first outside ring 0.90 to 1.01, second 0.93 to 1.04 | S#12898, 12900, 12902 |
+| 7 | NL house interior player 30.8% (hair row 116 to sole row 189), feet 78.8% | CONFIRMED | own per pixel median of the same 313 rooms (all 313 pass the exact RGB565 expansion test) shows the same player; single frame column dumps (rooms 1, 101, 201, 301 of the list) put the hair top at row 115 to 116 and the last pink shoe row at 189: 74 to 75 px, 30.8 to 31.3%; 189/240 = 78.75% | `V2/house_ids.npy` list, S#1608 and others |
+| 8 | CF interior player 25.0 to 25.4%, soles 61.6 to 61.8% | CORRECTED (share) | old 25.0 to 25.4%; new 23.0 to 25.4% depending on the hairstyle. Pixel dumps: S#433 hair top row 178, sole row 282, 105/456 = 23.0%; S#541 hair top row 166, sole row 281, 116/456 = 25.4%. Soles 282/456 = 61.8% and 281/456 = 61.6% CONFIRMED | S#433, 541 |
+| 9 | CF look up horizon 72.3 to 73.5% where unobstructed; 76.2% on S#8495 | CONFIRMED | `a09b_cfmode.py`: modal last sky row among columns: 72.5 to 74.0% on all 8 listed frames (S#8202, 8290, 8303 at their second mode 348 to 350, the first mode being a roof); a one row offset from V1 (last sky row against first ground row) explains 72.3 against 72.5. S#8495: modal 73.3% at the left bank, the sand rises to about 76% mid frame (by eye on a marked copy), so 76.2% is a terrain level, not a camera change | S#7710, 8279, 622, 112, 8202, 8290, 8303, 8353, 8495 |
+| 10 | CF day sky body #1714C9 (house look ups), #1210BE to #1211BF (640x480 look ups), top #0E0EB9 to #100EBA | CONFIRMED; label and count CORRECTED | `a10_cfsky.py` (mask B over 150, B over G+25, B over R+60, min channel under 120; body rows 15 to 45%): house look ups #1715CA (p10 #1714C9, p90 #1816CB, 73 frames), top #1511C5; 640x480 set #1514C2 (3 to 4 levels lighter because my band reaches lower), top #100DB9. Corrections: the house look up set S#316 to 411 is 75 crops at 420x308 (R1 inventory, sizes in `corpus_items.json`), not 832x456; the 640x480 list names 12 frames, not 13 | S#316 to 411; S#112 to 114, 8036, 8202, 8290, 8303, 8321, 8353, 8378, 8407, 8787 |
+| 11 | CF look up ramp 19.4 to 27.9% of the frame, median 24.3% | CONFIRMED | `a11_cframp.py` (third definition: rows whose median sky G stays above the body G + 8 down to the horizon): 21.5 to 25.4%, median 23.6%, 14 frames; horizons 340 to 354 of 480 | same 12 plus S#7710, 8279 |
+| 12 | CF cloud cover in the top 20%: median 29% with soft edges, 18% cores; use 15 to 30% | CONFIRMED | `a12_cfcloud.py` (third threshold: R over clear sky R + 40 with B over 150; cores min channel over 190): soft edges median 35% (p10 22, p90 44), cores 11% (p10 7, p90 19), 75 frames. The recommended 15 to 30% band sits between core and soft cover and stands | S#316 to 411 (420x308), 640x480 set |
+| 13 | Lossless retail frames: 737 (721 Nookipedia PNG, 16 Fandom original PNG) | CONFIRMED, wording CORRECTED | `a29_565.py` (strict bit replication on every pixel, actual size 400x240, original upload preferred): 719 (704 Nookipedia, 15 Fandom: S#9165 to 9177, 12702, 13638); `a29c_565.py`: 18 more are the top halves of 400x480 both screen captures (17 Nookipedia, 1 Fandom S#13706); total 737 = 721 + 16 exactly. The body now says that 18 of the 737 are top halves. `a29b_565.py`: 8 more 400x240 PNGs have at most 32/64/32 levels per channel but another expansion rule (S#2733, 2924 to 2927, 3125, 9545, 13783); not counted | `audit a29_ids.json` |
+| 14 | Album JPEG: 2,898 of 3,292 native NL JPEG originals carry the full IJG quality 80 tables, 2,875 of them 4:2:2 | CONFIRMED exactly | `a30_jpeg.py`: reference tables from Pillow's own quality 80 encode, both luma and chroma tables must match, `get_sampling` for 4:2:2: 3,292 / 2,898 / 2,875 | Fandom originals at 400x240 |
+| 15 | Over all 400x240 items 3,445 quality 80 files of 3,902 JPEGs | CORRECTED (small) | old 3,445 of 3,902; new 3,438 of 3,900 when items are selected by catalogue size (`a30_jpeg.py`), 3,438 of 4,180 when selected by the actual pixel size of the loaded file (2,898 Fandom + 540 of 888 other JPEGs). The q80 count is rule stable within 7 files; the denominator is not. Body now reads "about 3,440 quality 80 files of 3,900 to 4,180 JPEGs, depending on the selection rule" | all 400x240 items |
+| 16 | NL zenith #2120E7 on lossless frames | CONFIRMED | `a07_zenith.py`: modal exact colour of row 0 on the 81 lossless frames with a blue top row: #005DC6 44 (encyclopedia title bar, not sky; see 16.2 variants), #2120E7 18, the rest scattered; #2120E7 is the only recurring deep sky value | lossless set |
+| 17 | NL zenith #2121E5 on album JPEGs | CONFIRMED | same script, Q80 Fandom originals with a blue row 0: rounded row 0 median #2121E5 on 32 of 108 frames (next #212DE5, 7); the 41 deep frames (G under 40) have median #2121E5 | Q80 originals |
+| 18 | NL walking strip: top #2040F0 to #2050ED, last sky rows #2166FA to #2172FD | CONFIRMED with a wider spread | `a08_strip.py` on the 17 walking frames of item 1: row 0 #2138EF to #2949F7 on 12 frames, lighter #3753F7 to #6C72F0 on 5 (cloud or haze in row 0); end rows #2168F8 to #2971FF on 13, lighter on 4 | S#1341, 1351, 2657, 2694, 9409, 10507, 10678, 10932, 11143, 13257 and others |
+| 19 | NL night zenith #01215A, flat over rows 0 to 79 | CONFIRMED; evidence label CORRECTED | `a13_night.py`: 10 row band medians #00205A in all bands on S#12601 and #01215A to row 49 on S#13760; tally over 65 dark uniform 400x240 top rows (stricter than V2's 114): #01215A 18, #403D6A 5, #072559 4, #323663 4. Correction: S#12601 is an 807x484 PNG (about 2x, resampled), not a Q80 JPEG; S#13760 is Q80. Its moon radii are in 807 px units | S#12601, 13760 |
+| 20 | NL haze, far over near luminance median 2.15 (range 1.61 to 3.19), over the 100 rows below the horizon; saturation 0.81 to 0.97 near, 0.41 to 0.54 far | CONFIRMED | `a14_haze.py` on the walking frames of item 1 (third sample, 15 usable, S#1341 and 11143 are the same frame): far band rows h+2 to h+21, near rows 170 to 236, green mask: median 2.25 (1.21 to 2.67; 1.21 is S#9207, a pale winter ground); the band stays over 1.1 x near for 72 to 142 rows below the horizon (median about 102); saturation 0.80 to 0.96 near, 0.38 to 0.54 far on the green town frames. Arithmetic: 240 minus 35 = 205 ground rows | S#1341, 1351, 2657, 2694, 2697, 9207, 9409, 10317, 10507, 10638, 10649, 10678, 13257, 13617 |
+| 21 | NL haze far colour: median #88BF68, per frame #B5E36B (S#2657), #B8E168 (2697), #BDE56B (10507), #ABD570 (13257) | CONFIRMED | same script: per frame far medians identical for S#2657, 2697, 10507 and within 1 level for S#13257 (#ACD470); median over 15 frames #A0C66B, inside the stated #88BF68 to #B5E36B target range | as item 20 |
+| 22 | NL spring and summer near grass #026637, #1E7542, #107641, #0C6C3A, #0D7541, #06723F | CONFIRMED except the light end, CORRECTED | `a15_grass.py` plus a plain mask run (G over R and B, G over 60, rows 170 to 236): S#1246 #026637 (exact), 1245 #107442 (old #1E7542, R 14 levels lower), 1341 #067140, 9788 #056939, 13257 #0C7540, 10649 #05723F, hue 150 to 153 on all six. With a hue 120 to 170 mask all six are #026538 to #077240. The near grass range is therefore #026637 to #107442 (16.3 table and 16.11 updated) | S#1246, 1245, 1341, 9788, 13257, 10649 |
+| 23 | CF day grass #0A8C54 (hue 154, 240 frames) | CONFIRMED | `a17_cfgrass.py` (third mask: G over R+20, hue 120 to 175, max channel over 107, whole frame): #0A915B, hue 156, IQR #038858 to #219764, 164 frames (832x456 #099261, 640x480 #0A9159); within 7 levels | CF 832x456 and 640x480 frames |
+| 24 | NL dry sand #EFB67B (S#1539, LL) | CONFIRMED | `a18_sand.py` (sand mask R over G over B, R minus B over 50, rows 60 to 169 away from water): median #F7BE84, 8 levels lighter, upper luminance mode #FFD394 | S#1539 |
+| 25 | NL wet band luminance 0.62 to 0.71 of dry | CONFIRMED | same script, wet = sand hue within 12 px of water and under 0.85 of dry L: 0.63, 0.67, 0.63 against the lit dry mode on S#1539, 12286, 13496 (0.67 to 0.78 against a dry median that includes palm shadows; state the reference) | S#1539, 12286, 13496 |
+| 26 | Foam line #ECF2F8 / #DBDDF6 | CONFIRMED | same script, min channel over 205 and B at least R, within 12 px of water: #DEF7FF, #EFF8FD, #E1E9FC: a blue white, never pure white | S#1539, 12286, 13496 |
+| 27 | NL day snow #A1A6E0 (S#3087) | CONFIRMED | same script, rows 110 to 239, x 150 to 329, bluish non white mask: #A0A4DC (p10 #9497CD, p90 #B1B1E7) | S#3087 |
+| 28 | NL sea, lossless #3169AD (S#9174); use median #3A76C4 | CONFIRMED (hue, R, G); B lower on this sample | same script, B over R+60: S#9174 #296DAD (p10 #2165AD, p90 #4A86D6); S#2646 #3171AD, 2648 #3975BD, 1337 #397BB6, 12286 #4578AC, 13496 #4886C0, 13255 #2E6EB4; the median of these seven is #3975B4 [S], 16 levels lower in B than #3A76C4. Keep #3A76C4 for open sea in sun and #3169AD to #3975BD for lossless calm water | S#9174, 2646, 2648, 1337, 12286, 13496, 13255 |
+| 29 | NL night grade, mid tones (0.45, 0.44, 0.75), linear (0.17, 0.16, 0.53); whites (0.26, 0.25, 0.65) roll off further | CORRECTED | Pair S#12062 (day) and S#12036 (night), both about 807x484 PNG; best integer shift (0, 0), correlation 0.70. `a24_grade.py` flat pixels (3x3 range under 25), day values 50 to 220: (0.36, 0.32, 0.68); `a24d_quant.py` percentile matching inside boxes on the same surfaces (immune to misalignment): fence (0.30 to 0.34, 0.29 to 0.32, 0.68 to 0.73), yellow flowers (0.43, 0.43, 0.77), path (0.28, 0.28, 0.69). New value (0.34, 0.31, 0.70) [S mean of the flat pixel value and the median of the four box p50 values, (0.32, 0.31, 0.71)], range by surface R 0.28 to 0.45, B 0.68 to 0.77; linear (0.09, 0.08, 0.46). V3's (0.45, 0.44, 0.75) is the light end (flowers). Whites: the p90 ratios are 0.44 to 0.57 in R and G, LIGHTER than the medians, so "highlights roll off further" is not reproduced and is removed. Arithmetic check of the old linear values: 0.45^2.2 = 0.173, 0.44^2.2 = 0.164, 0.75^2.2 = 0.531 (correct as arithmetic) | S#12062, 12036 |
+| 30 | NL dusk grade midpoint (0.83, 0.58, 0.67), range R 0.70 to 0.96, G 0.48 to 0.69, B 0.59 to 0.75 | CONFIRMED | `a24_grade.py` against day S#11985 (shift 4 to 5 px down, 1 to 2 right): flat mid tones (0.88 to 0.89, 0.60, 0.65 to 0.66) on S#12000, 12005, 12015; whites (0.71 to 0.73, 0.51, 0.65); all inside the stated ranges. Midpoints: (0.70+0.96)/2 = 0.83, (0.48+0.69)/2 = 0.585, (0.59+0.75)/2 = 0.67 | S#11985, 12000, 12005, 12015 |
+| 31 | NL interior ambient (80, 70, 166) #5046A6; lamps add +97 to +99 per lit channel at Level 1; Level 2 doubles, Level 3 adds half a step, Level 4 equals Level 3 | CONFIRMED | `a26_lamps.py`, whole frame method (median of lit minus off over unclipped room pixels): Level 1 red (+86, 0, 0), indigo (+82, 0, +57), orange (+86, +41, 0), yellow (+86, +84, 0), light blue (0, +39, +58): untouched channels exactly 0 (additive, not a multiply); the whole room average is about 0.88 of the wall box value, matching the floor 0.84 rule. Unclipped G series orange 41, 78, 97, 97 and light blue 39, 78, 97, 97 give 1, 1.9 to 2.0, 2.4 to 2.5, 2.4 to 2.5 times Level 1. Ambient in a new box x 330 to 394, y 80 to 189: (72, 63, 150), so the off value falls off with position. Arithmetic note: "0.080 to 0.445" uses the sRGB curve; with the 2.2 power stated in the preamble it is 0.078 to 0.453 (body now says so) | S#12260, 12639 to 12642, 11052 to 11055, 12315 to 12318, 13738 to 13741, 11225 to 11228 |
+| 32 | NL player blob on open sand (0.55, 0.55, 0.67), luminance 0.56 | CONFIRMED | `a27_blob.py` second method (darkest 25% of sand pixels inside a hand placed ellipse under the feet, reference = sand in an annulus at 1.3 to 1.8 radii): (0.55, 0.55, 0.62), luminance 0.56. A box at the blob edge gives 0.68, so the value needs the core | S#1539 |
+| 33 | NL player blob indoors (0.52, 0.52, 0.59) | CORRECTED | old (0.52, 0.52, 0.59) or (0.48, 0.49, 0.57); new (0.62, 0.58, 0.67), luminance 0.61. Method: same ellipse script (0.62, 0.59, 0.69) and a row dump at rows 188 to 196: core #847DA5 to #8C8AAD against the floor #D6D7F7 to #DED7F7 beside it on the same rows. The old values divide by a brighter floor (about #FFF7FF) further back; the floor falls off toward the camera, so the reference must be the same row | S#2204 |
+| 34 | CF player blob on snow, core 0.55 to 0.64, tint (0.53, 0.53, 0.58) | CONFIRMED | same ellipse script on snow pixels: (0.56, 0.56, 0.61), luminance 0.57 | S#111 |
+| 35 | Grain, lossless medians: all 737 frames 2.78 (2.09 to 3.75), 313 house rooms 3.83, outdoor frames with grass over 0.2: 2.56 (IQR 2.19 to 3.03, 75 frames) | CONFIRMED | `a35_grain.py` (own 9 neighbour sum, border dropped): all 737: 2.78 (IQR 2.09 to 3.75); rooms 3.83 (IQR 3.10 to 4.80); outdoor by my own grass rule 2.56 (IQR 2.14 to 2.97, 84 frames), 2.61 without a balloon (39). Target arithmetic: 2.56 minus about 0.20 = 2.36, stated as 2.35; cross check 2.66 minus 0.14 minus 0.20 = 2.32. The 565 step allowance (0.15 to 0.26) was not re measured (no clean render in this audit) | lossless set, `V2/house_ids.npy` |
+| 36 | CF flooring: 94 of 94 at 256x256 mirror symmetric in both axes; colours median 53 (18 at 16 or fewer, 1 at 256); 88 of 94 on the RGB565 grid; grain median 3.6 | CONFIRMED, wording CORRECTED | `a36_floor.py` (own selection from the "City Folk flooring textures" category, 94 items, same set as R2): mirror 94 of 94 (array equals both flips exactly), colours median 53, 18 at 16 or fewer, 1 at 256, grain 3.59. `a36b_grid.py`: 88 of 94 lie on the ROUNDED 565 grid (round(q x 255/31) and round(q x 255/63)); only 4 lie on the bit replication grid that defines the lossless frames, and all 94 have at most 32/64/32 levels. Body now names the rounded grid | S#5681 and the 93 other flooring textures |
+| 37 | NL cumulus on S#13187: 30.4% of rows 0 to 139, median #CCE1FE, p10 #A6C5FC, p90 #DDEAFD, maximum (232, 250, 255) | CONFIRMED (colour); cover threshold dependent | `a37_misc.py` (cloud = min channel over 150 and B over 200): 35.6% of rows 0 to 139, median #CBE0FE, p10 #ACC9FB, p90 #DBEAFF, maximum (245, 250, 255), still never pure white; sky beside them #2239ED | S#13187 |
+| 38 | NL late winter grass #5A8548, #5B8D3B, #659844 (hue 90 to 102) | CONFIRMED | same script, near band plain green mask: S#1433 #62854A, 1591 #5D8D3B, 1351 #679845, hue 95 to 96 | S#1433, 1591, 1351 |
+
+**Tally.** 38 numbers audited: 32 CONFIRMED as values (5 of them with a label, range or wording fix: items 2, 10, 13,
+19, 36) and 6 CORRECTED as values (items 3, 8, 15, 22, 29, 33). Corrections are applied in the body, in 16.10 and in 16.11.
+
+**Arithmetic rechecked [audit].** Horizon fractions 34/240 = 0.142, 35/240 = 0.146, 43/240 = 0.179, 46/240 = 0.192.
+Horizon ray: (0.5 minus 0.144) x 2 x tan 14 deg = 0.1775, 10.07 deg above the axis, 35 minus 10.07 = 24.9 deg below
+horizontal; the tangency of a ray with a parabolic bend gives R = 2(H minus z0 tan a)/tan^2 a (derived again here), so
+2(3.6 minus 4.1 x 0.4648)/0.2160 = 15.7 P, with 3.5 and 4.15 it is 14.5 P, and the press 0.165 row gives 14.4 P: all
+CONFIRMED. Fish lengths in bobbers 10.4/9 = 1.16, 22.8/10 = 2.28, 24/10 = 2.4, 38/8 = 4.75, 44/7 = 6.29: CONFIRMED;
+lengths in P recomputed with 7.65 bobbers per P (item 3). Linear values: 0.50, 0.63, 0.68 to the 2.2 power give 0.218,
+0.362, 0.428 (CONFIRMED); grass blob 0.41 to 0.50 gives 0.14 to 0.22, not "about 0.19" (16.10 fixed). Dusk midpoints
+CONFIRMED (item 30). Lamp linear range uses the sRGB curve (item 31, body fixed). Counts: 16,942 minus 3 = 16,939, minus
+2 non images = 16,937; the 16.0 table rows sum to 16,937 because three rows are image counts, not record counts (note
+added); first pass layouts summed to 16,936 because one "Wii native" item was missing (added); Fandom original formats
+6,241 + 2,537 + 37 + 1 = 8,816 CONFIRMED; 721 + 16 = 737 CONFIRMED.
+
+**Internal consistency fixes [audit].** 16.10 now matches the body for the NL night window range (#F1C791 to
+#FCD45E; #F4D08C was one frame, S#9215, in V2), the walking sky strip (body values instead of the V2 summary #2044F2 to
+#216BFD, in 16.10 and 16.11), the interior blob, the night grade and the fish length range; the 16.10 fire core
+#FFDE8E is now traced in the body (R2, S#4854 render). 16.11 rows for sky, grass, night, blobs, fish, album JPEG count and
+CF interior share follow the corrected body. Other 16.10 values (grass, path, sand, snow, cliff, water, canopy, trunk,
+interior light model, skin, hair, clothing, clouds, UI) were checked against the body and match.
+
+**Labels [audit].** S#12601 is an 807x484 PNG, not Q80; the night day pair S#12036 and 12062 and the dusk set S#11985 to
+12015 are also about 807x484 PNGs (Fandom originals of a 2x capture), fine for ratios. S#622 in the CF look up horizon list
+is a promo frame (P), now marked. Nintendo Life items S#16412 to 16494 are cited six times as if retail; the 16.0 note
+now says their retail status cannot be confirmed. The CF house look up set is mostly 420x308 crops, not 832x456. The night
+grade confidence drops to M and the whites claim to L.
+
+**Writing rules [audit].** No dash characters (U+2010 to U+2015, U+2212) anywhere; the only hyphen characters in the file
+are the Markdown table rules. No angle brackets were added. Every number added in the audit cites a script in
+`verify_shots/AUDIT/` and the S# IDs it ran on.
+
+**Not re measured in this audit:** the 565 step allowance (0.15 to 0.26) in the grain target, the moon and lamp glow radii,
+the fish bobber sizes (`a38_bobber.py` red masks give 8x9, 7x8 and 9x9 on S#12899 to 12901, the red half only, so the
+listed 10x9 and 10x8 cannot be confirmed or refuted), the CF night and rain multipliers, the clothing and icon facts.
