@@ -3136,7 +3136,7 @@ def musky_burn(f):
     s = (f - CUT2B) / FPS
     k = ease(min(1.0, max(0.0, (s - 0.6) / 1.6)))
     rest = Vector((BURN_X0 + 2.6, BURN_Y + 1.1, FLAT_Z + 0.75))
-    follow = lp + Vector((-1.25 + 0.3 * k, -0.15, -0.35))
+    follow = lp + Vector((-0.95 + 0.2 * k, -0.15, -0.32))
     p = rest.lerp(follow, k)
     fwd = Vector((1.0, 0.05 * math.sin(s * 3.0), 0.25 * (1.0 - k) + 0.05)).normalized()
     return p, fwd
@@ -3176,7 +3176,7 @@ def musky_f8(f):
     yaw = math.atan2(d0.y, d0.x) + 1.4 * ease(min(1.0, s / 0.8))
     fwd = Vector((math.cos(yaw), math.sin(yaw), -0.3 * ease(min(1.0, s / 0.8))))
     fwd = Vector((fwd.x, fwd.y + 0.12 * math.sin(s * 16.0) * math.exp(-s), fwd.z)).normalized()
-    return p0 + Vector((0.4 * s, 0.6 * s, -0.25 * s)), fwd
+    return p0 + Vector((0.15 * s, 0.2 * s, -0.1 * s)), fwd
 
 
 def f8_gape(f):
@@ -3345,14 +3345,14 @@ def camera_frames(st):
     for f in range(CUT2B, CUT3):
         lp = gauss_smooth(lure_burn, f, 3)
         cam = lp + Vector((-0.85, -1.5, -0.32))
-        tgt = lp + Vector((-0.45, 0.25, -0.3))
+        tgt = lp + Vector((-0.45, 0.25, -0.32))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 28.0)
         fstop[f] = 4.0
     # 4 the figure 8 beside the boat: a low, wide angle looking up at the boat's side
     for f in range(CUT3, CUT4):
         u = (f - CUT3) / max(1, CUT4 - CUT3)
-        cam = F8_C + Vector((0.4 - 0.3 * u, 4.5 - 0.5 * ease(u), -1.0))
-        tgt = F8_C + Vector((0.0, 0.0, -0.05))
+        cam = F8_C + Vector((0.3 - 0.2 * u, 2.4 - 0.3 * ease(u), -1.45))
+        tgt = F8_C + Vector((0.0, -0.1, 0.0))
         shake = 0.02 * smoothstep(EAT_F - 1, EAT_F + 1, f) * (1 - smoothstep(EAT_F + 1, EAT_F + 14, f))
         cam = cam + Vector((shake * math.sin(f * 2.3), 0.0, shake * math.sin(f * 2.9)))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 18.0)
@@ -3660,8 +3660,8 @@ def build_overlays(hud, st):
               src="PRO ESTIMATE: JIM SARIC, MERCURY MARINE")
     hud.pin(lambda f: f8_point(f8_phase(f) + 1.0), "wide, deep figure 8", CUT3 + 8, EAT_F - 30, dot_color=GOLD,
             side=0.05, y_band=(-0.2, 0.3))
-    hud.pin(lambda f: mouth_of(*musky_f8(f)), "eats on the turn", EAT_F - 2, CUT4 - 6, dot_color=PIN_RED, side=-0.06,
-            y_band=(-0.2, 0.3))
+    hud.pin(lambda f: mouth_of(*musky_f8(f)), "eats on the turn", EAT_F - 12, CUT4 - 6, dot_color=PIN_RED, side=-0.06,
+            y_band=(-0.24, 0.32))
     hud.serif("Burn fast, work the turn.", CUT4 + 8, FRAME_END - 9, lines=["Burn fast,", "*work the turn.*"],
               reveal=2.4, src="ANGLER TECHNIQUE")
 
