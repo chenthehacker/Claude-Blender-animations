@@ -1363,17 +1363,26 @@ boxy hall, poor villagers, odd haze on the plaza).
   a building: with the horizon at 0.144 a wall 1 P tall already reaches row 0.0. Retail frames in front of buildings
   put the player low: S#2855 (town hall exterior) feet row 220 of 240, hat top 138; S#1436, S#1441 feet 214 to 215, cap
   top 134 to 135. Used: feet row 0.90, player share 0.33.
-* Objects lean back about 18 deg [S arithmetic on a fit, M, one frame]. Building verticals in S#2855 barely converge:
-  least squares on the strongest horizontal gradient per row gives the outer wall corners a drift of 5.7 and 7.7 native
-  px over the wall height (pillars nearer the centre 1 to 2 px). The pitch 35 camera predicts 19.3 px with upright
-  walls, 7.4 px with a 17 deg lean back and 5.8 px with 20 deg. The ground still fits pitch 35, so objects (not the
-  camera) are tilted away: implemented as a shear y += z tan(18 deg) before the rolling log bend (`R.OBJECT_LEAN`).
-  Mechanism in the game: cannot confirm; this reproduces the measured image. With it the camera solves to height
-  4.51 P, distance 4.31 P (bend R 13.28 P kept) and the S#2855 proportions give a hall eave of about 1.3 P and a clock
-  gable top of about 2.25 P. Not yet applied to the river scene (it would change that scene's measured framing).
+* Buildings and props lean back about 16 deg; characters stay upright [S arithmetic on fits, M, one frame each].
+  Building verticals in S#2855 barely converge: least squares on the strongest horizontal gradient per row gives the
+  outer wall corners a drift of 5.7 and 7.7 native px between rows 120 and 195. With the camera solved for an upright
+  player (height 3.58 P, distance 3.42 P) upright walls would drift 16.0 px, walls leaned back 14 deg 7.7 px, 18 deg
+  5.8 px. The ground still fits pitch 35, so the objects are tilted away: a shear y += z tan(16 deg) on buildings and
+  props before the rolling log bend. Characters are NOT leaned: the player's head width over figure height reads
+  about 0.54 in S#2855 and 0.53 in the upright river render, but 0.44 when the same shear is applied (the first
+  revision did this and the user saw a squeezed player). Mechanism in the game: cannot confirm. With this camera the
+  S#2855 proportions give a hall eave of about 1.1 P and a clock gable top of about 1.85 P (the hall is modelled at
+  1.32 P eaves and scaled by 0.8).
 * Hall colours from S#2855 (median boxes by eye, M): plank wall #AB854A (p10 #866936, p90 #DBB264), lavender grey stone
   #A08998 to #E6C0BD lit, window panes up to #F1EEC0, cobbles #928498 (this frame) to #ADB2C6 (S#3152). Roof kept at the
   NL house roof family #BB3F5B (16.7).
+* Villagers: one head mesh per villager; the muzzle and cheeks are Gaussian bumps of the head surface and the ears are
+  extruded from head faces (2 to 4 steps, flattened, tapered), with an ear texture holding a fur border and a pink inner
+  panel, so nothing reads as stuck on. 16 segments around the head (5.2: 12 to 16 per turn). 816 triangles per
+  villager (the 5.2 arithmetic estimate is 500 to 800, L).
+* Flowers: beds of cup tulips (8 sided lathe, alternate rim vertices raised into petal tips) on stems with broad curved
+  leaves, and flat five lobed pansies tilted toward the viewer with a dark blotch and a yellow eye, after S#2855 and
+  S#1436 by eye; profile shadows from their top down footprint.
 * Soft geometry: every box is a rounded box (cube grid pushed onto a box with radius 0.04 to 0.075 P edges, smooth
   shaded), columns are 12 sided lathes with cushion bases and rolled capitals, the roof is two thick rounded slabs with a
   ridge roll, the clock gable is an arch topped slab with a torus trim (a bent tube with a fixed frame: polyline tubes
@@ -1383,7 +1392,7 @@ boxy hall, poor villagers, odd haze on the plaza).
   S#13257 brighten like the ground (#44964D near, #9DCE6D in the far band, weed mask on a Q80 JPEG, L to M), while a
   tree at the edge of the S#3152 plaza shows no measurable haze at its short distance (#086910 against #006931 near).
   Implemented: every object material takes the ground's distance ramp toward #8EC668; the terrain's haze colour follows
-  the plaza weight (#8EC668 on grass, #C6C3D6 on cobbles). In this framing the ramp starts at 8.8 P from the camera, so
+  the plaza weight (#8EC668 on grass, #C6C3D6 on cobbles). In this framing the ramp starts at 7.35 P from the camera, so
   only the farthest trees are touched.
 * Texture density: the user found the hall and characters cleaner than the cobbles. All textures now share one painted
   treatment: about 64 to 80 texels per P (planks 64, cobbles 80, fur 64; faces about 110, inside the 80 to 150 texels per
@@ -1391,9 +1400,8 @@ boxy hall, poor villagers, odd haze on the plaza).
   get the same pass (face resampled to 0.75).
 * Plants only on grass: the build asserts zero plaza weight under every tree, bush and flower bed; flowers on the hall
   sit in window boxes.
-* Render QA (day): player share 0.33, villagers 0.31 to 0.33; clock gable top row 0.029, eave row 0.27 (S#2855: 0.067,
+* Render QA (day): player share 0.33, villagers 0.33; clock gable top row 0.011, eave row 0.25 (S#2855: 0.067,
   0.417, with the hall right behind the player; here it stands about 1 P further back to leave room for the
-  villagers). Neon 2.2%, near black 0%, near white 1.3%. Player blob on cobbles, render with and without the blob
-  divided per pixel: median 0.55 over 3,854 shaded pixels (the configured multiply; section 3 grass range 0.41 to
-  0.50). Triangles: one villager about 2,000 (above the section 5.2 estimate of 500 to 800, which is itself L), scene
-  about 113,000.
+  villagers). Neon 4.6% (more sky and the tulips), near black 0%, near white 1.9%. Player blob on cobbles, render with and without the blob
+  divided per pixel: median 0.55 over 4,205 shaded pixels (the configured multiply; section 3 grass range 0.41 to
+  0.50). Triangles: one villager 816, scene about 122,000.

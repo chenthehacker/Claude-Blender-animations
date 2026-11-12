@@ -41,18 +41,25 @@ RNG = np.random.default_rng(31)
 # Camera in front of a building (16.16, measured on S#2855, S#1436, S#1441)
 # --------------------------------------------------------------------------
 # Feet row 0.90 and player share 0.33: S#2855 feet row 220 of 240, hat top 138; S#1436 and S#1441 feet 214 to 215, cap
-# top 134 to 135 (by eye on 3x and 5x NEAREST crops). Object lean 18 deg: the hall's outer wall corners in S#2855
-# drift 5.7 and 7.7 native px over the wall height (least squares on the strongest horizontal gradient per row); with
-# pitch 35 and no lean this camera predicts 19.3 px, with a 17 deg lean 7.4 px, with 20 deg 5.8 px. Ground pitch, lens
-# and world bend (R 13.28 P) are unchanged.
-FEET_ROW, PLAYER_SHARE, LEAN_DEG = 0.90, 0.33, 18.0
-R.OBJECT_LEAN = math.tan(math.radians(LEAN_DEG))
+# top 134 to 135 (by eye on 3x and 5x NEAREST crops). Characters stay UPRIGHT: in S#2855 the player's head width over
+# figure height is about 0.54 (river scene, upright 0.53; with an 18 deg shear 0.44, visibly squeezed). Buildings and
+# props lean back 16 deg: the hall's outer wall corners in S#2855 drift 5.7 and 7.7 native px between rows 120 and 195
+# (least squares on the strongest horizontal gradient per row); this camera predicts 16.0 px for upright walls, 7.7 px
+# at 14 deg and 5.8 px at 18 deg. Ground pitch, lens and world bend (R 13.28 P) are unchanged.
+FEET_ROW, PLAYER_SHARE, LEAN_DEG = 0.90, 0.33, 16.0
+LEAN = math.tan(math.radians(LEAN_DEG))
+R.OBJECT_LEAN = 0.0                      # applied per object below (characters excluded), not inside the bend
 _VT = math.tan(math.radians(R.VFOV) / 2)
 
 
-def project(p, h, d):
+def lean_point(p, lean=True):
+    p = Vector(p)
+    return Vector((p.x, p.y + LEAN * p.z, p.z)) if lean else p
+
+
+def project(p, h, d, lean=False):
     """Row (from the top) and column of a world point for a camera at height h, distance d behind the player."""
-    q = R.bend_point(Vector(p))
+    q = R.bend_point(lean_point(p, lean))
     a = math.radians(R.PITCH)
     fwd, up = Vector((0, math.cos(a), -math.sin(a))), Vector((0, math.sin(a), math.cos(a)))
     v = Vector((q.x, q.y + d, q.z - h))
@@ -61,6 +68,7 @@ def project(p, h, d):
 
 
 def solve_camera_lean():
+    """Camera height and distance putting the upright player's feet on FEET_ROW with PLAYER_SHARE of the height."""
     lo, hi = 0.5, 20.0
     for _ in range(60):
         d = 0.5 * (lo + hi)
@@ -97,12 +105,14 @@ HP = {
 }
 VILLAGERS = [
     # name, species, position, facing (deg, 0 = east, -90 = toward the camera), fur, fur light, accent, shirt a, b
-    ("Cat", "cat", (1.3, -0.05), 205.0, "#F0A65C", "#FCEBCF", "#F59AA6", "#5BAE78", "#E4F3DE"),
-    ("Dog", "dog", (-1.4, 0.4), -50.0, "#E0C08E", "#FAEED8", "#8C5A3A", "#D85A4E", "#F8E2D8"),
-    ("Rabbit", "rabbit", (0.8, 0.72), -105.0, "#D6C6EC", "#F7F2FB", "#F3A9BC", "#EEC955", "#FFF4D0"),
+    ("Cat", "cat", (1.1, 0.12), 210.0, "#F0A65C", "#FCEBCF", "#F59AA6", "#5BAE78", "#E4F3DE"),
+    ("Dog", "dog", (-0.95, 0.3), -55.0, "#E0C08E", "#FAEED8", "#8C5A3A", "#D85A4E", "#F8E2D8"),
+    ("Rabbit", "rabbit", (0.72, 0.62), -105.0, "#D6C6EC", "#F7F2FB", "#F3A9BC", "#EEC955", "#FFF4D0"),
 ]
 PLAYER_FACING = -25.0              # turned toward the cat and the camera
-HALL = {"front_y": 1.5, "w": 3.6, "d": 2.4, "eave": 1.32, "bay_w": 1.16, "bay_d": 0.42}
+HALL = {"front_y": 1.35, "w": 3.6, "d": 2.4, "eave": 1.32, "bay_w": 1.16, "bay_d": 0.42}
+HALL_SCALE = 0.8    # the hall is modelled at 1.32 P eaves, then scaled about its front base to the S#2855 solve
+                    # (eave about 1.1 P, clock gable top about 1.85 P with the upright player camera)
 
 
 # --------------------------------------------------------------------------
@@ -397,6 +407,19 @@ def tex_fur(name, base, light):
     return make_image(name, grain(np.clip(col, 0, 1), 0.04))
 
 
+def tex_ear(name, fur, inner):
+    """Ear: fur border and back (u near 0), a soft pink inner panel narrowing toward the tip on the front."""
+    w = h = 32
+    yy, xx = np.mgrid[0:h, 0:w]
+    u, v = (xx + 0.5) / w, 1 - (yy + 0.5) / h
+    col = ramp(0.3 + 0.22 * fbm(w, h, 4, 2, RNG), [fur, fur, fur])
+    half = 0.3 * (1 - 0.75 * v)
+    k = (smoothstep(half + 0.05, half - 0.03, np.abs(u - 0.5)) * smoothstep(0.04, 0.14, v)
+         * smoothstep(0.95, 0.8, v))[..., None]
+    col = col * (1 - k) + hexc(inner) * k
+    return make_image(name, grain(np.clip(col, 0, 1), 0.03))
+
+
 def tex_villager_face(fur, light, accent, species):
     """Head texture (u 0.5 = facing direction, v bottom to top) at about 110 texels per P (CF faces read 40 to 75
     texels across, section 6). Eyes: black discs with a white glint (5.3), centre 0.33 of the core head below its top
@@ -469,12 +492,12 @@ def paint_pass(img, scale=1.0, amp=0.06, grain_amt=0.035):
 # --------------------------------------------------------------------------
 # Ground: cobble plaza in front of the hall, grass around it (plants only on grass)
 # --------------------------------------------------------------------------
-PLAZA = {"hx": 2.0, "y0": -2.2, "soft": 0.35}
+PLAZA = {"hx": 1.3, "y0": -2.2, "soft": 0.3}
 
 
 def plaza_weight(x, y):
-    y1 = HALL["front_y"] + HALL["d"] + 0.4
-    hx = PLAZA["hx"] if y < HALL["front_y"] - 0.2 else HALL["w"] / 2 + 0.35
+    y1 = HALL["front_y"] + HALL["d"] * HALL_SCALE + 0.4
+    hx = PLAZA["hx"] if y < HALL["front_y"] - 0.2 else HALL["w"] / 2 * HALL_SCALE + 0.3
     dx = max(abs(x) - hx, 0.0)
     dy = max(PLAZA["y0"] - y, y - y1, 0.0)
     return float(smoothstep(PLAZA["soft"], 0.0, math.hypot(dx, dy)))
@@ -538,6 +561,11 @@ def build_hall(col, M):
         for yy in (fy, fy + D):
             column(bm, uv, sx * W / 2, yy, 0.16, E - 0.02, 0.085)
     mesh_object("CornerPosts", bm, col, [M["h_stone"]])
+    bm, uv = new_bm()                                  # fascia under the eaves: ties the posts to the roof
+    rounded_box(bm, uv, (0, fy - 0.02, E - 0.11), (W + 0.12, 0.12, 0.14), 0.05, ni=6)
+    for sx in (-1, 1):
+        rounded_box(bm, uv, (sx * (W / 2 + 0.02), cy, E - 0.11), (0.12, D + 0.12, 0.14), 0.05, ni=6)
+    mesh_object("Fascia", bm, col, [M["h_trim"]])
     # main gable roof along X: two thick rounded slabs (bulging eaves) and a ridge roll
     ov, rise = 0.3, 0.44
     half = D / 2 + ov
@@ -580,8 +608,8 @@ def build_hall(col, M):
               segs=28, sides=10)
     mesh_object("GableRoll", bm, col, [M["h_roof"]])
     gable_top = bay_top + 0.1 + bw / 2 + 0.085
-    cc = Vector((0, bf - 0.035, bay_top + 0.16))
-    rr = 0.24
+    cc = Vector((0, bf - 0.035, bay_top + 0.25))
+    rr = 0.22
     bm, uv = new_bm()
     torus_arc(bm, uv, cc, (1, 0, 0), (0, 0, 1), rr, 0.04, 0.0, 2 * math.pi, segs=28, sides=8)
     mesh_object("ClockRim", bm, col, [M["h_clockrim"]])
@@ -599,10 +627,13 @@ def build_hall(col, M):
             lp[uv].uv = (0.5 + o.x / (2 * rr), 0.5 + o.z / (2 * rr))
     mesh_object("ClockFace", bm, col, [M["h_clock"]], smooth=False)
     # columns flanking the door, door frame, arched door, steps
-    bm, uv = new_bm()
+    bm, uv = new_bm()                                  # engaged columns carrying a lintel (a small portico)
     for sx in (-1, 1):
-        column(bm, uv, sx * (bw / 2 - 0.13), bf - 0.1, 0.18, bay_top - 0.03, 0.075)
-    mesh_object("DoorColumns", bm, col, [M["h_stone_light"]])
+        column(bm, uv, sx * (bw / 2 - 0.12), bf - 0.045, 0.2, bay_top - 0.12, 0.075)
+    rounded_box(bm, uv, (0, bf - 0.065, bay_top - 0.065), (bw + 0.04, 0.17, 0.13), 0.05, ni=6)
+    for sx in (-1, 1):
+        rounded_box(bm, uv, (sx * (bw / 2 - 0.12), bf - 0.045, 0.235), (0.24, 0.2, 0.07), 0.03)
+    mesh_object("Portico", bm, col, [M["h_stone_light"]])
     bm, uv = new_bm()
     arch_slab(bm, uv, 0.0, bf - 0.03, 0.05, 0.18, 0.74, 0.62, bevel=0.035, segs=12, uvs=1.0)
     mesh_object("DoorFrame", bm, col, [M["h_trim"]])
@@ -670,120 +701,284 @@ def build_lamp(col, M, x, y):
 # --------------------------------------------------------------------------
 def build_villager(col, M, name, species, pos, facing):
     """H = 1.0. Head with ears 0.50 of H, core head 0.40 (chin 0.50, top 0.90), head width over core head height
-    1.44, leg gap about 0.11, stub arms reaching the hip, mitten hands; 12 to 16 segments per turn (5.2)."""
+    1.44, leg gap about 0.11, stub arms reaching the hip, mitten hands (5.1, 5.2). One head mesh: the muzzle and cheeks
+    are shaped into it and the ears are extruded from it (no stuck on parts); 16 segments around (5.2: 12 to 16 per
+    turn); about 800 triangles per villager (5.2 estimate 500 to 800, L)."""
     yaw = math.radians(facing)
     Rz = Matrix.Rotation(yaw, 4, "Z")
     R3 = Rz.to_3x3()
     base = Vector((pos[0], pos[1], 0.0))
 
-    def W(f, s, z):                                                # local: f forward, s left, z up
-        return base + R3 @ Vector((f, s, z))
+    def W(f, s_, z):                                               # local: f forward, s left, z up
+        return base + R3 @ Vector((f, s_, z))
+
+    def ldir(az, la):
+        a, l = math.radians(az), math.radians(la)
+        return Vector((math.cos(l) * math.cos(a), math.cos(l) * math.sin(a), math.sin(l)))
 
     fur, light, accent = M[f"v_{name}_fur"], M[f"v_{name}_light"], M[f"v_{name}_accent"]
-    # head: a softly squared ellipsoid (superellipse exponent 2.4), UVs by longitude and latitude
-    head_c = W(0.0, 0.0, 0.70)
     HX, HY, HZ = 0.25, 0.288, 0.20
+    hc_local = Vector((0, 0, 0.70))
     bm = bmesh.new()
     uv = bm.loops.layers.uv.new("UVMap")
-    res = bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=12, radius=1.0)
+    dl = [bm.verts.layers.float.new(n) for n in ("dx", "dy", "dz")]
+    bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=1.0)
+    if species == "dog":
+        bumps = [(ldir(0, -18), 0.085, 0.5)]                      # muzzle
+    else:
+        bumps = [(ldir(20, -24), 0.03, 0.42), (ldir(-20, -24), 0.03, 0.42), (ldir(0, -14), 0.012, 0.3)]
     nexp = 2.4
-    for v in res["verts"]:
+    for v in bm.verts:
         d = v.co.normalized()
-        k = (abs(d.x) ** nexp + abs(d.y) ** nexp + abs(d.z) ** nexp) ** (-1 / nexp)
-        p = d * k
+        for k in range(3):
+            v[dl[k]] = d[k]
+        rad = (abs(d.x) ** nexp + abs(d.y) ** nexp + abs(d.z) ** nexp) ** (-1 / nexp)
+        p = d * rad
         if p.z > 0:
-            p.z *= 0.92                                          # a little flatter on top
-        v.co = head_c + R3 @ Vector((p.x * HX, p.y * HY, p.z * HZ))
-    Ri = R3.inverted()
+            p.z *= 0.92
+        p = Vector((p.x * HX, p.y * HY, p.z * HZ))
+        for bd, amp, sig in bumps:                                 # muzzle and cheeks, part of the head surface
+            ang = d.angle(bd)
+            p += d * amp * math.exp(-(ang / sig) ** 2)
+        v.co = p
     for f in bm.faces:
         for lp in f.loops:
-            dd = Ri @ (lp.vert.co - head_c)
-            dd = Vector((dd.x / HX, dd.y / HY, dd.z / HZ)).normalized()
+            dd = Vector([lp.vert[dl[k]] for k in range(3)])
             lp[uv].uv = (0.5 + math.atan2(dd.y, dd.x) / (2 * math.pi), 0.5 + math.asin(max(-1, min(1, dd.z))) / math.pi)
         us = [lp[uv].uv.x for lp in f.loops]
         if max(us) - min(us) > 0.5:
             for lp in f.loops:
                 if lp[uv].uv.x < 0.5:
                     lp[uv].uv.x += 1.0
-    mesh_object(f"{name}Head", bm, col, [M[f"v_{name}_face"]])
 
-    def surf(az, la, out=0.0):
-        a, l = math.radians(az), math.radians(la)
-        return head_c + R3 @ Vector(((HX + out) * math.cos(l) * math.cos(a), (HY + out) * math.cos(l) * math.sin(a),
-                                     (HZ + out) * math.sin(l)))
+    def faces_near(targets):
+        out = []
+        for t in targets:
+            best = min((f for f in bm.faces if f not in out),
+                       key=lambda f: (f.calc_center_median().normalized() - t).length)
+            out.append(best)
+        return out
 
-    q = Rz.to_quaternion()
-    # muzzle and nose
-    bm, uv = new_bm()
-    if species == "dog":
-        bm_sphere(bm, uv, surf(0, -14, -0.02), 0.11, scale=(0.9, 1.0, 0.7), segs=14, rings=8, rot=q)
-    else:
-        for sgn in (-1, 1):                                       # two cheek puffs
-            bm_sphere(bm, uv, surf(sgn * 13, -22, -0.035), 0.065, scale=(0.75, 1.0, 0.8), segs=12, rings=7, rot=q)
-    mesh_object(f"{name}Muzzle", bm, col, [light])
-    bm, uv = new_bm()
-    if species == "dog":
-        bm_sphere(bm, uv, surf(0, -8, 0.075), 0.042, scale=(0.8, 1.1, 0.75), segs=12, rings=7, rot=q)
-        nose_m = M["v_nose_dark"]
-    else:
-        bm_sphere(bm, uv, surf(0, -14, 0.012), 0.024, scale=(0.7, 1.2, 0.8), segs=10, rings=6, rot=q)
-        nose_m = accent
-    mesh_object(f"{name}Nose", bm, col, [nose_m])
-    # ears
-    bm, uv = new_bm()
-    bm2, uv2 = new_bm()
+    def extrude(faces, offset, scale, flat_axis=None, flat=1.0):
+        """Extrude a face region, move it by `offset` and scale it about its centre (local head space)."""
+        r_ = bmesh.ops.extrude_face_region(bm, geom=faces)
+        verts = [e for e in r_["geom"] if isinstance(e, bmesh.types.BMVert)]
+        top = [e for e in r_["geom"] if isinstance(e, bmesh.types.BMFace)]
+        bmesh.ops.delete(bm, geom=faces, context="FACES")
+        c = sum((v.co for v in verts), Vector()) / len(verts)
+        for v in verts:
+            o = (v.co - c) * scale
+            if flat_axis is not None:
+                o = o - flat_axis * o.dot(flat_axis) * (1 - flat)
+            v.co = c + o + offset
+        sides = {f for v in verts for f in v.link_faces} - set(top)
+        return top, sides
+
+    fwd = Vector((1, 0, 0))
+    ears = []                                                      # (faces, base centre, axis, side axis, half width, length)
     for sgn in (-1, 1):
-        if species == "cat":                                       # rounded cones, tilted out, inner ear painted
-            b0 = surf(sgn * 42, 50, -0.03)
-            for target, tuv, rad, hh, off in ((bm, uv, 0.095, 0.17, 0.0), (bm2, uv2, 0.055, 0.12, 0.03)):
-                before = set(target.verts)
-                bm_tube(target, tuv, [(0, 0, 0), (0, 0, hh * 0.6), (0, 0, hh)], [rad, rad * 0.55, rad * 0.12], 10,
-                        cap_end=True, cap_start=True)
-                m = (Matrix.Translation(b0) @ Rz @ Matrix.Rotation(math.radians(sgn * -18), 4, "X")
-                     @ Matrix.Translation((off, 0, 0)) @ Matrix.Diagonal((0.55, 1.0, 1.0, 1.0)))
-                xform_new(target, before, m)
-        elif species == "dog":                                     # floppy ears hanging at the sides
-            c = surf(sgn * 78, 18, 0.02) + Vector((0, 0, -0.07))
-            rot = Vector((0, 0, 1)).rotation_difference(R3 @ Vector((0.05, sgn * 0.3, -1)).normalized())
-            bm_sphere(bm, uv, c, 0.13, scale=(0.62, 0.32, 1.0), segs=12, rings=7, rot=rot)
-        else:                                                      # rabbit: long ears, inner ear painted
-            b0 = surf(sgn * 26, 62, -0.04)
-            rot = Vector((0, 0, 1)).rotation_difference(R3 @ Vector((-0.08, sgn * 0.22, 1)).normalized())
-            cc = b0 + rot @ Vector((0, 0, 0.19))
-            bm_sphere(bm, uv, cc, 0.21, scale=(0.36, 0.26, 1.0), segs=12, rings=8, rot=rot)
-            bm_sphere(bm2, uv2, cc + R3 @ Vector((0.045, 0, 0)), 0.165, scale=(0.24, 0.15, 0.82), segs=10, rings=6,
-                      rot=rot)
-    mesh_object(f"{name}Ears", bm, col, [accent if species == "dog" else fur])
-    if len(bm2.verts):
-        mesh_object(f"{name}EarsInner", bm2, col, [M["v_ear_inner"]])
-    else:
-        bm2.free()
-    # torso (shirt): a soft bell shape; sleeves (shirt) then forearms (fur) to mitten hands at hip height
+        if species == "cat":
+            top = faces_near([ldir(sgn * 38, 52), ldir(sgn * 58, 52)])
+            c0 = sum((v.co for f in top for v in f.verts), Vector()) / sum(len(f.verts) for f in top)
+            out = (ldir(sgn * 48, 62) + Vector((0, 0, 0.6))).normalized()
+            steps = [(0.085, 0.8, 0.55), (0.075, 0.15, 0.6)]
+            hw = 0.075
+        elif species == "rabbit":
+            top = faces_near([ldir(sgn * 20, 62), ldir(sgn * 40, 62)])
+            c0 = sum((v.co for f in top for v in f.verts), Vector()) / sum(len(f.verts) for f in top)
+            out = (ldir(sgn * 30, 75) + Vector((0, 0, 1.6))).normalized()
+            steps = [(0.08, 1.0, 0.5), (0.12, 1.08, 1.0), (0.12, 0.85, 1.0), (0.07, 0.3, 1.0)]
+            hw = 0.07
+        else:                                                      # dog: flaps from the upper sides, hanging down
+            top = faces_near([ldir(sgn * 70, 38), ldir(sgn * 88, 38)])
+            c0 = sum((v.co for f in top for v in f.verts), Vector()) / sum(len(f.verts) for f in top)
+            side = Vector((0, sgn, 0))
+            allf = set()
+            for off, sc_, fl in ((side * 0.04 + Vector((0, 0, 0.025)), 0.9, 0.45),
+                                 (side * 0.035 + Vector((0.0, 0, -0.1)), 1.1, 0.45),
+                                 (side * 0.01 + Vector((0.0, 0, -0.1)), 1.0, 0.5),
+                                 (Vector((0.0, 0, -0.05)), 0.5, 0.6)):
+                top, sd = extrude(top, off, sc_, side, fl)
+                allf |= sd
+            allf |= set(top)
+            for f in allf:
+                if f.is_valid:
+                    f.material_index = 2
+            continue
+        side_ax = (Vector((0, 1, 0)) - out * out.y).normalized()
+        allf, L = set(), 0.0
+        for k, (ln, sc_, fl) in enumerate(steps):
+            off = out * ln + (Vector((0, sgn * 0.012, 0)) if k else Vector())
+            top, sd = extrude(top, off, sc_, fwd, fl)
+            allf |= sd
+            L += ln
+        allf |= set(top)
+        ears.append((allf, c0, out, side_ax, hw, L))
+    for faces, c0, out, side_ax, hw, L in ears:                    # ear UVs onto the ear texture (slot 1)
+        for f in faces:
+            if not f.is_valid:
+                continue
+            f.normal_update()
+            f.material_index = 1
+            front = f.normal.dot(fwd) > 0.3
+            for lp in f.loops:
+                o = lp.vert.co - c0
+                u = 0.5 + o.dot(side_ax) / (2 * hw) * 0.9
+                lp[uv].uv = (min(1, max(0, u)) if front else 0.02, min(1, max(0, o.dot(out) / L)))
+    for v in bm.verts:
+        v.co = base + R3 @ (v.co + hc_local)
+    mesh_object(f"{name}Head", bm, col, [M[f"v_{name}_face"], M[f"v_{name}_ear"], accent])
+    head_c = base + R3 @ hc_local
+    if species == "dog":                                           # nose tip set into the muzzle
+        bm, uv = new_bm()
+        nt_ = head_c + R3 @ (ldir(0, -12) * 0.25 + Vector((0.075, 0, 0.0)))
+        bm_sphere(bm, uv, nt_, 0.04, scale=(0.8, 1.1, 0.75), segs=8, rings=5, rot=Rz.to_quaternion())
+        mesh_object(f"{name}Nose", bm, col, [M["v_nose_dark"]])
+    # torso (shirt): a soft bell shape with sleeves; forearms (fur) to mitten hands at hip height; stub legs, feet
     bm, uv = new_bm()
-    bm_tube(bm, uv, [W(0, 0, 0.11), W(0, 0, 0.14), W(0, 0, 0.26), W(0, 0, 0.42), W(0, 0, 0.53), W(0, 0, 0.56)],
-            [0.13, 0.165, 0.17, 0.145, 0.1, 0.05], 14, v0=0.5, v1=1.0, cap_end=True, cap_start=True)
+    bm_tube(bm, uv, [W(0, 0, 0.11), W(0, 0, 0.15), W(0, 0, 0.3), W(0, 0, 0.47), W(0, 0, 0.56)],
+            [0.13, 0.165, 0.165, 0.125, 0.05], 10, v0=0.5, v1=1.0, cap_end=True, cap_start=True)
     for sgn in (-1, 1):
-        bm_tube(bm, uv, [W(0.0, sgn * 0.12, 0.47), W(0.01, sgn * 0.175, 0.4)], [0.06, 0.056], 10, v0=0.0, v1=0.5,
+        bm_tube(bm, uv, [W(0.0, sgn * 0.12, 0.47), W(0.01, sgn * 0.175, 0.4)], [0.06, 0.056], 8, v0=0.0, v1=0.5,
                 cap_start=True, cap_end=True)
     mesh_object(f"{name}Body", bm, col, [M[f"v_{name}_shirt"]])
     bm, uv = new_bm()
     for sgn in (-1, 1):
-        bm_tube(bm, uv, [W(0.01, sgn * 0.17, 0.41), W(0.03, sgn * 0.205, 0.3)], [0.048, 0.044], 10, cap_end=True)
-        bm_sphere(bm, uv, W(0.035, sgn * 0.21, 0.275), 0.055, scale=(1.0, 0.9, 1.05), segs=12, rings=7)
-        bm_tube(bm, uv, [W(0, sgn * 0.075, 0.14), W(0, sgn * 0.075, 0.04)], [0.06, 0.058], 10)
-        bm_sphere(bm, uv, W(0.03, sgn * 0.078, 0.035), 0.068, scale=(1.3, 0.95, 0.55), segs=12, rings=7)
+        bm_tube(bm, uv, [W(0.01, sgn * 0.17, 0.41), W(0.03, sgn * 0.205, 0.3)], [0.048, 0.044], 6, cap_end=True)
+        bm_sphere(bm, uv, W(0.035, sgn * 0.21, 0.275), 0.055, scale=(1.0, 0.9, 1.05), segs=8, rings=5)
+        bm_tube(bm, uv, [W(0, sgn * 0.075, 0.14), W(0, sgn * 0.075, 0.04)], [0.06, 0.058], 6)
+        bm_sphere(bm, uv, W(0.03, sgn * 0.078, 0.035), 0.068, scale=(1.3, 0.95, 0.55), segs=8, rings=4)
     if species == "cat":
         bm_tube(bm, uv, [W(-0.16, 0, 0.18), W(-0.27, 0.04, 0.24), W(-0.31, 0.07, 0.36), W(-0.28, 0.08, 0.45)],
-                [0.036, 0.033, 0.03, 0.026], 8, cap_end=True)
+                [0.036, 0.033, 0.03, 0.026], 6, cap_end=True)
     elif species == "dog":
-        bm_tube(bm, uv, [W(-0.16, 0, 0.2), W(-0.24, 0, 0.27), W(-0.26, 0, 0.33)], [0.045, 0.035, 0.02], 8, cap_end=True)
+        bm_tube(bm, uv, [W(-0.16, 0, 0.2), W(-0.24, 0, 0.27), W(-0.26, 0, 0.33)], [0.045, 0.035, 0.02], 6, cap_end=True)
     else:
-        bm_sphere(bm, uv, W(-0.18, 0, 0.17), 0.075, segs=12, rings=7)
+        bm_sphere(bm, uv, W(-0.18, 0, 0.17), 0.075, segs=8, rings=5)
     mesh_object(f"{name}Limbs", bm, col, [fur])
     dep = math.atan2(R.CAM_H, R.CAM_D)
     rx = R.BLOB_EXTENT / 2 * 1.12
     R.blob(col, M["blob"], f"{name}Shadow", (pos[0], pos[1], 0.006), rx, rx / (R.BLOB_ASPECT_ON_SCREEN * math.sin(dep)))
     return head_c
+
+
+# --------------------------------------------------------------------------
+# Flower beds: tulips and pansies (NL beds hold chunky cup tulips on stems with broad leaves, S#2855 right edge,
+# and flat five petal pansies, S#1436, by eye); original meshes and textures
+# --------------------------------------------------------------------------
+FLOWER_COLS = {"red": ("#B8242C", "#E0402E", "#FF8A6A"), "yellow": ("#D99A14", "#F6C624", "#FFF09A"),
+               "white": ("#CFC6C0", "#F4F0E8", "#FFFFFF"), "pink": ("#C9547A", "#F28AA6", "#FFD0DC"),
+               "violet": ("#4A2C8C", "#7A56C8", "#C0A8F0")}
+
+
+def tex_petal(name, cols):
+    w, h = 16, 32
+    v = (np.mgrid[0:h, 0:w][0][::-1] + 0.5) / h                     # v up
+    col = ramp(np.clip(0.15 + 0.85 * v, 0, 1), list(cols)) * mottle(w, h, 3, 0.05)[..., None]
+    return make_image(name, grain(np.clip(col, 0, 1), 0.03))
+
+
+def tex_pansy(name, cols):
+    w = h = 32
+    yy, xx = (np.mgrid[0:h, 0:w] + 0.5) / h * 2 - 1
+    r = np.hypot(xx, yy)
+    col = ramp(np.clip(r, 0, 1), [cols[1], cols[1], cols[2]])
+    blotch = smoothstep(0.55, 0.3, r)[..., None]
+    col = col * (1 - blotch) + hexc("#3A1E3A") * blotch
+    col[r < 0.13] = hexc("#FFD43A")
+    return make_image(name, grain(np.clip(col, 0, 1), 0.03))
+
+
+def tulip_cup(bm, uv, c, h, r, segs=8):
+    """Cup of overlapping petals: a lathe whose rim alternates high (petal tips) and low."""
+    rings = []
+    prof = [(0.0, 0.35), (0.25, 0.85), (0.6, 1.0), (1.0, 0.82)]
+    for i, (fz, fr) in enumerate(prof):
+        ring = []
+        for k in range(segs):
+            a = 2 * math.pi * k / segs
+            z = c.z + h * fz + (h * 0.18 if (i == len(prof) - 1 and k % 2 == 0) else 0.0)
+            ring.append(bm.verts.new((c.x + r * fr * math.cos(a), c.y + r * fr * math.sin(a), z)))
+        rings.append(ring)
+    faces = [bm.faces.new(list(reversed(rings[0])))]
+    for i in range(len(rings) - 1):
+        for k in range(segs):
+            f = bm.faces.new((rings[i][k], rings[i][(k + 1) % segs], rings[i + 1][(k + 1) % segs], rings[i + 1][k]))
+            for lp, q in zip(f.loops, ((k, i), (k + 1, i), (k + 1, i + 1), (k, i + 1))):
+                lp[uv].uv = (q[0] / segs, q[1] / (len(rings) - 1))
+            faces.append(f)
+    inner = [bm.verts.new((c.x, c.y, c.z + h * 0.55))]                # a shallow throat closes the cup
+    for k in range(segs):
+        f = bm.faces.new((rings[-1][k], rings[-1][(k + 1) % segs], inner[0]))
+        for lp in f.loops:
+            lp[uv].uv = (0.5, 0.2)
+        faces.append(f)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+
+
+def leaf_blade(bm, uv, base, direction, length, width, lift):
+    """A broad curved leaf: a ribbon of 3 segments arching out from the base."""
+    d = Vector(direction).normalized()
+    side = Vector((-d.y, d.x, 0))
+    pts = []
+    for i, t in enumerate(np.linspace(0, 1, 4)):
+        p = Vector(base) + d * length * t * 0.8 + Vector((0, 0, lift * math.sin(t * math.pi * 0.8)))
+        wdt = width * (math.sin(math.pi * min(0.95, t * 0.9 + 0.1)))
+        pts.append((p - side * wdt / 2, p + side * wdt / 2))
+    vs = [(bm.verts.new(a), bm.verts.new(b)) for a, b in pts]
+    for i in range(3):
+        f = bm.faces.new((vs[i][0], vs[i][1], vs[i + 1][1], vs[i + 1][0]))
+        for lp, q in zip(f.loops, ((0, i / 3), (1, i / 3), (1, (i + 1) / 3), (0, (i + 1) / 3))):
+            lp[uv].uv = q
+
+
+def build_flower_bed(col, M, x, y, kind, colours, rng, n=7, radius=0.32):
+    heads = {c: new_bm() for c in colours}
+    bms, uvs = new_bm()
+    bml, uvl = new_bm()
+    pts = []
+    while len(pts) < n:
+        p = Vector((x + rng.uniform(-radius, radius), y + rng.uniform(-radius * 0.8, radius * 0.8), 0))
+        if (p - Vector((x, y, 0))).length < radius and all((p - q).length > 0.13 for q in pts):
+            pts.append(p)
+    for k, p in enumerate(pts):
+        cname = colours[k % len(colours)]
+        hb, hu = heads[cname]
+        if kind == "tulip":
+            hgt = rng.uniform(0.26, 0.34)
+            bm_tube(bms, uvs, [p, p + Vector((0.01, 0, hgt))], [0.012, 0.01], 5)
+            tulip_cup(hb, hu, p + Vector((0.01, 0, hgt - 0.01)), 0.1, 0.055)
+            for a in (rng.uniform(0, 2 * math.pi), rng.uniform(0, 2 * math.pi)):
+                leaf_blade(bml, uvl, p + Vector((0, 0, 0.01)), (math.cos(a), math.sin(a), 0), 0.2, 0.07, 0.12)
+        else:                                                         # pansy: flat five lobed face on a short stem
+            hgt = rng.uniform(0.1, 0.15)
+            bm_tube(bms, uvs, [p, p + Vector((0, -0.01, hgt))], [0.01, 0.009], 5)
+            ctr = p + Vector((0, -0.02, hgt + 0.01))
+            tilt = Matrix.Rotation(math.radians(-38), 3, "X")       # faces up and toward the viewer
+            ring = []
+            for i in range(20):
+                a = 2 * math.pi * i / 20
+                rr = 0.08 * (0.72 + 0.28 * abs(math.cos(2.5 * a)))
+                ring.append(hb.verts.new(ctr + tilt @ Vector((rr * math.cos(a), rr * math.sin(a), 0.012 * rr / 0.08))))
+            cv = hb.verts.new(ctr)
+            for i in range(20):
+                f = hb.faces.new((cv, ring[i], ring[(i + 1) % 20]))
+                for lp in f.loops:
+                    o = tilt.inverted() @ (lp.vert.co - ctr)
+                    lp[hu].uv = (0.5 + o.x / 0.17, 0.5 + o.y / 0.17)
+            for a in np.linspace(0, 2 * math.pi, 4, endpoint=False) + rng.uniform(0, 1):
+                bm_sphere(bml, uvl, p + Vector((0.07 * math.cos(a), 0.07 * math.sin(a), 0.03)), 0.06,
+                          scale=(1.2, 1.0, 0.45), segs=8, rings=4)
+    objs = []
+    for cname, (hb, hu) in heads.items():
+        if len(hb.verts):
+            m = M[f"fl_{kind}_{cname}"]
+            objs.append((mesh_object(f"Flower_{kind}_{cname}", hb, col, [m]), None))
+        else:
+            hb.free()
+    objs.append((mesh_object("FlowerStems", bms, col, [M["stem"]]), None))
+    objs.append((mesh_object("FlowerLeaves", bml, col, [M["fl_leaf"]]), None))
+    R.profile_shadow(col, f"BedShadow_{x:.1f}_{y:.1f}", objs, x, y, 0.01, radius + 0.25, "contact")
 
 
 # --------------------------------------------------------------------------
@@ -846,9 +1041,10 @@ def plaza_haze_colour(M):
 # Build
 # --------------------------------------------------------------------------
 TREES = [(-3.1, 2.4, 2.0), (3.2, 2.9, 2.1), (-4.2, 5.6, 2.1), (4.4, 6.2, 2.2), (-1.4, 7.2, 2.2), (1.9, 8.0, 2.1)]
-FLOWER_BEDS = [(-2.75, 0.55), (2.7, 0.75), (-2.85, -0.75), (2.75, -0.6)]
-BUSHES = [(-2.6, 1.6, 0.38), (2.65, 1.7, 0.4)]
-LAMPS = [(-1.1, 0.95), (1.15, 0.98)]
+FLOWER_BEDS = [(-1.98, 0.72, "tulip", ("red", "yellow", "white")), (1.98, 0.76, "tulip", ("yellow", "red", "pink")),
+               (-2.0, -0.2, "pansy", ("violet", "yellow")), (2.0, -0.3, "pansy", ("pink", "white", "violet"))]
+BUSHES = [(-2.45, 1.55, 0.38), (2.5, 1.6, 0.4)]
+LAMPS = [(-1.15, 0.95), (1.15, 0.97)]
 
 
 def build(native=False):
@@ -881,13 +1077,18 @@ def build(native=False):
         "h_metal": mat("M_HMetal", image=R.tex_flat("T_Metal", ["#26302C", HP["metal"], "#56665E"], 0.04)),
         "h_lamp": R.unlit("M_HLampN", HP["lamp_night"]) if night else mat("M_HLamp", color=HP["lamp"]),
         "v_nose_dark": mat("M_VNoseDark", color="#4A3434", rim=1.0),
+        "fl_leaf": mat("M_FlLeaf", image=R.tex_flat("T_FlLeaf", ["#1E6A2A", "#2F8A36", "#5DB04A"], 0.05)),
         "v_ear_inner": mat("M_VEarInner", image=R.tex_flat("T_EarInner", ["#E894A6", "#F6B4C2", "#FCD2DA"], 0.04),
                            rim=1.0),
     })
+    for cname, cols in FLOWER_COLS.items():
+        M[f"fl_tulip_{cname}"] = mat(f"M_Tulip_{cname}", image=tex_petal(f"T_Tulip_{cname}", cols))
+        M[f"fl_pansy_{cname}"] = mat(f"M_Pansy_{cname}", image=tex_pansy(f"T_Pansy_{cname}", cols))
     for name, species, pos, facing, fur, light, accent, sa, sb in VILLAGERS:
         pattern = {"cat": "stripes", "dog": "gingham", "rabbit": "dots"}[species]
         M[f"v_{name}_face"] = mat(f"M_{name}Face", image=tex_villager_face(fur, light, accent, species), rim=1.0)
         M[f"v_{name}_fur"] = mat(f"M_{name}Fur", image=tex_fur(f"T_{name}Fur", fur, light), rim=1.0)
+        M[f"v_{name}_ear"] = mat(f"M_{name}Ear", image=tex_ear(f"T_{name}Ear", fur, "#F4A9B8"), rim=1.0)
         M[f"v_{name}_light"] = mat(f"M_{name}Light", image=tex_fur(f"T_{name}Light", light, "#FFFFFF"), rim=1.0)
         M[f"v_{name}_accent"] = mat(f"M_{name}Accent", image=tex_fur(f"T_{name}Acc", accent, light), rim=1.0)
         M[f"v_{name}_shirt"] = mat(f"M_{name}Shirt", image=tex_vshirt(f"T_{name}Shirt", sa, sb, pattern), rim=1.0)
@@ -895,29 +1096,56 @@ def build(native=False):
     bpy.context.scene.collection.children.link(world)
     R.build_sky()
     build_ground(world, M)
+    before = set(bpy.data.objects.keys())
     gable_top = build_hall(world, M)
+    fy = HALL["front_y"]
+    for name in set(bpy.data.objects.keys()) - before:              # scale the hall about its front base
+        me = bpy.data.objects[name].data
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        co[:, 0] *= HALL_SCALE
+        co[:, 1] = fy + (co[:, 1] - fy) * HALL_SCALE
+        co[:, 2] = np.where(co[:, 2] < 0.02, co[:, 2], co[:, 2] * HALL_SCALE)
+        me.vertices.foreach_set("co", co.ravel())
+        me.update()
     for x, y in LAMPS:
         build_lamp(world, M, x, y)
     for x, y, hgt in TREES:
         assert plaza_weight(x, y) == 0.0, ("tree on the plaza", x, y)
         R.build_tree(world, M, x, y, hgt, rng)
-    for x, y in FLOWER_BEDS:
-        assert plaza_weight(x, y) == 0.0, ("flowers on the plaza", x, y)
-        R.build_flowers(world, M, x, y, rng)
+    for x, y, kind, cols in FLOWER_BEDS:
+        for dx, dy in ((0.33, 0.27), (-0.33, 0.27), (0.33, -0.27), (-0.33, -0.27), (0.33, 0), (-0.33, 0)):
+            assert plaza_weight(x + dx, y + dy) == 0.0, ("flowers on the plaza", x, y)
+        build_flower_bed(world, M, x, y, kind, cols, rng)
     for x, y, r in BUSHES:
         assert plaza_weight(x, y) == 0.0, ("bush on the plaza", x, y)
         R.build_bush(world, M, x, y, r, rng)
+    before = set(bpy.data.objects.keys())
     R.build_player(world, M, pos=(0.0, 0.0, 0.0), facing_deg=PLAYER_FACING, fishing=False)
     dep = math.atan2(R.CAM_H, R.CAM_D)
     rx = R.BLOB_EXTENT / 2
     R.blob(world, M["blob"], "PlayerShadow", (0.0, 0.0, 0.006), rx, rx / (R.BLOB_ASPECT_ON_SCREEN * math.sin(dep)))
     heads = {name: build_villager(world, M, name, species, pos, facing)
              for name, species, pos, facing, *_ in VILLAGERS}
+    chars = {n for n in set(bpy.data.objects.keys()) - before if "Shadow" not in n}
     hazed = apply_object_haze(M)
+    for ob in bpy.context.scene.objects:                         # buildings and props lean back; characters upright
+        if ob.type != "MESH" or ob.name in chars or ob.name == "Terrain":
+            continue
+        me = ob.data
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        co[:, 1] += LEAN * co[:, 2]
+        me.vertices.foreach_set("co", co.ravel())
+        me.update()
     R.bend_world()
     cam = R.build_camera(world)
     R.finalize_render(native, world, M, cam)
-    return {"cam": cam, "heads": heads, "gable_top": gable_top, "hazed": hazed}
+    tris_v = sum(sum(len(p.vertices) - 2 for p in bpy.data.objects[n].data.polygons) for n in chars
+                 if n.startswith("Cat"))
+    return {"cam": cam, "heads": heads, "gable_top": gable_top * HALL_SCALE, "hazed": hazed, "tris_cat": tris_v}
 
 
 def check(info):
@@ -925,11 +1153,11 @@ def check(info):
     bpy.context.view_layer.update()
     cam = info["cam"]
 
-    def row_col(p):
-        v = world_to_camera_view(sc, cam, R.bend_point(Vector(p)))
+    def row_col(p, lean=False):
+        v = world_to_camera_view(sc, cam, R.bend_point(lean_point(p, lean)))
         return 1 - v.y, v.x
 
-    print(f"camera: height {R.CAM_H:.2f} P, distance {R.CAM_D:.2f} P, bend R {R.LOG_R:.2f} P, object lean {LEAN_DEG} deg, "
+    print(f"camera: height {R.CAM_H:.2f} P, distance {R.CAM_D:.2f} P, bend R {R.LOG_R:.2f} P, building lean {LEAN_DEG} deg, "
           f"open ground horizon {R.horizon_row_for(R.LOG_R, R.CAM_H, R.CAM_D):.3f}; haze {R.HAZE_NEAR:.2f} to "
           f"{R.HAZE_FAR:.2f} P on {info['hazed']} object materials")
     for k, p in {"player feet": (0, 0, 0), "player hair top": (0, 0, 1.0)}.items():
@@ -939,17 +1167,16 @@ def check(info):
         r0, c0 = row_col((pos[0], pos[1], 0.0))
         r1, _ = row_col((pos[0], pos[1], 1.0))
         print(f"  {name:18s} feet row {r0:.3f} column {c0:.3f}, height share {r0 - r1:.3f}")
-    fy, E, bf = HALL["front_y"], HALL["eave"], HALL["front_y"] - HALL["bay_d"]
-    for k, p in {"bay base": (0, bf, 0.0), "eave front": (HALL["w"] / 2, fy - 0.3, E), "clock centre": (0, bf, E + 0.18),
-                 "gable top": (0, bf, info["gable_top"]), "hall left corner": (-HALL["w"] / 2, fy, 0),
-                 "hall right corner": (HALL["w"] / 2, fy, 0)}.items():
-        r, c = row_col(p)
+    S = HALL_SCALE
+    fy, E, bf = HALL["front_y"], HALL["eave"] * S, HALL["front_y"] - HALL["bay_d"] * S
+    for k, p in {"bay base": (0, bf, 0.0), "eave front": (HALL["w"] / 2 * S, fy - 0.3 * S, E),
+                 "clock centre": (0, bf, (HALL["eave"] + 0.27) * S), "gable top": (0, bf, info["gable_top"]),
+                 "hall left corner": (-HALL["w"] / 2 * S, fy, 0), "hall right corner": (HALL["w"] / 2 * S, fy, 0)}.items():
+        r, c = row_col(p, lean=True)
         print(f"  {k:18s} row {r:.3f} column {c:.3f}{'' if 0 <= r <= 1 and 0 <= c <= 1 else '  OUT OF FRAME'}")
     print("  retail S#2855 (by eye): feet 0.917, hall base 0.854, eave 0.417, clock gable top 0.067, walls 0.15 to 0.83")
     tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in sc.objects if o.type == "MESH")
-    vt = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in sc.objects
-             if o.type == "MESH" and o.name.startswith("Cat") and not o.name.startswith("CatShadow"))
-    print(f"triangles: one villager {vt}, scene {tris}")
+    print(f"triangles: one villager (cat) {info['tris_cat']}, scene {tris}")
 
 
 def qa(png):
