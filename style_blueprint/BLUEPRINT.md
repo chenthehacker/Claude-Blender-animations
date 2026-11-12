@@ -102,7 +102,7 @@ from the top. Consequence (arithmetic): player height / frame WIDTH is 0.205 x 4
 | rim light, NL | YES in game: 1 to 2 px (1 to 2% of figure height), plus 15 to 35% luminance, tinted pink lilac. NL#941 1.15, 942 1.19, 945 1.19, 943 1.33; NL art 1.13 to 1.22 | vD conflict 1 (retail emote captures). NL model viewer renders lack it (1.03): do not use them as NL lighting reference. [Au] profile down from the top of the hair (`audit/nl_rim.py`): the second pixel row reads 1.32 (NL#941), 1.56 (942), 1.50 (944), 1.32 to 1.50 (945) of the hair 4 to 8 px inside, the third row 1.05 to 1.3; blue rises there (hair interior B 76 to 81, row 1 B 94 to 122) while the lime grass has B near 20, so this is a lit rim and not only grass bleed. Head top rims are therefore stronger than the ring average: gain range CORRECTED to plus 15 to 50% (ring average 15 to 35%, head top up to 50%). M to H |
 | rim light, CF | cannot confirm in game; CF artwork has the opposite (silhouette 0.74 to 0.82 darker, broad falloff, not a line) | A, vD. Use none |
 | specular | none on matte characters or terrain; small painted or soft highlight on glossy props (NL fruit soft blob, CF fruit hard white disc, by eye) | A, B, D. M |
-| distance haze, NL press builds | ground brightens and yellows over the far 40 to 50% of visible ground: NL#953 L 99 to 104 near to 182 at the horizon; far colour typical #94CC78 (max #AAE677 NL#956); independent of sky colour; water too (NL#957 near #3B6CAC, far #96B8F9). Horizon nearly dissolves (sky L 191 vs far grass 177 to 197) | A, vA (4 press images). Retail NL haze UNPROVEN (no open far ground in NL#938 to 940). M |
+| distance haze, NL press builds | ground brightens and yellows over the far 40 to 50% of visible ground: NL#953 L 99 to 104 near to 182 at the horizon; far colour typical #94CC78 (max #AAE677 NL#956); independent of sky colour; water too (NL#957 near #3B6CAC, far #96B8F9). Horizon nearly dissolves (sky L 191 vs far grass 177 to 197) | A, vA (4 press images). Retail NL haze UNPROVEN here (no open far ground in NL#938 to 940). SUPERSEDED: confirmed on 22 retail frames (16.3) as a ground and water layer only, objects keep their colour (16.17). M |
 | haze, CF | none: grass L constant within 4 to 6 levels from horizon to bottom (CF#873, 870, 882, 888); crisp dark sky against bright grass step (L 89 to 129) | A, vA. H |
 | night | CF night grass to about 0.6 of day luminance and hue 155 to 173 deg; characters multiplied about (0.35, 0.37, 0.82); NL night blue violet with warm point lights and glow (lamps, windows) | A (CF#883, NL#938, NL#961); character ratio not re measured. M |
 | exposure | scenes almost never clip: near white median at most 1%, near black at most 0.2% | C, vC. H |
@@ -158,7 +158,7 @@ Audit [Au] (`audit/nl_blob2.py`: horizontal profile at the sole row, normalised 
 | role | CF | NL | source |
 |---|---|---|---|
 | grass | #009758 (CF#882), #009158 (CF#888), #0A8564 (CF#873): hue 154 to 166, V 0.47 to 0.57, teal green | press builds #188050 / #147D4D (hue 145 to 154); RETAIL emote captures lime: median #92DB10 (hue 81 to 82, S 0.93, V 0.86), mottle from p25 #82CC09 to p75 #A1E917 (NL#941, 942, 944, 945, all grass pixels incl. the blob shadow) [Au]; v2 #82CD0C is the dark quartile, CORRECTED | A, vA, vC, vD, Au. Season or build behind the lime cannot be confirmed. CF [Au]: CF#882 #009658, 888 #009158, 873 #068464, 878 #009B59: CONFIRMED. NL press [Au] #127C4B to #1D8551 (NL#946, 953, 951): CONFIRMED. M |
-| far grass | same as near (no haze) | haze to #94CC78 (press) | A, vA |
+| far grass | same as near (no haze) | haze to #94CC78 (press); retail toward #88BF68, far over near 2.15 (16.3) | A, vA |
 | dirt / path | #BC904A to #CDA349 (A), #C69342 (C); hard edged blobs with leafy, star cut edges | #906826 path (C, NL#940); plaza ground golden brown cobble (NL#940 by eye) | A, C. M |
 | sand | #E7CB8B (CF#871, S 0.40) | #FED08A (NL#949), #CDA177 (NL#963) | vC; [Au] CF#871 #E7CB8B exact, NL#949 #FED38C: CONFIRMED (NL#963 #D7A87E with a lighter mask). H for frames |
 | material boundaries | HARD: dirt to grass in 1 px (CF#888) with a dark teal outline (0,41,62) 2 to 3 px wide around grass shapes (A's 4 to 5 px REVISED) | soft, blending over a few px (by eye) | A, vA |
@@ -380,7 +380,7 @@ character, or franchise shirt motifs (CF#485, 631, 779, 783, 791 and similar) [D
 | bend (start under the camera; start at the player) | cylinder, R about 34 to 44 P; about 13 P (L) | cylinder, R about 31 P; about 13 P (L) |
 | sky | cobalt #1A2AD0, thin lighter band at the horizon | E3 2010 cyan #45C5FF; E3 2011 and retail deep blue #2135E7 |
 | grass | teal green #009758 | press #188050; retail lime #92DB10 (mottle #82CC09 to #A1E917) |
-| haze | none | strong in press builds, toward #94CC78 |
+| haze | none | strong in press builds, toward #94CC78; retail ground and water only, toward #88BF68, far over near 2.15 (16.3, 16.17) |
 | shadow side / lit, in game | about 0.5 to 0.6 | about 0.5 to 0.55 |
 | rim | none confirmed | 1 to 2 px, plus 15 to 50% (head top strongest), pink lilac |
 | blob shadow | violet tint (B multiplied least), core 0.3 to 0.6, about 0.4 P at 50% | R = G, B lifted, core 0.48, 0.38 P at 50%, sharper edge |
@@ -451,6 +451,7 @@ NL = {
     "rim": {"width_frac_of_height": 0.015, "gain": 0.22, "tint": "#C8B4E6"},  # M width and gain (vD, A; Au head top up to 0.50); tint E
     # gain is a DISPLAYED (sRGB) brightening: in linear light 1.22 is about 1.5x (section 3 audit)
     "haze": {"start_frac_of_ground": 0.5, "max_mix": 0.8, "colour": "#94CC78"},  # M press builds only; E mix curve
+    # retail (16.3, 16.17): ground and water materials only, toward #88BF68, upper 100 ground rows, far / near 2.15
     # blob shadow decal (section 3)
     "blob": {"core_mul": 0.48, "core_mul_rgb": (0.48, 0.48, 0.62),  # M luminance core (vA, Au); rgb E: R = G
              # sRGB display ratios. Linear multiply that displays 0.48: about 0.19 (0.17 to 0.22). On lime grass B RISES
@@ -549,8 +550,11 @@ ENVELOPE = {"neon_max": 0.02, "near_black_max": 0.02, "near_white_max": 0.02}   
    values: about 0.19 for a displayed 0.48 core; on lime grass add a dark blue grey blend so blue rises), render
    method Blended for static ground decals; if it smears under motion, switch to Dithered and fade by colour, not
    alpha (CLAUDE.md). Objects: smaller soft patches at trunk bases (ratio about 0.7).
-8. Haze (NL early look only): Camera Data View Z Depth into Map Range (near half of visible ground 0, far edge 1)
-   then smoothstep, mix ground and water toward #94CC78 up to 0.8. CF and NL retail: off.
+8. Haze (NL, press and retail; CF off): Camera Data View Distance into Map Range (from about the middle of the visible
+   ground to its far edge), smoothstep, then mix GROUND and WATER materials only toward the far colour: grass #88BF68
+   (press #94CC78), cobbles and paths a lighter lavender grey (#C6C3D6, S#3152), sea #95B3F2. Never on objects:
+   retail trunks, crowns and weeds at the horizon keep their colour (16.17). Anchor the distances to ground places,
+   not to one framing, so a closer camera does not move the haze. Superseded the earlier "NL retail: off" (16.3).
 9. Sky: CF: flat #1A2AD0 world with a horizon band only in the last 13% above the ground edge; NL retail: #2135E7
    to #4078DA. Standard view transform; apply the repo's camera ray compression trick only if the horizon clips.
 10. Textures: paint with numpy (`work_C/paint_recipes.py` functions: to565, limit_palette, ramp, outline_colour,
@@ -567,7 +571,7 @@ ENVELOPE = {"neon_max": 0.02, "near_black_max": 0.02, "near_white_max": 0.02}   
 
 | question | why it matters | evidence that settles it |
 |---|---|---|
-| retail NL outdoor look: haze present? grass lime (#92DB10) or teal green? sky always deep blue? | three of the strongest NL cues rest on press builds | 5 to 10 native 400x240 retail captures of open outdoor ground in summer and other seasons |
+| retail NL outdoor look: haze present? grass lime (#92DB10) or teal green? sky always deep blue? (RESOLVED in 16.2, 16.3, 16.17: haze yes, ground and water only; retail grass teal green #0D7541 family) | three of the strongest NL cues rest on press builds | 5 to 10 native 400x240 retail captures of open outdoor ground in summer and other seasons |
 | bend radius and where the bend starts | sets how fast the ground drops; R spans 10 to 43 P across models | a retail capture with a straight road or fence receding over the horizon (track its screen curvature), or a frame pair with known walk distance |
 | outdoor camera lens (no square grid outdoors) | interior grids only; 10% tile non squareness changes pitch 4 deg | outdoor captures with known square tiles (pattern paths) |
 | CF rim term in game | NL has one; CF unconfirmed | a CF capture of a dark character against a dark background at native size |
@@ -1154,14 +1158,14 @@ cleaner. The test town (1.53 to 1.76) is still 0.6 to 0.8 below the NL target.
 Layer order, bottom to top (every material uses a subset, in this order): **B** base painted texture; **M** motif print or
 painted detail; **L** LUT light (section 2 and 12.2: smooth ramp on N.L from the camera side headlight, shadow end violet);
 **R** rim (NL characters only); **D** decal shadow multiply (separate Blended decal objects, linear values); **H** haze (NL
-only, mix by view depth); **G** time of day or weather grade (multiply on the lit result); **E** emission; **T**
+only, mix by view depth; ground and water materials only, never objects, 16.17); **G** time of day or weather grade (multiply on the lit result); **E** emission; **T**
 transparency; **P** post (glow, clamp, optional 565 snap). Values are displayed sRGB unless marked; NL retail first, CF
 after a slash.
 
 | material | ordered layers with values | sections |
 |---|---|---|
 | grass ground | B NL near #0D7541 (spring and summer; late winter #5B8D3B, December #7B673A, island #187939, Main Street #5A9E5A) / CF #0A8C54; M NL dots, stars, leaves or diamonds per season, darker print p10 #005A3D / CF one family per town (squares, triangles, circles) in 3 motif colours (#60AF17, #02AE58, #0AA77B); L; D player blob 0.41 to 0.50 (linear 0.14 to 0.22), blue lifted; H mix toward #88BF68 to #B5E36B over the 100 rows below the horizon, far over near luminance about 2.15, saturation to about 0.5; G night (0.34, 0.31, 0.70) / CF (0.64, 0.68, 0.83), dusk (0.83, 0.58, 0.67) / CF (0.87, 0.66, 0.65) | 16.3, 16.5, 3 |
-| path, dirt, plaza | B CF #C79748 with blobs #BD944A and specks #D68C31 / NL bank #946D31, plaza dirt #9D6223, cobble #AAA9B9; M CF hexagon pebbles, NL round cobbles; L; edge: CF dark brown lip on the dirt side #7E5018 (no teal outline), NL soft blend; D; H; G as grass, CF rain (0.57, 0.55, 0.85) | 16.3 |
+| path, dirt, plaza | B CF #C79748 with blobs #BD944A and specks #D68C31 / NL bank #946D31, plaza dirt #9D6223, cobble #AAA9B9; M CF hexagon pebbles, NL round cobbles; L; edge: CF dark brown lip on the dirt side #7E5018 (no teal outline), NL soft blend; D; H NL cobbles toward a lighter lavender grey (#ADB2C6 near, #C6C3D6 far, luminance x1.11, S#3152), not toward the grass lime; G as grass, CF rain (0.57, 0.55, 0.85) | 16.3 |
 | sand and wet sand | B NL #EFB67B to #F4BB8C (town #CA9A68 to #DDA374) / CF shore #E7CB8B, inland #CEA64A; M shell decals, CF orange hexagon pebbles; wet band = B x 0.62 to 0.71 luminance, redder; foam line #ECF2F8; L; D player (0.55, 0.55, 0.67), palm (0.58, 0.56, 0.68); H; G dusk wet sand toward #86779D | 16.3, 16.6 |
 | snow | B NL lilac #A1A6E0 (range #8E90BA to #E7D7DA, warm highlights #FFEFEB) / CF #BDD3E6; M NL stars or hex cobble, CF the town family swapped (rounded squares, stars, hexagons) #F0F6F4; L shade toward #A1BDC6 / violet; D canopy (0.60, 0.60, 0.67), CF blob (0.53, 0.53, 0.58); G night to #4E56B1 to #5989EE, 5:33 PM pink #C499BC | 16.3, 16.6 |
 | cliff | B NL salmon #FCC599 lit, #B79EB1 mauve slabs / CF wall #86645D; M horizontal strata, CF cream band #D9C399 and crevices #4E1F36; L; grass lip on top; G rain toward #A78DA6, CF winter swap #5E5E79 | 16.3 |
@@ -1199,6 +1203,7 @@ after a slash.
 | 4.1, 15 clouds | white puffs key art only | CF look ups 15 to 30% (#C1DCFF); NL cumulus #CCE1FE and puffs #949EF7 in retail, rare | 16.2 |
 | 4.1, 4.4 night | NL "blue violet", sky always lightens to the horizon | NL #01215A flat; violet family a minority; CF #000B39 and early night violet bands | 16.2 |
 | 2, 15, 12.1 haze | NL retail unproven or likely | H: far over near 2.15, upper 100 ground rows, toward #88BF68 to #B5E36B | 16.3 |
+| 12.2 step 8, 16.16 haze | retail off; then haze on every object | on in NL retail, ground and water only; objects at the horizon keep their colour; cobbles toward lavender grey | 16.17 |
 | 4.2, 15, 12.1 NL grass | #92DB10, then #568F4F to #5D9D49 | near #026637 to #107442 (spring, summer); seasonal set; lime emote only | 16.3 |
 | 4.2 CF motif | shapes vary per frame | one family per town (squares, triangles, circles), four seasonal palettes | 16.3 |
 | 4.2, 10, 12.1 CF ground outline | teal (0,41,62) 2 to 3 px | brown lip on the dirt side #7E5018 (teal was press) | 16.3 |
@@ -1323,7 +1328,8 @@ where a 240 row figure is quoted):
   with the 12.1 camera; the different feet row explains the gap).
 * Haze (ground and water only): far band 2 to 22 rows below the horizon over the 170 to 236 band, on a ground only
   render pass: 2.12 (retail median 2.15). Applying the same haze to trees and props washed them to flat lime, which no
-  capture shows, so haze stays a ground and water layer (16.10 H applies to those materials only).
+  capture shows, so haze stays a ground and water layer (16.10 H applies to those materials only). Confirmed by direct
+  measurement of objects at the horizon in 16.17.
 * River lines p95 over median 1.25 (16.4 rivers 1.28).
 * Grain: grass pixels only 2.79 against 2.87 (p25 2.31, p75 3.40) on 85 lossless retail frames with over 25% grass;
   whole frame 1.93 against 2.92 on the same frames. The whole frame gap comes from larger smooth water and sky areas
@@ -1387,13 +1393,10 @@ boxy hall, poor villagers, odd haze on the plaza).
   shaded), columns are 12 sided lathes with cushion bases and rolled capitals, the roof is two thick rounded slabs with a
   ridge roll, the clock gable is an arch topped slab with a torus trim (a bent tube with a fixed frame: polyline tubes
   twist on arcs).
-* Haze on the plaza and on objects. S#3152 (lossless plaza): cobbles brighten from #ADB2C6 near to #C6C3D6 far
-  (luminance x1.11) and stay lavender grey; a lime haze on cobbles is wrong. Objects: low weeds near the horizon in
-  S#13257 brighten like the ground (#44964D near, #9DCE6D in the far band, weed mask on a Q80 JPEG, L to M), while a
-  tree at the edge of the S#3152 plaza shows no measurable haze at its short distance (#086910 against #006931 near).
-  Implemented: every object material takes the ground's distance ramp toward #8EC668; the terrain's haze colour follows
-  the plaza weight (#8EC668 on grass, #C6C3D6 on cobbles). In this framing the ramp starts at 7.35 P from the camera, so
-  only the farthest trees are touched.
+* Haze: first applied to every object at the user's suggestion; withdrawn after measurement (16.17): retail objects at
+  the horizon are not hazed. The weed reading that seemed to support object haze (S#13257, #44964D near, #9DCE6D far)
+  was a mask artefact: the green mask also caught hazed ground; the far weeds themselves are saturated. Current: ground
+  only, anchored to ground places, cobbles toward #C6C3D6.
 * Texture density: the user found the hall and characters cleaner than the cobbles. All textures now share one painted
   treatment: about 64 to 80 texels per P (planks 64, cobbles 80, fur 64; faces about 110, inside the 80 to 150 texels per
   P that section 6's CF face reading implies), bilinear, fbm mottle 4 to 7% plus felt grain; the shared player textures
@@ -1405,3 +1408,37 @@ boxy hall, poor villagers, odd haze on the plaza).
   villagers). Neon 4.6% (more sky and the tulips), near black 0%, near white 1.9%. Player blob on cobbles, render with and without the blob
   divided per pixel: median 0.55 over 4,205 shaded pixels (the configured multiply; section 3 grass range 0.41 to
   0.50). Triangles: one villager 816, scene about 122,000.
+
+### 16.17 Haze review (after the town hall scene; measurements on retail frames, scripts in the session scratchpad)
+
+What retail NL hazes and what it does not:
+
+| element at the horizon | far | near (same frame) | hazed? |
+|---|---|---|---|
+| grass, S#1246 rows 36 to 48 beside a far trunk | #A0CF68, L 181, S 0.50 | #026738, L 67, S 0.98 (rows 200 to 235) | yes, x2.7 |
+| tree trunk standing on that horizon, S#1246 rows 8 to 34 | #985A33, L 104, S 0.66 | (a nearer cherry trunk #AF7929) | no |
+| cedar crown at the horizon, S#1246 | #093219, L 35, S 0.82 | | no (darker than any hazed ground) |
+| cherry crown at the horizon, S#1246 | #F585CC, L 175, S 0.46 | #F492CD, L 182, S 0.40 | no (same colour) |
+| weeds on the far ground, S#13257 | saturated green (by eye on a 4x crop) | | no |
+| cobbles, S#3152 (lossless) | #C6C3D6, L 198 | #ADB2C6, L 179 | yes, x1.11, toward lavender grey |
+
+Rules (H for the ground, M for objects on 2 frames and 5 objects):
+1. Haze is a ground and water material layer, not an atmosphere: objects standing in the hazed band keep their own
+   colour, which is why far crowns and trunks read crisply against a pale far ground in retail frames.
+2. The far colour depends on the surface: grass toward #88BF68 (16.3), cobbles toward a lighter lavender grey, sea
+   toward #95B3F2 (16.4). A single lime target on paved ground is wrong.
+3. Distances belong to ground places. A scene with a different framing (the town hall camera: 3.58 P high, 3.42 P
+   back) maps the walking camera's haze distances (7.72 to 10.99 P view distance) through the ground points they hit:
+   6.99 to 10.23 P from its own camera.
+
+Contradictions resolved in this review: section 2 (retail unproven), 12.1 (press values only), 12.2 step 8 (retail off),
+the 13 open question on retail haze, 16.10 (no rule for paved ground or objects), 16.14 against 16.16 (objects). All now
+point here.
+
+Strength in the test scenes: the river scene keeps the user's chosen setting (start at 0.4 of the way from the feet to
+the visible ground edge, mix up to 0.9 toward #8EC668): far band ratio 1.38 against the retail median 2.15 (16.15). The
+town hall scene uses the same ground places; measured by rendering with and without the ground haze and dividing per
+pixel: haze touches 5.45% of the frame (far grass beside the hall), grass median 1.57, p95 2.42 (the far band reaches
+the retail level), cobbles 1.04 (they lie close to the camera), objects unchanged (0 changed pixels outside the
+ground by construction).
+

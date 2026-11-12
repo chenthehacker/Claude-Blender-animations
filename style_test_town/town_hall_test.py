@@ -80,11 +80,31 @@ def solve_camera_lean():
     return h, d
 
 
+WALK_H, WALK_D = R.CAM_H, R.CAM_D                      # the walking camera the haze was set on (river scene)
+WALK_HAZE = (R.HAZE_NEAR, R.HAZE_FAR)
 R.CAM_H, R.CAM_D = solve_camera_lean()
-R._NEAR = math.hypot(R.CAM_D, R.CAM_H)
-R._FAR = R.tangent_distance(R.LOG_R, R.CAM_H, R.CAM_D)
-R.HAZE_NEAR = R._NEAR + 0.4 * (R._FAR - R._NEAR)
-R.HAZE_FAR = R._FAR
+
+
+def ground_point_at(view_dist, h, d):
+    """The bent ground point (centre column) at a given view distance from a camera at height h, d behind the player."""
+    for th in np.linspace(1e-5, math.pi / 2, 20000):
+        y, z = R.LOG_R * math.sin(th), R.LOG_R * math.cos(th) - R.LOG_R
+        if math.hypot(y + d, h - z) >= view_dist:
+            return y, z
+    return y, z
+
+
+def rebase_distance(view_dist):
+    """Haze belongs to places on the ground, not to a framing: map a view distance of the walking camera to the view
+    distance of the same ground point from this scene's camera."""
+    y, z = ground_point_at(view_dist, WALK_H, WALK_D)
+    return math.hypot(y + R.CAM_D, R.CAM_H - z)
+
+
+# Haze (16.17): a GROUND layer only (retail objects at the horizon keep their colour), anchored to the same ground
+# places as the river scene's user chosen setting (start 0.4 of the way from the feet to the walking view's ground
+# edge, mix up to 0.9).
+R.HAZE_NEAR, R.HAZE_FAR = rebase_distance(WALK_HAZE[0]), rebase_distance(WALK_HAZE[1])
 
 # --------------------------------------------------------------------------
 # Palette (M = measured, E = design choice)
@@ -982,44 +1002,11 @@ def build_flower_bed(col, M, x, y, kind, colours, rng, n=7, radius=0.32):
 
 
 # --------------------------------------------------------------------------
-# Haze on every object (user direction, 16.16): the same camera distance ramp as the ground. Retail evidence:
-# low weeds near the horizon brighten like the ground (S#13257: #44964D near, #9DCE6D far band); a tree at the edge
-# of a plaza shows none at its short distance (S#3152). The cobbles haze toward the measured far cobble #C6C3D6
-# instead of the grass lime.
+# Haze is a ground layer (16.17). Retail evidence: at the horizon of S#1246 the ground is hazed (#A0CF68, S 0.50, against
+# #026738, S 0.98 near) while a trunk (#985A33), a cedar crown (#093219) and a cherry crown (#F585CC, near #F492CD)
+# keep their colour; far weeds in S#13257 stay saturated. Plaza cobbles haze toward a lighter lavender grey (S#3152:
+# #ADB2C6 near, #C6C3D6 far), not toward the grass lime.
 # --------------------------------------------------------------------------
-def haze_node(nt, color_socket, haze_hex):
-    cd = nt.nodes.new("ShaderNodeCameraData")
-    hz = nt.nodes.new("ShaderNodeMapRange")
-    hz.interpolation_type = "SMOOTHSTEP"
-    link(nt, cd.outputs["View Distance"], hz.inputs["Value"])
-    hz.inputs["From Min"].default_value, hz.inputs["From Max"].default_value = R.HAZE_NEAR, R.HAZE_FAR
-    hz.inputs["To Min"].default_value, hz.inputs["To Max"].default_value = 0.0, R.HAZE_MAX
-    mx = nt.nodes.new("ShaderNodeMix")
-    mx.data_type = "RGBA"
-    link(nt, hz.outputs["Result"], mx.inputs[0])
-    link(nt, color_socket, mx.inputs[6])
-    mx.inputs[7].default_value = (*lin(R.gcol(haze_hex)), 1)
-    return mx.outputs[2]
-
-
-def apply_object_haze(M):
-    skip = {M[k].name for k in ("blob", "contact", "canopy", "cloud", "terrain", "water", "foam", "fish", "line")
-            if k in M}
-    n = 0
-    for m in bpy.data.materials:
-        if not m.node_tree or m.name in skip:
-            continue
-        nt = m.node_tree
-        for em in [x for x in nt.nodes if x.bl_idname == "ShaderNodeEmission"]:
-            if not em.inputs["Color"].is_linked:
-                continue
-            src = em.inputs["Color"].links[0].from_socket
-            nt.links.remove(em.inputs["Color"].links[0])
-            link(nt, haze_node(nt, src, R.PAL["haze"]), em.inputs["Color"])
-            n += 1
-    return n
-
-
 def plaza_haze_colour(M):
     """Terrain: the haze colour follows the plaza weight (grass lime #8EC668, cobble #C6C3D6)."""
     nt = M["terrain"].node_tree
@@ -1129,7 +1116,6 @@ def build(native=False):
     heads = {name: build_villager(world, M, name, species, pos, facing)
              for name, species, pos, facing, *_ in VILLAGERS}
     chars = {n for n in set(bpy.data.objects.keys()) - before if "Shadow" not in n}
-    hazed = apply_object_haze(M)
     for ob in bpy.context.scene.objects:                         # buildings and props lean back; characters upright
         if ob.type != "MESH" or ob.name in chars or ob.name == "Terrain":
             continue
@@ -1145,7 +1131,7 @@ def build(native=False):
     R.finalize_render(native, world, M, cam)
     tris_v = sum(sum(len(p.vertices) - 2 for p in bpy.data.objects[n].data.polygons) for n in chars
                  if n.startswith("Cat"))
-    return {"cam": cam, "heads": heads, "gable_top": gable_top * HALL_SCALE, "hazed": hazed, "tris_cat": tris_v}
+    return {"cam": cam, "heads": heads, "gable_top": gable_top * HALL_SCALE, "tris_cat": tris_v}
 
 
 def check(info):
@@ -1158,8 +1144,8 @@ def check(info):
         return 1 - v.y, v.x
 
     print(f"camera: height {R.CAM_H:.2f} P, distance {R.CAM_D:.2f} P, bend R {R.LOG_R:.2f} P, building lean {LEAN_DEG} deg, "
-          f"open ground horizon {R.horizon_row_for(R.LOG_R, R.CAM_H, R.CAM_D):.3f}; haze {R.HAZE_NEAR:.2f} to "
-          f"{R.HAZE_FAR:.2f} P on {info['hazed']} object materials")
+          f"open ground horizon {R.horizon_row_for(R.LOG_R, R.CAM_H, R.CAM_D):.3f}; ground haze {R.HAZE_NEAR:.2f} to "
+          f"{R.HAZE_FAR:.2f} P view distance (walking camera {WALK_HAZE[0]:.2f} to {WALK_HAZE[1]:.2f} P, same ground places)")
     for k, p in {"player feet": (0, 0, 0), "player hair top": (0, 0, 1.0)}.items():
         r, c = row_col(p)
         print(f"  {k:18s} row {r:.3f} column {c:.3f}")
@@ -1211,6 +1197,33 @@ def qa(png):
               f"{np.percentile(shaded, 10):.2f} over {shaded.size} shaded pixels (section 3: 0.41 to 0.50)")
 
 
+def haze_qa(png):
+    """Render again with the ground haze off and divide: where the haze acts, how strongly, and that nothing else moves."""
+    sc = bpy.context.scene
+    nt = bpy.data.materials[bpy.data.objects["Terrain"].data.materials[0].name].node_tree
+    hz = next(x for x in nt.nodes if x.bl_idname == "ShaderNodeMapRange"
+              and abs(x.inputs["From Min"].default_value - R.HAZE_NEAR) < 1e-4)
+    keep = hz.inputs["To Max"].default_value
+    hz.inputs["To Max"].default_value = 0.0
+    tmp = os.path.join(os.path.dirname(png), "_qa_nohaze.png")
+    old = sc.render.filepath
+    sc.render.filepath = tmp
+    bpy.ops.render.render(write_still=True)
+    sc.render.filepath = old
+    hz.inputs["To Max"].default_value = keep
+    a = np.array(bpy.data.images.load(png).pixels[:]).reshape(sc.render.resolution_y, sc.render.resolution_x, 4)[::-1, :, :3]
+    b = np.array(bpy.data.images.load(tmp).pixels[:]).reshape(a.shape[0], a.shape[1], 4)[::-1, :, :3]
+    os.remove(tmp)
+    L = lambda c: 0.2126 * c[..., 0] + 0.7152 * c[..., 1] + 0.0722 * c[..., 2]
+    r = L(a) / np.maximum(L(b), 1e-4)
+    moved = np.abs(a - b).max(-1) > 1.5 / 255
+    green = (b[..., 1] > b[..., 0] * 1.15) & (b[..., 1] > b[..., 2])
+    print(f"QA haze: {moved.mean():.2%} of pixels change (ground only); luminance ratio over changed pixels median "
+          f"{np.median(r[moved]) if moved.any() else 1:.2f}, p95 {np.percentile(r[moved], 95) if moved.any() else 1:.2f}; "
+          f"on grass {np.median(r[moved & green]) if (moved & green).any() else 1:.2f}, "
+          f"elsewhere on the ground {np.median(r[moved & ~green]) if (moved & ~green).any() else 1:.2f}")
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     p = argparse.ArgumentParser()
@@ -1232,6 +1245,7 @@ def main():
         bpy.ops.render.render(write_still=True)
         print(f"rendered {out} in {time.time() - t:.1f}s")
         qa(out)
+        haze_qa(out)
         if a.native and shutil.which("ffmpeg"):
             root, ext = os.path.splitext(out)
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", out, "-vf",
