@@ -83,7 +83,7 @@ PAL = {
     "grass": "#0D7541", "grass_dark": "#026637", "grass_light": "#3E9A5C", "grass_print": "#005A3D",
     # M 16.3: spring and summer near grass (#026637 to #107442), darker print p10 #005A3D; round dot motif (by eye,
     # S#1341, 1246, 1351), dot colour E. Haze target between the measured far bands #94CC78 and #B5E36B.
-    "haze": "#A8DC70",
+    "haze": "#9FCE60",                               # original haze target (user's retail capture far ground)
     "cliff_lit": "#FFCEAE", "cliff_shade": "#BA8B8B",                   # M section 4.2
     "water": "#316BAF", "water_shallow": "#5AA2DD", "foam": "#ECF2F8",  # M 16.4: river #316BAF, shallow band, foam line
     "foliage": "#4A9C52", "foliage_dark": "#287046", "foliage_light": "#82D362",  # M section 7.3
@@ -214,9 +214,12 @@ def ground_distance_at_row(row, R, h, d):
 
 
 _FAR = tangent_distance(LOG_R, CAM_H, CAM_D)
-HAZE_NEAR = ground_distance_at_row(HORIZON_ROW + 100 / 240, LOG_R, CAM_H, CAM_D)   # 16.3: 100 rows below the horizon
-HAZE_FAR = ground_distance_at_row(HORIZON_ROW + 8 / 240, LOG_R, CAM_H, CAM_D)   # full haze 8 rows below the horizon
-HAZE_MAX = 1.0                                        # tuned on the render to the 16.3 far over near ratio
+# Haze: the ORIGINAL setting (user's choice): ground only, from halfway between the feet and the visible ground edge
+# to the edge, mixed up to 0.8 toward #9FCE60. (The section 16.3 tuned variant reached a 2.12 far over near ratio.)
+_NEAR = math.hypot(CAM_D, CAM_H)
+HAZE_NEAR = _NEAR + 0.5 * (_FAR - _NEAR)
+HAZE_FAR = _FAR
+HAZE_MAX = 0.8
 
 
 def bend_array(co):
@@ -331,7 +334,11 @@ def tex_leaves():
         sel = field > alpha
         col[sel] = leafcol[sel]
         alpha = np.maximum(alpha, field)
+    ALPHAS["leaves"] = alpha
     return make_image("T_Leaves", grain(col, 0.04), alpha)
+
+
+ALPHAS = {}
 
 
 def tex_flower(main, blotch):
@@ -349,6 +356,7 @@ def tex_flower(main, blotch):
     col = col * (1 - eye[..., None]) + hexc("#F2C94C") * eye[..., None]
     lines = smoothstep(0.04, 0.0, np.abs(np.sin(5 * a))) * (t < 0.7) * (t > 0.2)
     col = col * (1 - 0.2 * lines[..., None])
+    ALPHAS["flower"] = alpha
     return make_image(f"T_Flower_{main}", grain(col, 0.03), alpha)
 
 
@@ -804,7 +812,7 @@ def water_mat(T):
     whz.interpolation_type = "SMOOTHSTEP"
     link(nt, wcd.outputs["View Distance"], whz.inputs["Value"])
     whz.inputs["From Min"].default_value, whz.inputs["From Max"].default_value = HAZE_NEAR, HAZE_FAR
-    whz.inputs["To Min"].default_value, whz.inputs["To Max"].default_value = 0.0, HAZE_MAX
+    whz.inputs["To Min"].default_value, whz.inputs["To Max"].default_value = 0.0, 0.0   # original: no haze on water
     wmx = nt.nodes.new("ShaderNodeMix")
     wmx.data_type = "RGBA"
     link(nt, whz.outputs["Result"], wmx.inputs[0])
@@ -916,6 +924,100 @@ def leaf_cards(bm, uv, center, radius, n, size, rng, squash=0.9):
             lp[uv].uv = q
 
 
+def raster_footprint(objs, cx, cy, half, res=160):
+    """Project meshes straight down onto the ground and rasterise their footprint (row 0 = min y). Cards use their
+    texture alpha (binary test at 0.5) so leaf and petal cut outs shape the shadow."""
+    mask = np.zeros((res, res))
+    for ob, alpha in objs:
+        me = ob.data
+        co = np.array([v.co[:] for v in me.vertices]) + np.array(ob.location)
+        uvl = me.uv_layers.active if alpha is not None else None
+        for poly in me.polygons:
+            vi = list(poly.vertices)
+            li = list(poly.loop_indices)
+            for t in range(1, len(vi) - 1):
+                k3 = (0, t, t + 1)
+                P = co[[vi[k] for k in k3]]
+                px_ = (P[:, 0] - (cx - half)) / (2 * half) * res
+                py_ = (P[:, 1] - (cy - half)) / (2 * half) * res
+                x0, x1 = max(0, int(np.floor(px_.min()))), min(res - 1, int(np.ceil(px_.max())))
+                y0, y1 = max(0, int(np.floor(py_.min()))), min(res - 1, int(np.ceil(py_.max())))
+                if x1 < x0 or y1 < y0:
+                    continue
+                d = (py_[1] - py_[2]) * (px_[0] - px_[2]) + (px_[2] - px_[1]) * (py_[0] - py_[2])
+                if abs(d) < 1e-9:
+                    continue
+                gx, gy = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+                l0 = ((py_[1] - py_[2]) * (gx - px_[2]) + (px_[2] - px_[1]) * (gy - py_[2])) / d
+                l1 = ((py_[2] - py_[0]) * (gx - px_[2]) + (px_[0] - px_[2]) * (gy - py_[2])) / d
+                l2 = 1 - l0 - l1
+                inside = (l0 >= 0) & (l1 >= 0) & (l2 >= 0)
+                if uvl is not None:
+                    UV = np.array([uvl.data[li[k]].uv[:] for k in k3])
+                    u = l0 * UV[0, 0] + l1 * UV[1, 0] + l2 * UV[2, 0]
+                    v = l0 * UV[0, 1] + l1 * UV[1, 1] + l2 * UV[2, 1]
+                    ah, aw = alpha.shape
+                    ai = np.clip(((1 - v) * ah).astype(int), 0, ah - 1)       # numpy alpha rows run top down
+                    aj = np.clip((u * aw).astype(int), 0, aw - 1)
+                    inside &= alpha[ai, aj] > 0.5
+                sub = mask[y0:y1 + 1, x0:x1 + 1]
+                mask[y0:y1 + 1, x0:x1 + 1] = np.maximum(sub, inside)
+    return mask
+
+
+def soften(mask, grow=3, blur=3):
+    """Grow the footprint a little (so it shows around the object from the high camera) and soften its edge."""
+    m = mask.copy()
+    for _ in range(grow):
+        p = np.pad(m, 1)
+        m = np.maximum.reduce([p[1:-1, 1:-1], p[:-2, 1:-1], p[2:, 1:-1], p[1:-1, :-2], p[1:-1, 2:]])
+    for _ in range(blur):
+        p = np.pad(m, 1, mode="edge")
+        m = sum(p[i:i + m.shape[0], j:j + m.shape[1]] for i in range(3) for j in range(3)) / 9
+    return m
+
+
+PROFILE_SHADOWS = []          # (name, centre x, centre y, half size, mask) for QA
+
+
+def profile_shadow(col, name, objs, cx, cy, z, half, key, core=0.0):
+    """Shadow decal shaped like the object's top down silhouette (trees, bushes, flowers: 'they tend to match the
+    profile of the feature'). Multiply decal like the blobs (section 3 and 15), optionally darker toward the centre."""
+    res = 160
+    m = soften(raster_footprint(objs, cx, cy, half, res))
+    if core:
+        yy, xx = (np.mgrid[0:res, 0:res] + 0.5) / res * 2 - 1
+        m = m * (1 - core + core * np.clip(1 - np.hypot(xx, yy), 0, 1))
+    PROFILE_SHADOWS.append((name, cx, cy, half, m))
+    img = make_image(f"T_{name}", np.ones((res, res, 3)), m[::-1])
+    mat = bpy.data.materials.new(f"M_{name}")
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    t = nt.nodes.new("ShaderNodeTexImage")
+    t.image, t.interpolation, t.extension = img, "Linear", "CLIP"
+    mx = nt.nodes.new("ShaderNodeMix")
+    mx.data_type = "RGBA"
+    link(nt, t.outputs["Alpha"], mx.inputs[0])
+    mx.inputs[6].default_value = (1, 1, 1, 1)
+    mx.inputs[7].default_value = (*(c ** 2.2 for c in SHADOW_MUL[key]), 1)
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    link(nt, mx.outputs[2], tr.inputs["Color"])
+    link(nt, tr.outputs[0], out.inputs["Surface"])
+    mat.surface_render_method = "BLENDED"
+    # a 16 x 16 grid, not one quad: the rolling log bend would sink a large flat quad's middle under the ground
+    bm, uv = new_bm()
+    n = 16
+    grid = [[bm.verts.new((cx - half + 2 * half * i / n, cy - half + 2 * half * j / n, z)) for i in range(n + 1)]
+            for j in range(n + 1)]
+    for j in range(n):
+        for i in range(n):
+            f = bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
+            for lp, q in zip(f.loops, ((i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1))):
+                lp[uv].uv = (q[0] / n, q[1] / n)
+    return mesh_object(name, bm, col, [mat], smooth=False)
+
+
 def build_tree(col, M, x, y, height, rng):
     z0 = terrain_h(x, y)
     bm, uv = new_bm()
@@ -931,14 +1033,14 @@ def build_tree(col, M, x, y, height, rng):
     bm, uv = new_bm()
     for c, r in lobes:
         bm_sphere(bm, uv, c, r * 0.82, scale=(1, 1, 0.9), segs=12, rings=7)        # dark core fills gaps
-    mesh_object("TreeCore", bm, col, [M["foliage_core"]])
+    core_ob = mesh_object("TreeCore", bm, col, [M["foliage_core"]])
     bm, uv = new_bm()
     for c, r in lobes:
         leaf_cards(bm, uv, c, r, 46, 0.36, rng)
-    mesh_object("TreeLeaves", bm, col, [M["leaves"]])
-    half_w = 0.30 + 0.46                                # lobe offset plus lobe radius
-    rr = CANOPY_SHADOW_FRAC * half_w
-    blob(col, M["canopy"], "TreeShadow", (x, y, z0 + 0.012), rr, rr * 0.9)
+    leaves_ob = mesh_object("TreeLeaves", bm, col, [M["leaves"]])
+    # canopy shadow follows the canopy outline seen from above (leaf cut outs included), darker toward the trunk
+    profile_shadow(col, "TreeShadow", [(core_ob, None), (leaves_ob, ALPHAS["leaves"])], x, y, z0 + 0.012, 1.1,
+                   "canopy", core=0.35)
     blob(col, M["contact"], "TrunkContact", (x, y, z0 + 0.016), 0.40, 0.36)
 
 
@@ -959,7 +1061,7 @@ def build_flowers(col, M, x, y, rng):
         f = bm.faces.new(vs)
         for lp, q in zip(f.loops, ((0.3, 0.0), (0.7, 0.0), (0.95, 0.75), (0.05, 0.75))):
             lp[uv].uv = q
-    mesh_object("FlowerLeaves", bm, col, [M["leaves"]])
+    parts = [(mesh_object("FlowerLeaves", bm, col, [M["leaves"]]), ALPHAS["leaves"])]
     for k in range(4):
         a = 2 * math.pi * k / 4 + rng.uniform(0, 0.5)
         px, py = x + 0.11 * math.cos(a), y + 0.09 * math.sin(a)
@@ -978,8 +1080,8 @@ def build_flowers(col, M, x, y, rng):
         f = bm.faces.new(vs)
         for lp, q in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
             lp[uv].uv = q
-        mesh_object("FlowerHead", bm, col, [M["flower_a"] if k % 2 else M["flower_b"]])
-    blob(col, M["contact"], "FlowerShadow", (x, y, z0 + 0.01), 0.32, 0.28)
+        parts.append((mesh_object("FlowerHead", bm, col, [M["flower_a"] if k % 2 else M["flower_b"]]), ALPHAS["flower"]))
+    profile_shadow(col, "FlowerShadow", parts, x, y, z0 + 0.01, 0.38, "contact")
 
 
 def build_rock(col, M, x, y, s):
@@ -1006,13 +1108,13 @@ def build_bush(col, M, x, y, r, rng):
     bm, uv = new_bm()
     for c, rr in lobes:
         bm_sphere(bm, uv, c, rr * 0.82, segs=12, rings=7)
-    mesh_object("BushCore", bm, col, [M["foliage_core"]])
+    core_ob = mesh_object("BushCore", bm, col, [M["foliage_core"]])
     bm, uv = new_bm()
     for c, rr in lobes:
         leaf_cards(bm, uv, c, rr, 40, 0.30, rng)
-    mesh_object("BushLeaves", bm, col, [M["leaves"]])
-    blob(col, M["canopy"], "BushShadow", (x, y, z0 + 0.012), 1.25 * r, 1.05 * r)
-    blob(col, M["contact"], "BushContact", (x, y, z0 + 0.016), 0.9 * r, 0.75 * r)
+    leaves_ob = mesh_object("BushLeaves", bm, col, [M["leaves"]])
+    profile_shadow(col, "BushShadow", [(core_ob, None), (leaves_ob, ALPHAS["leaves"])], x, y, z0 + 0.012, 1.4 * r,
+                   "canopy", core=0.35)
 
 
 # Horizon tree line beyond the bend tangent so trunk bases sink (section 9 rule 3); 5 trees (rule 5: 4 to 6).
@@ -1499,11 +1601,21 @@ def qa(png, info):
     cf, cg = sample(pf), sample(pg)
     # object shadows (section 3): flower clump ground and near tree canopy shadow vs open grass beside them
     L = lambda c: 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    def south_point(name_, cx_, cy_):
+        """First point south of the object (toward the camera) where its shadow mask exceeds 0.85."""
+        for nm, sx, sy, half, m in PROFILE_SHADOWS:
+            if nm.startswith(name_) and abs(sx - cx_) < 1e-6 and abs(sy - cy_) < 1e-6:
+                res = m.shape[0]
+                col_ = res // 2
+                for row in range(0, res // 2):
+                    if m[row, col_] > 0.85:
+                        return (sx, sy - half + (row + 2.5) / res * 2 * half)
+        return (cx_, cy_)
+    fp = south_point("FlowerShadow", *FLOWERS[0])
+    tp = south_point("TreeShadow", NEAR_TREES[0][0], NEAR_TREES[0][1])
     for name, at_, ref, target in (
-            ("flower clump ground", (FLOWERS[0][0] + 0.12, FLOWERS[0][1] - 0.14),
-             (FLOWERS[0][0] + 0.12, FLOWERS[0][1] - 0.75), "0.68"),
-            ("tree canopy shadow rim", (NEAR_TREES[0][0] + 0.05, NEAR_TREES[0][1] - 0.37),
-             (NEAR_TREES[0][0] + 1.25, NEAR_TREES[0][1] - 0.37), "0.77 to 0.84 near the rim, darker inside")):
+            ("flower clump shadow (south edge)", fp, (fp[0], fp[1] - 0.45), "0.68"),
+            ("tree canopy shadow (south edge)", tp, (tp[0] + 1.3, tp[1]), "0.77 to 0.84 near the rim, darker inside")):
         ps = world_to_camera_view(sc, cam, bend_point(Vector((at_[0], at_[1], 0.0))))
         pr = world_to_camera_view(sc, cam, bend_point(Vector((ref[0], ref[1], 0.0))))
         print(f"QA {name}: luminance ratio {L(sample(ps)) / max(L(sample(pr)), 1e-6):.2f} (NL#946 {target})")

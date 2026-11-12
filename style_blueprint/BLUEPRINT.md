@@ -1334,3 +1334,17 @@ where a 240 row figure is quoted):
   because its sky strip is unobstructed. Treat the 2% envelope (7.1) as a ground and object rule, not a sky rule.
 * Night and dusk water: grading the day water colour leaves it lavender; use the measured time of day water colours
   (dusk #3C5596, night #0E1D53) as the base and haze toward the same family. Render medians: dusk #40558F, night #132265.
+
+### 16.15 Test scene revisions after review (user direction)
+
+* Haze returned to the ORIGINAL test scene setting at the user's request: ground only, from halfway between the
+  player's feet and the visible ground edge to the edge, mixed up to 0.8 toward #9FCE60 (the user's retail capture far
+  ground); no haze on water. Ground only pass ratio 1.26 (the 16.3 tuned variant reached 2.12; both are documented).
+* Object shadows follow the object's profile: trees, bushes and flower clumps cast a decal shaped like their top down
+  silhouette (the user's observation of the captures: player and rock shadows may be round, but trees and flowers
+  match the feature's outline). Method: rasterise the object's triangles projected straight down, testing leaf and
+  petal card texture alpha at 0.5, grow the footprint 3 px and blur 3 px (160 px mask), multiply decal with the
+  canopy or contact values, canopy darker toward the centre (35%). Decals must be subdivided (16 x 16): a single large
+  flat quad sinks under the rolling log ground in its middle (sagitta L^2 / 8R, about 0.05 P for 2.2 P at R 13 P)
+  and disappears. Render QA: flower clump south edge 0.78 (target 0.68), near tree south edge 0.67 (target 0.77 to
+  0.84 at the rim, darker inside). Player and rock keep round blobs.
