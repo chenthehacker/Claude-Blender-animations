@@ -1944,11 +1944,12 @@ def build_materials(atmos):
         tc = separate(nt, tcn.outputs["Object"])
         behind = nmath(nt, "MULTIPLY", tc["X"], -1.0)
         across = nmath(nt, "ABSOLUTE", tc["Y"])
-        arm = nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", across, nmath(nt, "MULTIPLY_ADD", behind, 0.33, 0.05)))
-        vline = nmath(nt, "MULTIPLY", map_range(nt, arm, 0.09, 0.0), map_range(nt, behind, 0.0, 0.25))
-        vline = nmath(nt, "MULTIPLY", vline, map_range(nt, behind, 5.0, 0.5))
+        wob = nmath(nt, "MULTIPLY", nmath(nt, "SINE", nmath(nt, "MULTIPLY", behind, 9.0)), 0.015)
+        arm = nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", nmath(nt, "ADD", across, wob), nmath(nt, "MULTIPLY_ADD", behind, 0.26, 0.05)))
+        vline = nmath(nt, "MULTIPLY", map_range(nt, arm, 0.035, 0.0), map_range(nt, behind, 0.0, 0.25))
+        vline = nmath(nt, "MULTIPLY", vline, nmath(nt, "MULTIPLY", map_range(nt, behind, 2.6, 0.3), 0.55))
         trail = nmath(nt, "MULTIPLY", map_range(nt, across, 0.16, 0.02), map_range(nt, behind, -0.05, 0.1))
-        trail = nmath(nt, "MULTIPLY", trail, map_range(nt, behind, 3.0, 0.2))
+        trail = nmath(nt, "MULTIPLY", trail, nmath(nt, "MULTIPLY", map_range(nt, behind, 1.8, 0.1), 0.6))
         trail = nmath(nt, "MULTIPLY", trail, map_range(nt, noise(nt, vmath(nt, "MULTIPLY", tex_coord(nt, "Object"), (6.0, 6.0, 1.0)), 1.0, 4.0), 0.35, 0.65))
         bulge = map_range(nt, vmath(nt, "LENGTH", combine(nt, nmath(nt, "MULTIPLY", tc["X"], 1.4), tc["Y"], 0.0)), 0.16, 0.0)
         foam = nmath(nt, "MINIMUM", nmath(nt, "ADD", nmath(nt, "ADD", vline, trail), bulge), 1.0)
@@ -2063,7 +2064,7 @@ def build_materials(atmos):
         p = tex_coord(nt, "Object")
         edge = map_range(nt, nmath(nt, "MAXIMUM", nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", g["Z"], 0.5)),
                                    nmath(nt, "ABSOLUTE", nmath(nt, "SUBTRACT", g["X"], 0.5))), 0.25, 0.5)
-        col = mix_rgb(nt, edge, srgb(150, 96, 56), srgb(186, 92, 54))
+        col = mix_rgb(nt, edge, srgb(120, 84, 54), srgb(150, 80, 50))
         spots = map_range(nt, voronoi(nt, p, 70.0), 0.15, 0.07)
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", spots, 0.85), col, srgb(36, 26, 18))
         o = separate(nt, p)
@@ -2130,7 +2131,7 @@ def build_materials(atmos):
     M.stalk = mat("CabbageStalk", lambda nt: psdf(nt, uw_base(nt, srgb(110, 120, 60), caustic=0.4), rough=0.5, sss=0.3,
                                                   sss_scale=0.01))
     M.lilypad = mat("LilyPad", lambda nt: psdf(nt, uw_base(nt, color_ramp(nt, noise(nt, tex_coord(nt, "Object"), 8.0),
-                    [(0.0, srgb(40, 70, 26)), (1.0, srgb(90, 60, 34))]), caustic=0.0), rough=0.5, sss=0.3, sss_scale=0.01))
+                    [(0.0, srgb(44, 84, 30)), (0.85, srgb(70, 104, 38)), (1.0, srgb(110, 70, 40))]), caustic=0.0), rough=0.5, sss=0.3, sss_scale=0.01))
 
     def cutface(nt):
         """The cut face of the cross section, drawn flat: lake bottom soil with a fine diagonal hatch (a diagram)."""
@@ -2751,10 +2752,10 @@ def line_object(name, col, M, start, end, radius=0.0007, sag=None, count=24):
 XS = Vector((-600.0, 0.0, 0.0))
 LS = Vector((600.0, 0.0, -10.0))
 LURE_Z = -0.38                        # the bucktail's depth when burned over the weed tops
-HOOK_X0, HOOK_Y = 2.0, 1.4            # the hook: where the bucktail starts (x) and its line over the flat (y)
+HOOK_X0, HOOK_Y = 2.0, 0.8            # the hook: where the bucktail starts (x) and its line over the flat (y)
 HOOK_V = 2.4                          # burn speed (m/s), illustrative
 STRIKE_H = WHIP_IN + 44               # the T-bone in the hook
-BURN_X0, BURN_Y = 44.0, 1.2           # the burn shot
+BURN_X0, BURN_Y = 44.0, 0.9           # the burn shot
 OH_X0, OH_Y = -34.0, 2.6              # the loop's overhead shot: the bucktail at frame 1 (it bulges just under the top)
 OH_V = 2.0
 OH_H = 4.6                            # the overhead camera's height
@@ -2839,15 +2840,15 @@ def cabbage_template(rng, height):
             a, b = k * sides + j, k * sides + (j + 1) % sides
             F.append((a, b, b + sides, a + sides))
             Fm.append(1)
-    nleaf = int(height / 0.1)
+    nleaf = int(height / 0.075)
     az = rng.uniform(0, 2 * math.pi)
     for li in range(nleaf):
         h = 0.12 + (height - 0.14) * li / max(1, nleaf - 1)
         az += math.radians(137.5)
         k = h / height
         base = Vector((lean.x * k * k * height, lean.y * k * k * height, h))
-        L = rng.uniform(0.11, 0.17) * (0.75 + 0.35 * (1 - k))
-        W = L * rng.uniform(0.32, 0.42)
+        L = rng.uniform(0.15, 0.23) * (0.75 + 0.35 * (1 - k))
+        W = L * rng.uniform(0.36, 0.46)
         up = math.radians(rng.uniform(30, 60))
         d = Vector((math.cos(az) * math.cos(up), math.sin(az) * math.cos(up), math.sin(up)))
         side = Vector((-math.sin(az), math.cos(az), 0.0))
@@ -3091,7 +3092,7 @@ def musky_hook(f):
     """Lurking in the cabbage at the edge, a burst up and across into the bucktail (a T-bone), then a turn back
     toward the edge with the lure across its jaws, shaking its head."""
     hit = lure_hook(STRIKE_H)
-    lurk = hit + Vector((-0.25, -1.55, -0.95))
+    lurk = hit + Vector((-0.2, 1.45, -0.95))
     if f <= STRIKE_H - 9:
         t = t_of(f)
         return lurk + Vector((0.03 * math.sin(t * 1.3), 0.02 * math.sin(t * 0.9), 0.0)), \
@@ -3134,7 +3135,7 @@ def musky_burn(f):
     lp = lure_burn(f)
     s = (f - CUT2B) / FPS
     k = ease(min(1.0, max(0.0, (s - 0.6) / 1.6)))
-    rest = Vector((BURN_X0 + 2.4, BURN_Y - 0.3, FLAT_Z + 0.75))
+    rest = Vector((BURN_X0 + 2.6, BURN_Y + 1.1, FLAT_Z + 0.75))
     follow = lp + Vector((-1.25 + 0.3 * k, -0.15, -0.35))
     p = rest.lerp(follow, k)
     fwd = Vector((1.0, 0.05 * math.sin(s * 3.0), 0.25 * (1.0 - k) + 0.05)).normalized()
@@ -3304,15 +3305,15 @@ def camera_frames(st):
         lp = gauss_smooth(lure_hook, f, 4) if f <= STRIKE_H else None
         if lp is None:
             lp = lure_hook(STRIKE_H).lerp(gauss_smooth(lambda g: musky_hook(g)[0], f, 4), ease(smoothstep(STRIKE_H, STRIKE_H + 20, f)))
-        cam = lp + Vector((-1.7, -2.5, -0.45))
-        tgt = lp + Vector((0.5, 0.4, -0.25))
+        cam = lp + Vector((-0.95, -1.3, -0.3))
+        tgt = lp + Vector((0.35, 0.55, -0.22))
         q = look_at(cam, tgt, Z)
         if f < WHIP_IN + 6:
             kk = 1.0 - ease_out((f - WHIP_IN) / 6.0, 3.0)
             q = whip(q, 36.0 * kk, q @ Vector((1, 0, 0)))
         shake = 0.025 * smoothstep(STRIKE_H - 1, STRIKE_H + 1, f) * (1 - smoothstep(STRIKE_H + 1, STRIKE_H + 14, f))
         cam = cam + Vector((shake * math.sin(f * 2.1), 0.0, shake * math.sin(f * 2.7)))
-        frames[f] = (cam, tgt, q, 22.0)
+        frames[f] = (cam, tgt, q, 24.0)
         fstop[f] = 4.0
     # 1b side on, close: the musky with the bucktail across its jaws, heading screen left
     for f in range(CUT1A, CUT1):
@@ -3343,8 +3344,8 @@ def camera_frames(st):
         fstop[f] = 5.6
     for f in range(CUT2B, CUT3):
         lp = gauss_smooth(lure_burn, f, 3)
-        cam = lp + Vector((-0.75, -1.7, -0.42))
-        tgt = lp + Vector((-0.2, 0.25, -0.3))
+        cam = lp + Vector((-0.85, -1.5, -0.32))
+        tgt = lp + Vector((-0.45, 0.25, -0.3))
         frames[f] = (cam, tgt, look_at(cam, tgt, Z), 22.0)
         fstop[f] = 4.0
     # 4 the figure 8 beside the boat: a low, wide angle looking up at the boat's side
@@ -3629,7 +3630,7 @@ def build_overlays(hud, st):
               src="WISCONSIN DNR")
     hud.serif("Cabbage edges next to deep water.", s1, CUT2 - 9, lines=["Cabbage weed edges,", "*next to deep water.*"],
               src="WISCONSIN DNR MUSKY FACT SHEET")
-    hud.pin(lambda f: XS + Vector((0.0, 1.3, FLAT_Z + 1.1)), "cabbage weed edge", CUT1 + 50, s1 + 6,
+    hud.pin(lambda f: XS + Vector((0.0, 1.3, FLAT_Z + 1.1)), "cabbage weed edge", CUT1 + 44, CUT2 - 12,
             dot_color=srgb(150, 200, 90), side=0.06, y_band=(-0.22, 0.32))
     hud.pin(lambda f: XS + Vector((0.0, -3.6, lake_z(0.0, -3.6) + 0.3)), "drop off", CUT1 + 54, CUT2 - 10,
             dot_color=srgb(200, 160, 110), side=-0.05, y_band=(-0.22, 0.32))
@@ -3651,7 +3652,7 @@ def build_overlays(hud, st):
             y_band=(-0.2, 0.3))
     hud.badge(3, "THE FIGURE 8 FINISH", "never pull the lure out early", CUT3 + 6, CUT4 - 6)
     p4 = P(4, 1)
-    hud.serif("Never pull it out early.", CUT3 + 4, p4 - 6, lines=["Never pull it", "*out early.*"],
+    hud.serif("Never pull it out early.", CUT3 + 4, p4 - 9, lines=["Never pull it", "*out early.*"],
               src="ANGLER TECHNIQUE")
     hud.serif("Up to 40 percent hit at the boat.", p4, CUT4 - 4, lines=["Up to *40 percent*", "hit at the boat."],
               src="PRO ESTIMATE: JIM SARIC, MERCURY MARINE")
@@ -3958,7 +3959,7 @@ def build_scene():
                              stems=False)
     # the lake site: bed, cabbage, pads, perch, fish, lures, boat
     bed = build_lakebed(c_lake, M, (-12.0, 80.0), (-26.0, 16.0), 0.5, "LakeBed")
-    spots = weed_spots((-4.0, 34.0), (-0.6, 9.0), 2.2, 11) + weed_spots((38.0, 66.0), (-0.6, 6.0), 2.2, 12)
+    spots = weed_spots((-4.0, 34.0), (-0.6, 9.0), 3.6, 11) + weed_spots((38.0, 66.0), (-0.6, 6.0), 3.6, 12)
     weeds = build_cabbage(c_lake, M, spots, 13, "Cabbage")
     pads = build_lilypads(c_lake, M, (HOOK_X0 + 3.0, HOOK_X0 + 12.0), (2.2, 5.5), 60, 14, "LilyPads")
     perch_ob = bpy.data.objects.new("PerchFish", perch_mesh(M, L=0.2))

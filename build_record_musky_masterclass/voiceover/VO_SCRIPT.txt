@@ -1,0 +1,9 @@
+Record musky masterclass voiceover (ElevenLabs, voice "Mark, Natural Conversations", model eleven_v4).
+Sourced rewrites of the brief's script (see SOURCES.md). This is the text each clip was generated from.
+
+vo1  In 1949, Cal Johnson pulled a 67 pound, 8 ounce musky out of a Wisconsin lake. The IGFA lists it as the all tackle world record for the fish of ten thousand casts.
+vo2  Big muskies hunt by sight from cover. They lurk along cabbage weed edges, right next to deep water drop offs.
+vo3  To trigger a reaction strike, anglers burn double blade bucktails fast, just inches over the weed tops, where muskies hide below.
+vo4  Never pull your lure out early. Some pros say up to forty percent of their muskies hit right at the boat, so finish every cast with a wide, deep figure eight.
+vo5  Burn fast, work the turn, and you'll understand why...
+(loops back into vo1)
