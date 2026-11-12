@@ -4,7 +4,7 @@ Render record_musky_masterclass.blend on this computer's GPU, then build preview
 EEVEE always draws on the GPU, so no device setting is needed. Run from the build_record_musky_masterclass folder:
 
     blender -b record_musky_masterclass.blend -P gpu_render/render_gpu.py
-    blender -b record_musky_masterclass.blend -P gpu_render/render_gpu.py -- --samples 32 --start 1 --end LAST
+    blender -b record_musky_masterclass.blend -P gpu_render/render_gpu.py -- --samples 32 --start 1 --end 1005
     blender -b record_musky_masterclass.blend -P gpu_render/render_gpu.py -- --encode-only
 
 From the Blender window instead: Render > Render Animation (the .blend already saves into gpu_render/frames and

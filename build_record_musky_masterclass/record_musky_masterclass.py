@@ -2172,6 +2172,8 @@ def build_materials(atmos):
                 [(0.0, srgb(130, 136, 132)), (1.0, srgb(170, 174, 170))]), caustic=0.8), rough=0.4, metal=0.85,
                 normal=bump(nt, noise(nt, tex_coord(nt, "Object"), 60.0), 0.1)))
     M.paint = mat("BoatPaint", lambda nt: psdf(nt, uw_base(nt, srgb(30, 60, 44), caustic=0.6), rough=0.45))
+    M.hullpaint = mat("HullPaint", lambda nt: psdf(nt, uw_base(nt, srgb(22, 30, 26), caustic=0.5), rough=0.6,
+                      normal=bump(nt, noise(nt, tex_coord(nt, "Object"), 40.0), 0.15)))
     return M
 
 
@@ -3206,7 +3208,7 @@ def build_boat(col, M):
         for k in range(len(ra) - 1):
             bm.faces.new((ra[k], ra[k + 1], rb[k + 1], rb[k]))
     bm.faces.new(list(reversed(rings[-1])))
-    hull = finish("BoatHull", bm, col, [M.alu])
+    hull = finish("BoatHull", bm, col, [M.hullpaint])
     hull.parent = root
     sol = hull.modifiers.new("Plate", "SOLIDIFY")
     sol.thickness = 0.01
