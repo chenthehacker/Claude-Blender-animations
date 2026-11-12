@@ -3305,7 +3305,7 @@ def camera_frames(st):
         lp = gauss_smooth(lure_hook, f, 4) if f <= STRIKE_H else None
         if lp is None:
             lp = lure_hook(STRIKE_H).lerp(gauss_smooth(lambda g: musky_hook(g)[0], f, 4), ease(smoothstep(STRIKE_H, STRIKE_H + 20, f)))
-        cam = lp + Vector((-0.95, -1.3, -0.3))
+        cam = lp + Vector((-0.95, -1.5, -0.3))
         tgt = lp + Vector((0.35, 0.55, -0.22))
         q = look_at(cam, tgt, Z)
         if f < WHIP_IN + 6:
@@ -3313,7 +3313,7 @@ def camera_frames(st):
             q = whip(q, 36.0 * kk, q @ Vector((1, 0, 0)))
         shake = 0.025 * smoothstep(STRIKE_H - 1, STRIKE_H + 1, f) * (1 - smoothstep(STRIKE_H + 1, STRIKE_H + 14, f))
         cam = cam + Vector((shake * math.sin(f * 2.1), 0.0, shake * math.sin(f * 2.7)))
-        frames[f] = (cam, tgt, q, 24.0)
+        frames[f] = (cam, tgt, q, 28.0)
         fstop[f] = 4.0
     # 1b side on, close: the musky with the bucktail across its jaws, heading screen left
     for f in range(CUT1A, CUT1):
@@ -3346,16 +3346,16 @@ def camera_frames(st):
         lp = gauss_smooth(lure_burn, f, 3)
         cam = lp + Vector((-0.85, -1.5, -0.32))
         tgt = lp + Vector((-0.45, 0.25, -0.3))
-        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 22.0)
+        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 28.0)
         fstop[f] = 4.0
     # 4 the figure 8 beside the boat: a low, wide angle looking up at the boat's side
     for f in range(CUT3, CUT4):
         u = (f - CUT3) / max(1, CUT4 - CUT3)
-        cam = F8_C + Vector((0.45 - 0.3 * u, 3.3 - 0.4 * ease(u), -0.6))
-        tgt = F8_C + Vector((0.0, 0.0, 0.08))
+        cam = F8_C + Vector((0.4 - 0.3 * u, 4.5 - 0.5 * ease(u), -1.0))
+        tgt = F8_C + Vector((0.0, 0.0, -0.05))
         shake = 0.02 * smoothstep(EAT_F - 1, EAT_F + 1, f) * (1 - smoothstep(EAT_F + 1, EAT_F + 14, f))
         cam = cam + Vector((shake * math.sin(f * 2.3), 0.0, shake * math.sin(f * 2.9)))
-        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 20.0)
+        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 18.0)
         fstop[f] = 5.6
     return frames, fstop
 
@@ -3415,6 +3415,8 @@ def deep_at(f):
         return 0.15
     if CUT1 <= f < CUT2:
         return 0.2
+    if CUT3 <= f < CUT4:
+        return 0.3
     return 0.1 if under_at(f) else 0.0
 
 
