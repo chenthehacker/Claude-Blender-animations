@@ -39,8 +39,8 @@ VFOV = 28.0                  # M section 1.1 (25 to 31)
 SENSOR_H = 24.0
 FOCAL = 0.5 * SENSOR_H / math.tan(math.radians(VFOV) / 2)    # 48.1 mm, sensor fit VERTICAL
 PLAYER_SHARE = 0.32          # M section 1.2 (31 to 34%)
-FEET_ROW = 0.675             # M section 1.2 (67 to 68% from the top)
-HORIZON_ROW = 0.165          # M section 1.2 (16.5%): calibrates the bend radius
+FEET_ROW = 0.60              # M section 16.1: retail walking view feet row varies 44 to 63% (camera trails the player)
+HORIZON_ROW = 0.144          # M section 16.1: retail walking view, ground starts at row 34 or 35 of 240 (H)
 RES = (1200, 720)            # 5:3 game frame at 3x, clean (section 12.2 item 11)
 NATIVE = (400, 240)
 SAMPLES = 16
@@ -77,12 +77,15 @@ SHADOW_MODE = "multiply"
 CANOPY_SHADOW_FRAC = 0.65
 
 PAL = {
-    "sky_top": "#2135E7", "sky_low": "#4078DA",                         # M retail NL#940, NL#939
+    "sky_top": "#2048EE", "sky_low": "#216EFC",       # M 16.2 walking strip: #2040F0 to #2050ED top, #2166FA to #2172FD
     # M retail stream capture supplied by the user (compressed 958x575 game area): near grass median #568F4F to
     # #5D9D49, p10 #137434 to #287D36, printed patches p90 #9DCA64, far ground #9FCE60 (haze). Medium confidence.
-    "grass": "#5A964C", "grass_dark": "#1E7834", "grass_light": "#9DCA64", "haze": "#9FCE60",
+    "grass": "#0D7541", "grass_dark": "#026637", "grass_light": "#3E9A5C", "grass_print": "#005A3D",
+    # M 16.3: spring and summer near grass (#026637 to #107442), darker print p10 #005A3D; round dot motif (by eye,
+    # S#1341, 1246, 1351), dot colour E. Haze target between the measured far bands #94CC78 and #B5E36B.
+    "haze": "#A8DC70",
     "cliff_lit": "#FFCEAE", "cliff_shade": "#BA8B8B",                   # M section 4.2
-    "water": "#3A75B4", "water_shallow": "#6BBEF0", "foam": "#FFFFFF",  # M section 4.3 (foam E)
+    "water": "#316BAF", "water_shallow": "#5AA2DD", "foam": "#ECF2F8",  # M 16.4: river #316BAF, shallow band, foam line
     "foliage": "#4A9C52", "foliage_dark": "#287046", "foliage_light": "#82D362",  # M section 7.3
     "wood": "#E4A560", "wood_dark": "#A1693B", "wood_light": "#FFD391",   # M section 7.3
     "skin": "#FDDBB2", "skin_shade": "#CE8F79",       # M skin: median of retail NL#941, 942, 944, 945 (shade 7.3)
@@ -95,6 +98,21 @@ PAL = {
     "bobber": "#E0473A", "rod": "#C88838", "rod_band": "#585888",       # E accent red; rod structure section 5.3
     "flower_a": "#FFF6E0", "flower_b": "#FFE15A", "flower_centre": "#F0A040",  # E pastel (keep red unique)
 }
+
+TIME = "day"
+GRADE = {"day": (1.0, 1.0, 1.0), "dusk": (0.83, 0.58, 0.67), "night": (0.34, 0.31, 0.70)}   # M 16.5 displayed
+WATER_BY_TIME = {"dusk": ("#3C5596", "#5A6FA8"), "night": ("#0E1D53", "#1B2C6E")}   # M 16.4 dusk sea, 16.10 night; shallow E
+SKY_BY_TIME = {"dusk": ("#7D617B", "#C76153"), "night": ("#01215A", "#01215A")}            # M 16.2 (S#12510; night flat)
+
+
+def gdisp():
+    return np.array(GRADE[TIME])
+
+
+def gcol(hexstr):
+    """A colour constant as it appears under the time of day grade (displayed sRGB multiply)."""
+    return np.clip(hexc(hexstr) * gdisp(), 0, 1)
+
 
 GRASS_PRESS = {"grass": "#188050", "grass_dark": "#02613E", "grass_light": "#2A9A5E", "haze": "#94CC78"}  # M press
 GRASS_EMOTE = {"grass": "#92DB10", "grass_dark": "#82CC09", "grass_light": "#A1E917", "haze": "#A1E917"}  # M NL#941 to 945
@@ -182,10 +200,23 @@ def tangent_distance(R, h, d):
     return math.hypot(bp[0] + d, h - bp[1])
 
 
-_NEAR = math.hypot(CAM_D, CAM_H)                      # camera to the player's feet
+def ground_distance_at_row(row, R, h, d):
+    """Camera distance to the bent ground point seen on the centre column at a given row (0 = top)."""
+    best = None
+    for th in np.linspace(1e-4, math.pi / 2, 6000):
+        y, z = R * math.sin(th), R * math.cos(th) - R
+        r_ = row_of(math.degrees(math.atan2(h - z, y + d)))
+        if best is None or abs(r_ - row) < best[0]:
+            best = (abs(r_ - row), math.hypot(y + d, h - z))
+        if r_ < HORIZON_ROW:
+            break
+    return best[1]
+
+
 _FAR = tangent_distance(LOG_R, CAM_H, CAM_D)
-HAZE_NEAR = _NEAR + 0.5 * (_FAR - _NEAR)              # far 40 to 50% of the visible ground (section 2)
-HAZE_FAR = _FAR
+HAZE_NEAR = ground_distance_at_row(HORIZON_ROW + 100 / 240, LOG_R, CAM_H, CAM_D)   # 16.3: 100 rows below the horizon
+HAZE_FAR = ground_distance_at_row(HORIZON_ROW + 8 / 240, LOG_R, CAM_H, CAM_D)   # full haze 8 rows below the horizon
+HAZE_MAX = 1.0                                        # tuned on the render to the 16.3 far over near ratio
 
 
 def bend_array(co):
@@ -226,7 +257,7 @@ def grain(img_rgb, amount=0.025):
 def tex_grass():
     """Mottled base plus a printed lattice of soft lighter diamonds (retail capture: lighter yellow green patches on
     a jittered grid; press NL#949: a fine triangle print). 10 x 10 motifs per tile: one every 0.29 P."""
-    w = h = 160
+    w = h = 256
     n = 0.6 * fbm(w, h, 4, 3, RNG) + 0.4 * fbm(w, h, 20, 1, RNG)
     col = ramp(0.25 + 0.55 * n, [PAL["grass_dark"], PAL["grass"], PAL["grass"]])
     yy, xx = np.mgrid[0:h, 0:w]
@@ -241,22 +272,22 @@ def tex_grass():
             cy = i * cell + cell / 2 + jit[i, j, 1]
             dx = np.minimum(np.abs(xx - cx), w - np.abs(xx - cx))
             dy = np.minimum(np.abs(yy - cy), h - np.abs(yy - cy))
-            r = RNG.uniform(2.2, 3.8)
-            d = (dx + dy) / r                        # diamond
-            print_mask = np.maximum(print_mask, smoothstep(1.2, 0.8, d) * RNG.uniform(0.25, 0.6))
+            r = RNG.uniform(1.6, 2.6)
+            d = np.sqrt(dx ** 2 + dy ** 2) / r       # round dot (16.3: spring and summer motif)
+            print_mask = np.maximum(print_mask, smoothstep(1.2, 0.8, d) * RNG.uniform(0.45, 0.85))
             # small darker triangle beside it (fine print, press NL#949)
             tx, ty = (cx + cell / 2) % w, (cy + cell / 3) % h
             ddx = np.minimum(np.abs(xx - tx), w - np.abs(xx - tx))
             ddy = (yy - ty + h / 2) % h - h / 2
             tri = (ddy > -1.6) & (ddy < 1.6) & (ddx < (1.6 - ddy) * 0.9)
-            dark_mask = np.maximum(dark_mask, tri * RNG.uniform(0.15, 0.35))
+            dark_mask = np.maximum(dark_mask, tri * RNG.uniform(0.35, 0.6))
     light = hexc(PAL["grass_light"])
-    dark = hexc(PAL["grass_dark"])
+    dark = hexc(PAL["grass_print"])
     col = col * (1 - print_mask[..., None]) + light * print_mask[..., None]
     col = col * (1 - dark_mask[..., None]) + dark * dark_mask[..., None]
     fine = fbm(w, h, 40, 2, RNG) - 0.5                 # blade level mottle
-    col = np.clip(col * (1 + 0.22 * fine[..., None]), 0, 1)
-    col = grain(col, 0.06)
+    col = np.clip(col * (1 + 0.55 * fine[..., None]), 0, 1)
+    col = grain(col, 0.10)
     return make_image("T_Grass", np.clip(col, 0, 1))
 
 
@@ -501,7 +532,25 @@ def build_lut():
     link(ng, tint.outputs[2], add.inputs[0])
     link(ng, rm.outputs[0], add.inputs[1])
     link(ng, sc.outputs["Vector"], add.inputs[2])
-    link(ng, add.outputs["Vector"], go.inputs[0])
+    # haze (16.3): distance mix toward the far ground colour; applies to everything lit (far trees too)
+    cdn = ng.nodes.new("ShaderNodeCameraData")
+    hzm = ng.nodes.new("ShaderNodeMapRange")
+    hzm.interpolation_type = "SMOOTHSTEP"
+    link(ng, cdn.outputs["View Distance"], hzm.inputs["Value"])
+    hzm.inputs["From Min"].default_value, hzm.inputs["From Max"].default_value = HAZE_NEAR, HAZE_FAR
+    # 16.3 measures haze on far GROUND and far water only; on objects it washed far trees out to flat lime, which the
+    # captures do not show, so the lit group keeps the node but at zero (terrain and water carry the haze)
+    hzm.inputs["To Min"].default_value, hzm.inputs["To Max"].default_value = 0.0, 0.0
+    hmix = ng.nodes.new("ShaderNodeMix")
+    hmix.data_type = "RGBA"
+    link(ng, hzm.outputs["Result"], hmix.inputs[0])
+    link(ng, add.outputs["Vector"], hmix.inputs[6])
+    hmix.inputs[7].default_value = (*lin(hexc(PAL["haze"])), 1)
+    gr = ng.nodes.new("ShaderNodeVectorMath")
+    gr.operation = "MULTIPLY"
+    link(ng, hmix.outputs[2], gr.inputs[0])
+    gr.inputs[1].default_value = tuple(float(c) ** 2.2 for c in gdisp())
+    link(ng, gr.outputs["Vector"], go.inputs[0])
     return ng
 
 
@@ -562,7 +611,7 @@ def unlit(name, color):
     nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     em = nt.nodes.new("ShaderNodeEmission")
-    em.inputs["Color"].default_value = (*lin(hexc(color)), 1)
+    em.inputs["Color"].default_value = (*lin(gcol(color)), 1)
     link(nt, em.outputs[0], out.inputs["Surface"])
     return m
 
@@ -683,12 +732,13 @@ def terrain_mat(T):
     hz.interpolation_type = "SMOOTHSTEP"
     link(nt, cd.outputs["View Distance"], hz.inputs["Value"])
     hz.inputs["From Min"].default_value, hz.inputs["From Max"].default_value = HAZE_NEAR, HAZE_FAR
-    hz.inputs["To Min"].default_value, hz.inputs["To Max"].default_value = 0.0, 0.8
+    hz.inputs["To Min"].default_value, hz.inputs["To Max"].default_value = 0.0, HAZE_MAX
     hm = nt.nodes.new("ShaderNodeMix")
     hm.data_type = "RGBA"
     link(nt, hz.outputs["Result"], hm.inputs[0])
     link(nt, g.outputs[0], hm.inputs[6])
-    hm.inputs[7].default_value = (*lin(hexc(PAL["haze"])), 1)
+    hm.inputs[7].default_value = (*lin(gcol(PAL["haze"])), 1)
+
     # below the water line: first a pale blue grey cast, then the deep water colour by depth (NL#957)
     ua = nt.nodes.new("ShaderNodeAttribute")
     ua.attribute_name = "under"
@@ -704,7 +754,7 @@ def terrain_mat(T):
     k1.inputs[1].default_value = 0.45
     link(nt, k1.outputs[0], c1.inputs[0])
     link(nt, hm.outputs[2], c1.inputs[6])
-    c1.inputs[7].default_value = (*lin(hexc(PAL["underwater"])), 1)
+    c1.inputs[7].default_value = (*lin(gcol(PAL["underwater"])), 1)
     dp = nt.nodes.new("ShaderNodeMapRange")
     dp.interpolation_type = "SMOOTHSTEP"
     link(nt, ua.outputs["Fac"], dp.inputs["Value"])
@@ -713,7 +763,7 @@ def terrain_mat(T):
     c2.data_type = "RGBA"
     link(nt, dp.outputs["Result"], c2.inputs[0])
     link(nt, c1.outputs[2], c2.inputs[6])
-    c2.inputs[7].default_value = (*lin(hexc(PAL["water_deep"])), 1)
+    c2.inputs[7].default_value = (*lin(gcol(PAL["water_deep"])), 1)
     em = nt.nodes.new("ShaderNodeEmission")
     link(nt, c2.outputs[2], em.inputs["Color"])
     link(nt, em.outputs[0], out.inputs["Surface"])
@@ -731,8 +781,9 @@ def water_mat(T):
     mx = nt.nodes.new("ShaderNodeMix")
     mx.data_type = "RGBA"
     link(nt, at.outputs["Fac"], mx.inputs[0])
-    mx.inputs[6].default_value = (*lin(hexc(PAL["water"])), 1)
-    mx.inputs[7].default_value = (*lin(hexc(PAL["water_shallow"])), 1)
+    wb, ws = WATER_BY_TIME.get(TIME, (None, None))
+    mx.inputs[6].default_value = (*lin(hexc(wb) if wb else gcol(PAL["water"])), 1)
+    mx.inputs[7].default_value = (*lin(hexc(ws) if ws else gcol(PAL["water_shallow"])), 1)
     mp = nt.nodes.new("ShaderNodeMapping")
     mp.inputs["Scale"].default_value = (0.9, 0.65, 1)
     link(nt, nt.nodes.new("ShaderNodeTexCoord").outputs["Object"], mp.inputs["Vector"])
@@ -742,14 +793,25 @@ def water_mat(T):
     cm = nt.nodes.new("ShaderNodeMath")
     cm.operation = "MULTIPLY"
     link(nt, t.outputs["Color"], cm.inputs[0])
-    cm.inputs[1].default_value = 0.5             # lines about +18% at p95 over the median (section 4.3)
+    cm.inputs[1].default_value = WAVE_GAIN       # rivers: lines +28% at p95, +47% at p99 over the median (16.4)
     mx2 = nt.nodes.new("ShaderNodeMix")
     mx2.data_type = "RGBA"
     link(nt, cm.outputs[0], mx2.inputs[0])
     link(nt, mx.outputs[2], mx2.inputs[6])
-    mx2.inputs[7].default_value = (*lin(hexc(PAL["water_shallow"])), 1)
+    mx2.inputs[7].default_value = (*lin(hexc(ws) if ws else gcol(PAL["water_shallow"])), 1)
+    wcd = nt.nodes.new("ShaderNodeCameraData")
+    whz = nt.nodes.new("ShaderNodeMapRange")
+    whz.interpolation_type = "SMOOTHSTEP"
+    link(nt, wcd.outputs["View Distance"], whz.inputs["Value"])
+    whz.inputs["From Min"].default_value, whz.inputs["From Max"].default_value = HAZE_NEAR, HAZE_FAR
+    whz.inputs["To Min"].default_value, whz.inputs["To Max"].default_value = 0.0, HAZE_MAX
+    wmx = nt.nodes.new("ShaderNodeMix")
+    wmx.data_type = "RGBA"
+    link(nt, whz.outputs["Result"], wmx.inputs[0])
+    link(nt, mx2.outputs[2], wmx.inputs[6])
+    wmx.inputs[7].default_value = (*lin(hexc(WATER_BY_TIME[TIME][1]) if TIME in WATER_BY_TIME else gcol("#95B3F2")), 1)
     em = nt.nodes.new("ShaderNodeEmission")
-    link(nt, mx2.outputs[2], em.inputs["Color"])
+    link(nt, wmx.outputs[2], em.inputs["Color"])
     # translucent surface (section 4.3: NL water shows posts and tyres below the line, NL#957, 967). What lies
     # underneath is darkened by depth in its own material (terrain "under" attribute), so the surface alpha can
     # stay low: more see through at the banks, denser in the middle.
@@ -767,6 +829,8 @@ def water_mat(T):
 
 
 WATER_ALPHA_EDGE, WATER_ALPHA_MID = 0.45, 0.70        # E tuned on the render
+GRASS_UV = 0.55                                       # tiles per P: print every 0.085 P, tuned on the grain QA (16.8)
+WAVE_GAIN = 0.85                                     # tuned on the render to the 16.4 river line ratio
 UNDER_FADE_DEPTH = 0.25                              # E: NL#957 posts fade out within a short depth (about 0.2 P)
 
 
@@ -796,7 +860,7 @@ def build_terrain(col, M):
             f = bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
             for lp in f.loops:
                 c = lp.vert.co
-                lp[uv].uv = (c.x * 0.35, c.y * 0.35)
+                lp[uv].uv = (c.x * GRASS_UV, c.y * GRASS_UV)
                 lp[uvw].uv = (c.y * 0.5, c.z * 1.4)
     return mesh_object("Terrain", bm, col, [M["terrain"]])
 
@@ -1121,34 +1185,38 @@ def build_player(col, M):
     return head_c, bob
 
 
+FISH_MUL = (0.50, 0.63, 0.68)    # M 16.4 retail plateau multiply (displayed); crisp 1 to 2 px edge
+
+
 def tex_fish():
-    """Teardrop alpha: u along the body (1 = head), v across. Round head, widest at 0.3 from the head, straight
-    taper to a pointed tail; soft edge."""
-    w, h = 128, 48
+    """Fish shadow mask: u along the body (1 = head). Round head, widest at 0.3 from the head, one end tapering to a
+    point; CRISP edge (16.4: 1 to 2 px at native resolution, no blur)."""
+    w, h = 256, 80
     yy, xx = np.mgrid[0:h, 0:w]
     u, v = xx / (w - 1), (yy / (h - 1) - 0.5) * 2
-    t = 1 - u                                            # 0 at the head tip, 1 at the tail tip
-    half = np.where(t < 0.3, np.sqrt(np.clip(1 - ((0.3 - t) / 0.3) ** 2, 0, 1)), np.clip((1 - t) / 0.7, 0, 1) ** 0.9)
-    edge = half * 0.9 - np.abs(v)
-    a = smoothstep(-0.05, 0.12, edge) * 0.62
-    return make_image("T_Fish", np.ones((h, w, 3)) * hexc("#0E2448"), a)
+    t = 1 - u
+    half = np.where(t < 0.3, np.sqrt(np.clip(1 - ((0.3 - t) / 0.3) ** 2, 0, 1)), np.clip((1 - t) / 0.7, 0, 1) ** 0.8)
+    edge = half * 0.92 - np.abs(v)
+    a = smoothstep(-0.012, 0.012, edge)
+    return make_image("T_Fish", np.ones((h, w, 3)), a)
 
 
 def fish_mat():
+    """Multiply decal drawn after the water: Transparent BSDF tinted mix(white, multiply, mask)."""
     m = bpy.data.materials.new("M_Fish")
     nt = m.node_tree
     nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     t = nt.nodes.new("ShaderNodeTexImage")
     t.image, t.interpolation, t.extension = tex_fish(), "Linear", "CLIP"
-    em = nt.nodes.new("ShaderNodeEmission")
-    link(nt, t.outputs["Color"], em.inputs["Color"])
-    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
-    mx = nt.nodes.new("ShaderNodeMixShader")
+    mx = nt.nodes.new("ShaderNodeMix")
+    mx.data_type = "RGBA"
     link(nt, t.outputs["Alpha"], mx.inputs[0])
-    link(nt, tr.outputs[0], mx.inputs[1])
-    link(nt, em.outputs[0], mx.inputs[2])
-    link(nt, mx.outputs[0], out.inputs["Surface"])
+    mx.inputs[6].default_value = (1, 1, 1, 1)
+    mx.inputs[7].default_value = (*(c ** 2.2 for c in FISH_MUL), 1)
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    link(nt, mx.outputs[2], tr.inputs["Color"])
+    link(nt, tr.outputs[0], out.inputs["Surface"])
     m.surface_render_method = "BLENDED"
     return m
 
@@ -1175,8 +1243,9 @@ def build_sky():
     mr.inputs["From Max"].default_value = 1.0
     cr = nt.nodes.new("ShaderNodeValToRGB")
     link(nt, mr.outputs["Result"], cr.inputs[0])
-    cr.color_ramp.elements[0].color = (*lin(hexc(PAL["sky_low"])), 1)
-    cr.color_ramp.elements[1].color = (*lin(hexc(PAL["sky_top"])), 1)
+    top, low = SKY_BY_TIME.get(TIME, (PAL["sky_top"], PAL["sky_low"]))
+    cr.color_ramp.elements[0].color = (*lin(hexc(low)), 1)
+    cr.color_ramp.elements[1].color = (*lin(hexc(top)), 1)
     bg = nt.nodes.new("ShaderNodeBackground")
     link(nt, cr.outputs["Color"], bg.inputs["Color"])
     link(nt, bg.outputs[0], out.inputs["Surface"])
@@ -1194,7 +1263,8 @@ def tex_cloud():
         a = np.maximum(a, np.exp(-(((u - cx) / sx) ** 2 + ((v - cy) / sy) ** 2)))
     a = a * (0.75 + 0.25 * fbm(w, h, 8, 2, RNG))
     a = smoothstep(0.15, 0.85, a) * 0.9
-    col = ramp(a, ["#5790D9", "#6FA2E1", "#8FB8EA"])
+    cols = {"dusk": ["#9C7A86", "#C99090", "#DDA495"]}.get(TIME, ["#5790D9", "#6FA2E1", "#8FB8EA"])
+    col = ramp(a, cols)
     return make_image("T_Cloud", col, a)
 
 
@@ -1323,7 +1393,8 @@ def build(native=False):
 
     rx_, ry_ = NATIVE if native else RES
     sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = rx_, ry_, 100
-    build_clouds(world, M, cam)
+    if TIME != "night":
+        build_clouds(world, M, cam)
     sc.render.engine = "BLENDER_EEVEE"
     ee = sc.eevee
     if native:
@@ -1387,6 +1458,26 @@ def qa(png, info):
     nblack = float((v < 0.08).mean())
     nwhite = float(((v > 0.92) & (s < 0.12)).mean())
     print(f"QA envelope: neon {neon:.3%}, near black {nblack:.3%}, near white {nwhite:.3%} (each under 2%)")
+    # haze (16.3, V2 method): mean luminance of ground pixels in a 20 row band just below the horizon over a band
+    # at rows 170 to 236 of 240, left 45% of the columns (grass side, away from the river)
+    Lp = 0.2126 * px[..., 0] + 0.7152 * px[..., 1] + 0.0722 * px[..., 2]
+    gmask = (px[..., 1] > px[..., 0]) & (px[..., 1] > px[..., 2])
+    cols = slice(0, int(w * 0.45))
+    def band(r0, r1):
+        ys = slice(int(r0 / 240 * h), int(r1 / 240 * h))
+        m = gmask[ys, cols]
+        return float(Lp[ys, cols][m].mean()) if m.any() else float("nan")
+    hz = HORIZON_ROW * 240
+    far, near = band(hz + 2, hz + 22), band(170, 236)
+    print(f"QA haze: far band luminance / near band {far / near:.2f} (16.3 retail median 2.15, range 1.61 to 3.19)")
+    # river lines (16.4): luminance p95 and p99 over the median on water pixels, right side of the frame
+    wm = (px[..., 2] > px[..., 0] + 0.15) & (px[..., 2] > px[..., 1])
+    wm[:, :int(w * 0.6)] = False
+    wm[:int(h * 0.3)] = False
+    if wm.any():
+        lw = Lp[wm]
+        print(f"QA river lines: p95 / median {np.percentile(lw, 95) / np.median(lw):.2f}, p99 / median "
+              f"{np.percentile(lw, 99) / np.median(lw):.2f} (16.4 rivers 1.28 and 1.47)")
     # horizon: per column, last sky row from the top (sky = blue dominant and dark red channel)
     sky = (px[..., 2] > 0.6) & (px[..., 2] > px[..., 0] + 0.2) & (px[..., 2] > px[..., 1] + 0.1)   # sky or cloud
     rows = []
@@ -1422,6 +1513,19 @@ def qa(png, info):
           f"(blue multiplied less than R and G; above 1 only on lime grass)")
 
 
+def haze_qa(png):
+    im = bpy.data.images.load(png)
+    w, h = im.size
+    px = np.array(im.pixels[:]).reshape(h, w, 4)[::-1, :, :3]
+    Lp = 0.2126 * px[..., 0] + 0.7152 * px[..., 1] + 0.0722 * px[..., 2]
+    cols = slice(0, int(w * 0.45))
+    hz = HORIZON_ROW * 240
+    def band(r0, r1):
+        return float(Lp[int(r0 / 240 * h):int(r1 / 240 * h), cols].mean())
+    print(f"QA haze (ground only pass): far band {hz + 2:.0f} to {hz + 22:.0f} over near 170 to 236 = "
+          f"{band(hz + 2, hz + 22) / band(170, 236):.2f} (16.3 retail median 2.15 fixed bands, 1.86 relative; range 1.61 to 3.19)")
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     p = argparse.ArgumentParser()
@@ -1431,7 +1535,10 @@ def main():
     p.add_argument("--save")
     p.add_argument("--grass", choices=("retail", "press", "emote"), default="retail",
                    help="retail: user's retail stream capture; press: E3 build green; emote: lime emote crops")
+    p.add_argument("--time", choices=sorted(GRADE), default="day", help="time of day grade and sky (16.2, 16.5)")
     a = p.parse_args(argv)
+    global TIME
+    TIME = a.time
     if a.grass == "emote":
         PAL.update(GRASS_EMOTE)
         global BLOB_CORE_ALPHA, SHADOW_MODE
@@ -1461,6 +1568,18 @@ def main():
         bpy.ops.render.render(write_still=True)
         print(f"rendered {out} in {time.time() - t:.1f}s")
         qa(out, info)
+        # haze QA on ground and water only (objects hidden), so far tree crowns do not dilute the band ratio
+        keep = ("Terrain", "Water")
+        hidden = [o for o in bpy.context.scene.objects if o.type == "MESH" and not o.name.startswith(keep)]
+        for o in hidden:
+            o.hide_render = True
+        gp = os.path.join(os.path.dirname(out), ".haze_ground_pass.png")
+        bpy.context.scene.render.filepath = gp
+        bpy.ops.render.render(write_still=True)
+        haze_qa(gp)
+        os.remove(gp)
+        for o in hidden:
+            o.hide_render = False
         if a.native and shutil.which("ffmpeg"):
             root, ext = os.path.splitext(out)
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", out, "-vf",

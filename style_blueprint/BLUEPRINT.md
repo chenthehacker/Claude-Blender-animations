@@ -1313,3 +1313,24 @@ are the Markdown table rules. No angle brackets were added. Every number added i
 **Not re measured in this audit:** the 565 step allowance (0.15 to 0.26) in the grain target, the moon and lamp glow radii,
 the fish bobber sizes (`a38_bobber.py` red masks give 8x9, 7x8 and 9x9 on S#12899 to 12901, the red half only, so the
 listed 10x9 and 10x8 cannot be confirmed or refuted), the CF night and rain multipliers, the clothing and icon facts.
+
+### 16.14 Validation in the test scene (`style_test_town/town_river_test.py`, QA printed by `--render`)
+
+Section 16 values applied to the town river scene and measured on its renders (1200x720, resized BILINEAR to 400x240
+where a 240 row figure is quoted):
+* Camera solved from the 16.1 targets (player share 0.32, feet row 0.60, inside the retail 44 to 63%): height 3.40 P,
+  feet distance 4.37 P; bend radius calibrated to the 0.144 horizon row: 13.28 P (16.1 arithmetic said 14.5 to 15.7 P
+  with the 12.1 camera; the different feet row explains the gap).
+* Haze (ground and water only): far band 2 to 22 rows below the horizon over the 170 to 236 band, on a ground only
+  render pass: 2.12 (retail median 2.15). Applying the same haze to trees and props washed them to flat lime, which no
+  capture shows, so haze stays a ground and water layer (16.10 H applies to those materials only).
+* River lines p95 over median 1.25 (16.4 rivers 1.28).
+* Grain: grass pixels only 2.79 against 2.87 (p25 2.31, p75 3.40) on 85 lossless retail frames with over 25% grass;
+  whole frame 1.93 against 2.92 on the same frames. The whole frame gap comes from larger smooth water and sky areas
+  and fewer objects than a typical retail frame, not from the grass. Raising the print density further turned the dots
+  into carpet like noise, which the captures do not show. Compare grain on matching content.
+* Colour envelope: the retail walking sky strip itself counts as near neon (S about 0.87, V about 0.94); retail frames
+  with over 8% sky give a neon share median 0.3%, p75 3.2%, p90 9.0% (2,284 frames); the render's 9.8% sits at p90
+  because its sky strip is unobstructed. Treat the 2% envelope (7.1) as a ground and object rule, not a sky rule.
+* Night and dusk water: grading the day water colour leaves it lavender; use the measured time of day water colours
+  (dusk #3C5596, night #0E1D53) as the base and haze toward the same family. Render medians: dusk #40558F, night #132265.
