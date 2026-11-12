@@ -1354,26 +1354,46 @@ where a 240 row figure is quoted):
 
 ### 16.16 Second test scene: a plaza in front of a village hall (`style_test_town/town_hall_test.py`)
 
-Original assets only: a timber framed plaster hall with a red tiled roof (#BB3F5B family, 16.7), a porch with a
-clock, double door, stone steps and window boxes; three original villagers (cat, dog, rabbit) built to the section 5.1
-animal proportions (head with ears 0.50 of H, core head 0.40, width over core height 1.44, eyes 0.33 down the core
-head, leg gap 0.11, arms to the hip); a cobble plaza on the measured mortar #9D6223 with grey stones #AAA9B9 (16.10).
+Original hall and villagers built in the series' design language (squat chunky building, soft bulging eaves, a central
+clock bay, stone columns, plank walls, cobble plaza; round headed villagers with stub limbs, section 5), with sizes,
+framing and colours measured on retail frames. Revision 2 follows user review (plants on cobbles, texture mismatch,
+boxy hall, poor villagers, odd haze on the plaza).
 
-* Framing in front of a building [S arithmetic on by eye measurements, M]. The section 12.1 walking camera at feet
-  row 0.60 cannot show a building: with the horizon at 0.144 a wall 1 P tall already reaches row 0.0 at any depth up
-  to the horizon (projected with the scene's camera and bend: at 2 P beyond the feet, z 1 sits at row 0.016). Retail
-  frames in front of houses put the player much lower: S#1436 and S#1441 (5x NEAREST crops) have the cap top at rows
-  134 to 135 of 240 and the soles at 214 to 215, so feet row 0.89 and player 0.33 of the height, roofs running off the
-  top edge. Re solving the same camera (pitch 35, vFOV 28) for feet 0.89 and share 0.33 gives height 3.57 P and
-  ground distance 3.45 P; keeping the world bend at R 13.28 P the open ground horizon moves to 0.250, close to the
-  corpus value "in front of a house, ground ends 27 to 31%" (16.1, R4). So the in front of a building view is the same
-  camera trailing the player, not a different lens. Two frames, by eye: confidence M, not H.
-* Building size that fits that view: the hall wall is 1.5 P (door 0.81 P on 0.27 P of steps, clock centre 1.36 P);
-  the clock top projects to row 0.028 and the porch eave just above the frame, as the retail roofs do.
-* Characters: villager share 0.31 to 0.33 at their depths, player 0.33. Triangles: one villager 964, scene about
-  100,500.
-* Render QA (day): neon envelope 3.2% (the sky corners and saturated shirts), near black 0%, near white 3.6% (after
-  toning the plaster to #E8D6B0 and frames to #EFEBE2: pure white frames read 5.0%). Player blob on cobbles,
-  measured by rendering again without the blob and dividing per pixel: median 0.54 over 4,291 shaded pixels, darkest
-  decile 0.51. That equals the configured multiply (0.54, 0.54, 0.68) and is a little lighter than the section 3 range
-  0.41 to 0.50 measured on grass; single 3 px samples are meaningless on cobbles (stone and mortar alternate).
+* Framing in front of a building [by eye on 3x and 5x NEAREST crops, M]. The walking view (feet row 0.60) cannot show
+  a building: with the horizon at 0.144 a wall 1 P tall already reaches row 0.0. Retail frames in front of buildings
+  put the player low: S#2855 (town hall exterior) feet row 220 of 240, hat top 138; S#1436, S#1441 feet 214 to 215, cap
+  top 134 to 135. Used: feet row 0.90, player share 0.33.
+* Objects lean back about 18 deg [S arithmetic on a fit, M, one frame]. Building verticals in S#2855 barely converge:
+  least squares on the strongest horizontal gradient per row gives the outer wall corners a drift of 5.7 and 7.7 native
+  px over the wall height (pillars nearer the centre 1 to 2 px). The pitch 35 camera predicts 19.3 px with upright
+  walls, 7.4 px with a 17 deg lean back and 5.8 px with 20 deg. The ground still fits pitch 35, so objects (not the
+  camera) are tilted away: implemented as a shear y += z tan(18 deg) before the rolling log bend (`R.OBJECT_LEAN`).
+  Mechanism in the game: cannot confirm; this reproduces the measured image. With it the camera solves to height
+  4.51 P, distance 4.31 P (bend R 13.28 P kept) and the S#2855 proportions give a hall eave of about 1.3 P and a clock
+  gable top of about 2.25 P. Not yet applied to the river scene (it would change that scene's measured framing).
+* Hall colours from S#2855 (median boxes by eye, M): plank wall #AB854A (p10 #866936, p90 #DBB264), lavender grey stone
+  #A08998 to #E6C0BD lit, window panes up to #F1EEC0, cobbles #928498 (this frame) to #ADB2C6 (S#3152). Roof kept at the
+  NL house roof family #BB3F5B (16.7).
+* Soft geometry: every box is a rounded box (cube grid pushed onto a box with radius 0.04 to 0.075 P edges, smooth
+  shaded), columns are 12 sided lathes with cushion bases and rolled capitals, the roof is two thick rounded slabs with a
+  ridge roll, the clock gable is an arch topped slab with a torus trim (a bent tube with a fixed frame: polyline tubes
+  twist on arcs).
+* Haze on the plaza and on objects. S#3152 (lossless plaza): cobbles brighten from #ADB2C6 near to #C6C3D6 far
+  (luminance x1.11) and stay lavender grey; a lime haze on cobbles is wrong. Objects: low weeds near the horizon in
+  S#13257 brighten like the ground (#44964D near, #9DCE6D in the far band, weed mask on a Q80 JPEG, L to M), while a
+  tree at the edge of the S#3152 plaza shows no measurable haze at its short distance (#086910 against #006931 near).
+  Implemented: every object material takes the ground's distance ramp toward #8EC668; the terrain's haze colour follows
+  the plaza weight (#8EC668 on grass, #C6C3D6 on cobbles). In this framing the ramp starts at 8.8 P from the camera, so
+  only the farthest trees are touched.
+* Texture density: the user found the hall and characters cleaner than the cobbles. All textures now share one painted
+  treatment: about 64 to 80 texels per P (planks 64, cobbles 80, fur 64; faces about 110, inside the 80 to 150 texels per
+  P that section 6's CF face reading implies), bilinear, fbm mottle 4 to 7% plus felt grain; the shared player textures
+  get the same pass (face resampled to 0.75).
+* Plants only on grass: the build asserts zero plaza weight under every tree, bush and flower bed; flowers on the hall
+  sit in window boxes.
+* Render QA (day): player share 0.33, villagers 0.31 to 0.33; clock gable top row 0.029, eave row 0.27 (S#2855: 0.067,
+  0.417, with the hall right behind the player; here it stands about 1 P further back to leave room for the
+  villagers). Neon 2.2%, near black 0%, near white 1.3%. Player blob on cobbles, render with and without the blob
+  divided per pixel: median 0.55 over 3,854 shaded pixels (the configured multiply; section 3 grass range 0.41 to
+  0.50). Triangles: one villager about 2,000 (above the section 5.2 estimate of 500 to 800, which is itself L), scene
+  about 113,000.

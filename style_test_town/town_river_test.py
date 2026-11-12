@@ -222,7 +222,12 @@ HAZE_FAR = _FAR
 HAZE_MAX = 0.9                                         # original 0.8, nudged up slightly (user)
 
 
+OBJECT_LEAN = 0.0      # shear back per unit height before the bend (0 here; the town hall scene measures 18 deg)
+
+
 def bend_array(co):
+    if OBJECT_LEAN:
+        co[:, 1] = co[:, 1] + co[:, 2] * OBJECT_LEAN
     th = co[:, 1] / LOG_R
     r = LOG_R + co[:, 2]
     co[:, 1] = r * np.sin(th)
