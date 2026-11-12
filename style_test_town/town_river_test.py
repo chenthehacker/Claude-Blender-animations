@@ -1126,10 +1126,11 @@ PLAYER = Vector((0.0, 0.0, 0.0))
 FACING_DEG = -25.0            # east, turned 25 deg toward the camera so the face reads (design choice)
 
 
-def build_player(col, M):
+def build_player(col, M, pos=None, facing_deg=None, fishing=True):
     """Original NL proportioned player, H = 1.0: head fraction 0.46 (chin at 0.54), round forms 14 x 8, limbs
     6 sided, mitten hands, separate hair shell with a zigzag fringe (sections 5.1 to 5.3)."""
-    yaw = math.radians(FACING_DEG)
+    PLAYER = Vector(pos) if pos is not None else globals()["PLAYER"]
+    yaw = math.radians(FACING_DEG if facing_deg is None else facing_deg)
     R = Matrix.Rotation(yaw, 4, "Z")
     fwd = Vector((math.cos(yaw), math.sin(yaw), 0))
     side = Vector((-fwd.y, fwd.x, 0))
@@ -1219,11 +1220,17 @@ def build_player(col, M):
             cap_end=True, cap_start=True)
     for s in (-1, 1):
         bm_sphere(bm, uv, at(0, s * 0.10, 0.52), 0.045, segs=8, rings=5)          # shoulder
-        bm_tube(bm, uv, [at(0, s * 0.11, 0.52), at(0.07, s * 0.10, 0.46)], [0.045, 0.042], 6, v0=0.0, v1=0.24)
+        if fishing:
+            bm_tube(bm, uv, [at(0, s * 0.11, 0.52), at(0.07, s * 0.10, 0.46)], [0.045, 0.042], 6, v0=0.0, v1=0.24)
+        else:                                            # arms relaxed at the sides
+            bm_tube(bm, uv, [at(0, s * 0.12, 0.52), at(0.01, s * 0.145, 0.45)], [0.045, 0.042], 6, v0=0.0, v1=0.24)
     mesh_object("Body", bm, col, [M["shirt"]])
     bm, uv = new_bm()                                    # forearms (skin) to the mitten hands
     for s in (-1, 1):
-        bm_tube(bm, uv, [at(0.06, s * 0.10, 0.47), at(0.18, s * 0.045, 0.40)], [0.032, 0.028], 6)
+        if fishing:
+            bm_tube(bm, uv, [at(0.06, s * 0.10, 0.47), at(0.18, s * 0.045, 0.40)], [0.032, 0.028], 6)
+        else:
+            bm_tube(bm, uv, [at(0.01, s * 0.145, 0.46), at(0.02, s * 0.155, 0.34)], [0.032, 0.028], 6)
     mesh_object("Forearms", bm, col, [M["skin"]])
     bm, uv = new_bm()
     bm_tube(bm, uv, [at(0, 0, 0.22), at(0, 0, 0.32)], [0.125, 0.13], 8, cap_start=True)
@@ -1239,9 +1246,11 @@ def build_player(col, M):
     mesh_object("Shoes", bm, col, [M["shoe"]])
     bm, uv = new_bm()
     for s in (-1, 1):
-        bm_sphere(bm, uv, at(0.19, s * 0.04, 0.39), 0.04, segs=10, rings=6)
+        bm_sphere(bm, uv, at(0.19, s * 0.04, 0.39) if fishing else at(0.02, s * 0.157, 0.32), 0.04, segs=10, rings=6)
     mesh_object("Hands", bm, col, [M["skin"]])
 
+    if not fishing:                                      # hands at the sides, no rod
+        return head_c, None
     grip = at(0.2, 0.0, 0.39)
     tip = grip + Vector((1.25, 0.25, 0.95))
     bm, uv = new_bm()
@@ -1429,12 +1438,10 @@ def build_camera(col):
     return cam
 
 
-def build(native=False):
+def make_assets():
+    """LUT group, painted textures and the material set shared by every test scene."""
     global LUT
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    sc = bpy.context.scene
     LUT = build_lut()
-    rng = np.random.default_rng(3)
     T = {"grass": tex_grass(), "wall": tex_wall(), "caustic": tex_caustic(), "foliage": tex_foliage(),
          "bark": tex_bark(), "face": tex_face(), "hair": tex_hair(), "shirt": tex_shirt(), "bobber": tex_bobber(),
          "rock": tex_rock(), "leaves": tex_leaves(), "cloud": tex_cloud(),
@@ -1472,27 +1479,12 @@ def build(native=False):
         "canopy": shadow_mat("M_CanopyShadow", "canopy", inner=0.40, wobble=0.16),
         "cloud": cloud_mat(T["cloud"]),
     }
-    world = bpy.data.collections.new("World")
-    sc.collection.children.link(world)
-    build_sky()
-    build_terrain(world, M)
-    build_water(world, M)
-    # horizon tree line (section 9 rule 3) and a few nearer trees on both sides of the river (4 to 6 trees)
-    for x, y, hgt in TREES + NEAR_TREES:
-        build_tree(world, M, x, y, hgt, rng)
-    for x, y in FLOWERS:
-        build_flowers(world, M, x, y, rng)
-    build_rock(world, M, -1.55, 2.9, 0.26)
-    build_bush(world, M, -1.55, -0.95, 0.40, rng)             # foreground occluder cutting the bottom edge
-    head_c, bob = build_player(world, M)
-    # player blob: on screen aspect 1.35 at this view (section 3): ground radius y / x = sin(dep) x 1.35 inverse
-    dep = math.atan2(CAM_H, CAM_D)
-    rx = BLOB_EXTENT / 2
-    ry = rx * (1.0 / (BLOB_ASPECT_ON_SCREEN * math.sin(dep)))
-    blob(world, M["blob"], "PlayerShadow", (PLAYER.x, PLAYER.y, 0.006), rx, ry)
-    bend_world()
-    cam = build_camera(world)
+    return T, M
 
+
+def finalize_render(native, world, M, cam):
+    """Resolution, clouds and EEVEE settings shared by every test scene."""
+    sc = bpy.context.scene
     rx_, ry_ = NATIVE if native else RES
     sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = rx_, ry_, 100
     if TIME != "night":
@@ -1516,6 +1508,34 @@ def build(native=False):
     sc.render.image_settings.media_type = "IMAGE"
     sc.render.image_settings.file_format = "PNG"
     sc.render.image_settings.color_mode = "RGB"
+
+
+def build(native=False):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    sc = bpy.context.scene
+    rng = np.random.default_rng(3)
+    T, M = make_assets()
+    world = bpy.data.collections.new("World")
+    sc.collection.children.link(world)
+    build_sky()
+    build_terrain(world, M)
+    build_water(world, M)
+    # horizon tree line (section 9 rule 3) and a few nearer trees on both sides of the river (4 to 6 trees)
+    for x, y, hgt in TREES + NEAR_TREES:
+        build_tree(world, M, x, y, hgt, rng)
+    for x, y in FLOWERS:
+        build_flowers(world, M, x, y, rng)
+    build_rock(world, M, -1.55, 2.9, 0.26)
+    build_bush(world, M, -1.55, -0.95, 0.40, rng)             # foreground occluder cutting the bottom edge
+    head_c, bob = build_player(world, M)
+    # player blob: on screen aspect 1.35 at this view (section 3): ground radius y / x = sin(dep) x 1.35 inverse
+    dep = math.atan2(CAM_H, CAM_D)
+    rx = BLOB_EXTENT / 2
+    ry = rx * (1.0 / (BLOB_ASPECT_ON_SCREEN * math.sin(dep)))
+    blob(world, M["blob"], "PlayerShadow", (PLAYER.x, PLAYER.y, 0.006), rx, ry)
+    bend_world()
+    cam = build_camera(world)
+    finalize_render(native, world, M, cam)
     return {"cam": cam, "head": head_c, "bobber": bob}
 
 
