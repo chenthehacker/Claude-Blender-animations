@@ -1,17 +1,17 @@
 {
  "fps": 24,
- "frames": 1022,
+ "frames": 1005,
  "loop": true,
  "cuts": [
   7,
-  299,
-  477,
-  691,
-  940
+  298,
+  471,
+  671,
+  916
  ],
  "hard_cuts": [
-  138,
-  535
+  160,
+  529
  ],
  "whips": [
   [
@@ -19,8 +19,8 @@
    7
   ],
   [
-   936,
-   946
+   912,
+   922
   ]
  ],
  "overlays": [
@@ -30,107 +30,107 @@
    "In 1949, Cal Johnson landed a *67 lb 8 oz* musky."
   ],
   [
-   138,
+   160,
    "caption",
    "The IGFA all tackle world record."
   ],
   [
-   142,
+   164,
    "pin",
    "muskellunge"
   ],
   [
-   301,
+   300,
    "badge",
    "CABBAGE WEED EDGE"
   ],
   [
-   301,
+   300,
    "caption",
    "They hunt by sight from cover."
   ],
   [
-   343,
+   342,
    "pin",
    "cabbage weed edge"
   ],
   [
-   353,
+   352,
    "pin",
    "drop off"
   ],
   [
-   361,
+   364,
    "caption",
    "Cabbage edges next to deep water."
   ],
   [
-   369,
+   372,
    "pin",
    "musky in ambush"
   ],
   [
-   479,
+   473,
    "badge",
    "BURN THE BUCKTAIL"
   ],
   [
-   479,
+   473,
    "caption",
    "Trigger a reaction strike."
   ],
   [
-   485,
+   479,
    "pin",
    "double blades"
   ],
   [
-   506,
+   500,
    "pin",
    "hair skirt"
   ],
   [
-   535,
+   529,
    "caption",
    "Burn it over the weed tops."
   ],
   [
-   539,
+   533,
    "pin",
    "inches over the weeds"
   ],
   [
-   589,
+   583,
    "pin",
    "musky below"
   ],
   [
-   691,
+   671,
    "badge",
    "THE FIGURE 8 FINISH"
   ],
   [
-   691,
+   671,
    "caption",
    "Never pull it out early."
   ],
   [
-   699,
+   717,
    "pin",
    "wide, deep figure 8"
   ],
   [
-   746,
+   730,
    "caption",
    "Up to 40 percent hit at the boat."
   ],
   [
-   872,
+   889,
    "pin",
    "eats on the turn"
   ],
   [
-   944,
+   920,
    "caption",
    "Burn fast, work the turn."
   ]
@@ -138,26 +138,26 @@
  "under": [
   [
    7,
-   940
+   916
   ]
  ],
  "strike": 51,
- "eat": 874,
+ "eat": 854,
  "burn": [
-  535,
-  691
+  529,
+  671
  ],
  "studio": [
-  477,
-  535
+  471,
+  529
  ],
  "section": [
-  299,
-  477
+  298,
+  471
  ],
  "figure8": [
-  691,
-  940
+  671,
+  916
  ],
  "overhead": [
   [
@@ -165,23 +165,23 @@
    7
   ],
   [
-   940,
-   1022
+   916,
+   1005
   ]
  ],
  "vo_start": {
   "1": 1,
-  "2": 304,
-  "3": 482,
-  "4": 696,
-  "5": 946
+  "2": 303,
+  "3": 476,
+  "4": 676,
+  "5": 922
  },
  "vo_len": {
-  "1": 12.2,
-  "2": 7.0,
-  "3": 8.5,
-  "4": 10.0,
-  "5": 3.2
+  "1": 12.16,
+  "2": 6.8,
+  "3": 7.92,
+  "4": 9.84,
+  "5": 3.52
  },
  "vo_text": {
   "1": "In 1949, Cal Johnson pulled a 67 pound, 8 ounce musky out of a Wisconsin lake. The IGFA lists it as the all tackle world record for the fish of ten thousand casts.",
@@ -192,9 +192,9 @@
  },
  "beats": [
   1,
-  299,
-  477,
-  691,
-  940
+  298,
+  471,
+  671,
+  916
  ]
 }

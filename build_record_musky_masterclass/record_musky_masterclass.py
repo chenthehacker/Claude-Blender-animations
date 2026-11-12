@@ -2137,7 +2137,7 @@ def build_materials(atmos):
         """The cut face of the cross section, drawn flat: lake bottom soil with a fine diagonal hatch (a diagram)."""
         o = separate(nt, world_pos(nt))
         hatch = nmath(nt, "POWER", nmath(nt, "ABSOLUTE", nmath(nt, "SINE", nmath(nt, "MULTIPLY",
-                      nmath(nt, "ADD", o["X"], o["Z"]), 9.0))), 30.0)
+                      nmath(nt, "ADD", o["Y"], o["Z"]), 9.0))), 30.0)
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", hatch, 0.35), srgb(92, 70, 40), srgb(200, 160, 96))
         em = nt.nodes.new("ShaderNodeEmission")
         nt.links.new(col, em.inputs["Color"])
@@ -3328,8 +3328,8 @@ def camera_frames(st):
         near_cam = mp + Vector((2.25, 0.12, 0.05))
         near_tgt = mp + Vector((0.0, 0.12, 0.0))
         u = (f - CUT1 - 46) / max(1, CUT2 - CUT1 - 46)
-        wide_cam = XS + Vector((15.5 - 1.0 * ease(max(0.0, u)), 1.6, -2.6))
-        wide_tgt = XS + Vector((0.0, 1.6, -3.0))
+        wide_cam = XS + Vector((9.6 - 0.8 * ease(max(0.0, u)), -0.6, -1.2))
+        wide_tgt = XS + Vector((0.0, -0.6, -3.1))
         k = ease(smoothstep(CUT1 + 8, CUT1 + 46, f))
         cam = near_cam.lerp(wide_cam, k)
         tgt = near_tgt.lerp(wide_tgt, ease(smoothstep(CUT1 + 8, CUT1 + 40, f)))
@@ -3351,11 +3351,11 @@ def camera_frames(st):
     # 4 the figure 8 beside the boat: a low, wide angle looking up at the boat's side
     for f in range(CUT3, CUT4):
         u = (f - CUT3) / max(1, CUT4 - CUT3)
-        cam = BOAT_AT + Vector((0.9 - 0.4 * u, 5.4 - 0.8 * ease(u), -2.5 + 0.2 * u))
-        tgt = F8_C + Vector((0.0, -0.4, 0.35))
+        cam = F8_C + Vector((0.45 - 0.3 * u, 3.3 - 0.4 * ease(u), -0.6))
+        tgt = F8_C + Vector((0.0, 0.0, 0.08))
         shake = 0.02 * smoothstep(EAT_F - 1, EAT_F + 1, f) * (1 - smoothstep(EAT_F + 1, EAT_F + 14, f))
         cam = cam + Vector((shake * math.sin(f * 2.3), 0.0, shake * math.sin(f * 2.9)))
-        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 19.0)
+        frames[f] = (cam, tgt, look_at(cam, tgt, Z), 20.0)
         fstop[f] = 5.6
     return frames, fstop
 
@@ -3630,9 +3630,9 @@ def build_overlays(hud, st):
               src="WISCONSIN DNR")
     hud.serif("Cabbage edges next to deep water.", s1, CUT2 - 9, lines=["Cabbage weed edges,", "*next to deep water.*"],
               src="WISCONSIN DNR MUSKY FACT SHEET")
-    hud.pin(lambda f: XS + Vector((0.0, 1.3, FLAT_Z + 1.1)), "cabbage weed edge", CUT1 + 44, CUT2 - 12,
+    hud.pin(lambda f: XS + Vector((0.0, 0.9, FLAT_Z + 1.3)), "cabbage weed edge", CUT1 + 44, CUT2 - 12,
             dot_color=srgb(150, 200, 90), side=0.06, y_band=(-0.22, 0.32))
-    hud.pin(lambda f: XS + Vector((0.0, -3.6, lake_z(0.0, -3.6) + 0.3)), "drop off", CUT1 + 54, CUT2 - 10,
+    hud.pin(lambda f: XS + Vector((0.0, -3.0, lake_z(0.0, -3.0) + 0.1)), "drop off", CUT1 + 54, CUT2 - 10,
             dot_color=srgb(200, 160, 110), side=-0.05, y_band=(-0.22, 0.32))
     hud.pin(lambda f: xs_musky(f)[0] + Vector((0.0, -0.2, 0.15)), "musky in ambush", s1 + 4, CUT2 - 10,
             dot_color=GOLD, side=-0.06, rise=0.09, y_band=(-0.22, 0.32))
@@ -4020,7 +4020,6 @@ def build_scene():
     surf = build_surface_under(c_lake, M, center=(30.0, -2.0, 0.0), size=200.0)
     shafts = build_shafts(c_lake, M, (14.0, -2.0, 0.0), n=10, seed=5, spread=14.0, length=9.0)
     shafts += build_shafts(c_lake, M, (50.0, -1.0, 0.0), n=6, seed=6, spread=10.0, length=9.0)
-    shafts += build_shafts(c_lake, M, (BOAT_AT.x, BOAT_AT.y + 3.0, 0.0), n=6, seed=8, spread=6.0, length=9.0)
     plank = specks("Specks", c_lake, M.specks, (24.0, -1.0, -1.6), (34.0, 6.0, 1.5), 30000, 0.0016, 31)
     # the cross section
     xsd = build_xs(c_x, M)
