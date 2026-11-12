@@ -1348,3 +1348,6 @@ where a 240 row figure is quoted):
   flat quad sinks under the rolling log ground in its middle (sagitta L^2 / 8R, about 0.05 P for 2.2 P at R 13 P)
   and disappears. Render QA: flower clump south edge 0.78 (target 0.68), near tree south edge 0.67 (target 0.77 to
   0.84 at the rim, darker inside). Player and rock keep round blobs.
+* Haze nudge after the darker 16.3 grass (user): colour #8EC668 (between the measured retail far ground #88BF68 and
+  #94CC78) instead of the lime #9FCE60, start at 0.4 of the way from the feet to the visible ground edge (was 0.5),
+  maximum mix 0.9 (was 0.8). Ground only pass ratio 1.38 (was 1.26).

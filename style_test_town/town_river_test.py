@@ -83,7 +83,7 @@ PAL = {
     "grass": "#0D7541", "grass_dark": "#026637", "grass_light": "#3E9A5C", "grass_print": "#005A3D",
     # M 16.3: spring and summer near grass (#026637 to #107442), darker print p10 #005A3D; round dot motif (by eye,
     # S#1341, 1246, 1351), dot colour E. Haze target between the measured far bands #94CC78 and #B5E36B.
-    "haze": "#9FCE60",                               # original haze target (user's retail capture far ground)
+    "haze": "#8EC668",                               # between the measured retail far ground #88BF68 and #94CC78 (16.3), suits the darker grass
     "cliff_lit": "#FFCEAE", "cliff_shade": "#BA8B8B",                   # M section 4.2
     "water": "#316BAF", "water_shallow": "#5AA2DD", "foam": "#ECF2F8",  # M 16.4: river #316BAF, shallow band, foam line
     "foliage": "#4A9C52", "foliage_dark": "#287046", "foliage_light": "#82D362",  # M section 7.3
@@ -217,9 +217,9 @@ _FAR = tangent_distance(LOG_R, CAM_H, CAM_D)
 # Haze: the ORIGINAL setting (user's choice): ground only, from halfway between the feet and the visible ground edge
 # to the edge, mixed up to 0.8 toward #9FCE60. (The section 16.3 tuned variant reached a 2.12 far over near ratio.)
 _NEAR = math.hypot(CAM_D, CAM_H)
-HAZE_NEAR = _NEAR + 0.5 * (_FAR - _NEAR)
+HAZE_NEAR = _NEAR + 0.4 * (_FAR - _NEAR)          # original 0.5, starts slightly nearer (user: slightly more haze)
 HAZE_FAR = _FAR
-HAZE_MAX = 0.8
+HAZE_MAX = 0.9                                         # original 0.8, nudged up slightly (user)
 
 
 def bend_array(co):
