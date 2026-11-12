@@ -1,0 +1,195 @@
+{
+ "fps": 24,
+ "frames": 1022,
+ "loop": true,
+ "cuts": [
+  7,
+  299,
+  477,
+  691,
+  940
+ ],
+ "hard_cuts": [
+  138,
+  535
+ ],
+ "whips": [
+  [
+   1,
+   7
+  ],
+  [
+   936,
+   946
+  ]
+ ],
+ "overlays": [
+  [
+   9,
+   "caption",
+   "In 1949, Cal Johnson landed a *67 lb 8 oz* musky."
+  ],
+  [
+   138,
+   "caption",
+   "The IGFA all tackle world record."
+  ],
+  [
+   142,
+   "pin",
+   "muskellunge"
+  ],
+  [
+   301,
+   "badge",
+   "CABBAGE WEED EDGE"
+  ],
+  [
+   301,
+   "caption",
+   "They hunt by sight from cover."
+  ],
+  [
+   349,
+   "pin",
+   "cabbage weed edge"
+  ],
+  [
+   353,
+   "pin",
+   "drop off"
+  ],
+  [
+   361,
+   "caption",
+   "Cabbage edges next to deep water."
+  ],
+  [
+   369,
+   "pin",
+   "musky in ambush"
+  ],
+  [
+   479,
+   "badge",
+   "BURN THE BUCKTAIL"
+  ],
+  [
+   479,
+   "caption",
+   "Trigger a reaction strike."
+  ],
+  [
+   485,
+   "pin",
+   "double blades"
+  ],
+  [
+   506,
+   "pin",
+   "hair skirt"
+  ],
+  [
+   535,
+   "caption",
+   "Burn it over the weed tops."
+  ],
+  [
+   539,
+   "pin",
+   "inches over the weeds"
+  ],
+  [
+   691,
+   "badge",
+   "THE FIGURE 8 FINISH"
+  ],
+  [
+   691,
+   "caption",
+   "Never pull it out early."
+  ],
+  [
+   699,
+   "pin",
+   "wide, deep figure 8"
+  ],
+  [
+   746,
+   "caption",
+   "Up to 40 percent hit at the boat."
+  ],
+  [
+   872,
+   "pin",
+   "eats on the turn"
+  ],
+  [
+   944,
+   "caption",
+   "Burn fast, work the turn."
+  ]
+ ],
+ "under": [
+  [
+   7,
+   940
+  ]
+ ],
+ "strike": 51,
+ "eat": 874,
+ "burn": [
+  535,
+  691
+ ],
+ "studio": [
+  477,
+  535
+ ],
+ "section": [
+  299,
+  477
+ ],
+ "figure8": [
+  691,
+  940
+ ],
+ "overhead": [
+  [
+   1,
+   7
+  ],
+  [
+   940,
+   1022
+  ]
+ ],
+ "vo_start": {
+  "1": 1,
+  "2": 304,
+  "3": 482,
+  "4": 696,
+  "5": 946
+ },
+ "vo_len": {
+  "1": 12.2,
+  "2": 7.0,
+  "3": 8.5,
+  "4": 10.0,
+  "5": 3.2
+ },
+ "vo_text": {
+  "1": "In 1949, Cal Johnson pulled a 67 pound, 8 ounce musky out of a Wisconsin lake. The IGFA lists it as the all tackle world record for the fish of ten thousand casts.",
+  "2": "Big muskies hunt by sight from cover. They lurk along cabbage weed edges, right next to deep water drop offs.",
+  "3": "To trigger a reaction strike, anglers burn double blade bucktails fast, just inches over the weed tops, where muskies hide below.",
+  "4": "Never pull your lure out early. Some pros say up to forty percent of their muskies hit right at the boat, so finish every cast with a wide, deep figure eight.",
+  "5": "Burn fast, work the turn, and you'll understand why..."
+ },
+ "beats": [
+  1,
+  299,
+  477,
+  691,
+  940
+ ]
+}

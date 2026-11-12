@@ -2794,7 +2794,7 @@ def weed_ok(x, y, seed=0.0):
 # --- meshes built with numpy -------------------------------------------------------------------------------------
 def np_mesh(name, verts, faces, col, mats, attrs=None, smooth=True):
     me = bpy.data.meshes.new(name)
-    me.from_pydata(np.asarray(verts, float), [], np.asarray(faces, int))
+    me.from_pydata(np.asarray(verts, float), [], faces.tolist() if isinstance(faces, np.ndarray) else faces)
     me.update()
     for an, (dom, vals) in (attrs or {}).items():
         a = me.attributes.new(an, "FLOAT", dom)
@@ -2961,7 +2961,7 @@ def build_lilypads(col, M, x_rng, y_rng, n, seed, name, offset=Vector((0, 0, 0))
         V = [(x, y, 0.012)] + ring
         F = [(0, k + 1, k + 2) for k in range(seg)]
         Vs.append(np.array(V))
-        Fs.append(np.array(F) + nv)
+        Fs.extend([tuple(i + nv for i in fc) for fc in F])
         Ms.append(np.zeros(len(F), int))
         nv += len(V)
         if stems:
@@ -2976,11 +2976,11 @@ def build_lilypads(col, M, x_rng, y_rng, n, seed, name, offset=Vector((0, 0, 0))
             for j in range(3):
                 sf.append((j, (j + 1) % 3, (j + 1) % 3 + 3, j + 3))
             Vs.append(np.array(sv))
-            Fs.append(np.array(sf) + nv)
+            Fs.extend([tuple(i + nv for i in fc) for fc in sf])
             Ms.append(np.ones(len(sf), int))
             nv += len(sv)
     V = np.concatenate(Vs) + np.array(tuple(offset))
-    ob = np_mesh(name, V, np.concatenate(Fs), col, [M.lilypad, M.stalk], smooth=False)
+    ob = np_mesh(name, V, Fs, col, [M.lilypad, M.stalk], smooth=False)
     ob.data.polygons.foreach_set("material_index", np.concatenate(Ms))
     ob.visible_shadow = True
     return ob
@@ -4006,7 +4006,7 @@ def build_scene():
     for f in range(CUT3 - 2, CUT4 + 2):
         tp = rod_tip(f)
         rod["tip"].location = tp
-        rod["butt"].location = BOAT_AT + Vector((tp.x - BOAT_AT.x) * 0.3 - 0.2, 0.25, 1.1)
+        rod["butt"].location = BOAT_AT + Vector(((tp.x - BOAT_AT.x) * 0.3 - 0.2, 0.25, 1.1))
         key(rod["tip"], "location", f)
         key(rod["butt"], "location", f)
     line_f8 = build_lure_line(c_lake, M, "LineFig8", lure_f8, rod_tip, CUT3 - 2, CUT4 + 1)
