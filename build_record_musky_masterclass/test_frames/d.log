@@ -2,3 +2,5 @@
 EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
 EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
 EGL Error (0x3009): EGL_BAD_MATCH: Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
+04:55.229  render           | Saved: '/home/user/Claude-Blender-animations/build_record_musky_masterclass/test_frames/frame_0240.png'
+rendered 240 in 294.5s
