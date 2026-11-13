@@ -2377,7 +2377,7 @@ def ring_section(bm, x0, x1, top, bot, wid, nr=20, na=24, power=2.2, zl=None, xl
 # --------------------------------------------------------------------------
 M_L = 1.0                             # modelled length nose to tail base before scaling
 MUSKY_SCALE = 1.2                     # 1.0 x 1.2 = 1.2 m to the tail base (the tail adds about 0.2 m)
-M_JAW_HINGE = Vector((0.345, 0.0, -0.022))
+M_JAW_HINGE = Vector((0.345, 0.0, 0.0))     # z is set from the mouth line in musky_head_meshes
 
 
 def musky_curves():
@@ -2385,11 +2385,11 @@ def musky_curves():
 
     def u_of(x):
         return (L / 2 - x) / L
-    top_u = pchip([(0.0, 0.005), (0.03, 0.011), (0.07, 0.019), (0.12, 0.031), (0.18, 0.046), (0.26, 0.058), (0.38, 0.068),
+    top_u = pchip([(0.0, 0.008), (0.03, 0.014), (0.07, 0.02), (0.12, 0.03), (0.18, 0.045), (0.26, 0.058), (0.38, 0.068),
                    (0.5, 0.071), (0.62, 0.066), (0.74, 0.054), (0.86, 0.041), (0.95, 0.034), (1.0, 0.032)])
-    bot_u = pchip([(0.0, -0.007), (0.03, -0.012), (0.07, -0.018), (0.12, -0.026), (0.18, -0.038), (0.26, -0.052),
+    bot_u = pchip([(0.0, -0.009), (0.03, -0.014), (0.07, -0.018), (0.12, -0.026), (0.18, -0.038), (0.26, -0.052),
                    (0.38, -0.066), (0.5, -0.07), (0.62, -0.064), (0.74, -0.05), (0.86, -0.038), (0.95, -0.032), (1.0, -0.03)])
-    wid_u = pchip([(0.0, 0.010), (0.03, 0.019), (0.07, 0.026), (0.12, 0.033), (0.2, 0.042), (0.32, 0.05), (0.45, 0.052),
+    wid_u = pchip([(0.0, 0.017), (0.03, 0.024), (0.07, 0.029), (0.12, 0.034), (0.2, 0.042), (0.32, 0.05), (0.45, 0.052),
                    (0.6, 0.047), (0.75, 0.036), (0.9, 0.022), (1.0, 0.017)])
     return (lambda x: top_u(u_of(x))), (lambda x: bot_u(u_of(x))), (lambda x: wid_u(u_of(x))), u_of
 
@@ -2425,41 +2425,163 @@ def teeth_row(bm, pts, h, r, mat, down):
         f.material_index = mat
 
 
+def _mouth_line(top, bot, x):
+    return bot(x) + 0.36 * (top(x) - bot(x))
+
+
+def musky_head_meshes(top, bot, wid, u_of, nr=96, nu=26, nl=18, power=2.1):
+    """The body and the lower jaw from one set of superellipse rings split at the mouth line, so the closed jaw fits
+    the head exactly. Rings ahead of the hinge are split: the upper arc and a flat palate stay on the body, the lower
+    arc and a flat floor go to the jaw; a dark back of the mouth closes the body at the hinge. Returns the body bmesh,
+    the jaw bmesh (in hinge space), the upper teeth and the lower teeth (in hinge space)."""
+    L = M_L
+    hx = M_JAW_HINGE.x
+    hz = _mouth_line(top, bot, hx)
+    M_JAW_HINGE.z = hz
+    hinge = Vector((hx, 0.0, hz))
+    xs = [L / 2 - L * i / nr for i in range(nr + 1)]
+    if not any(abs(x - hx) < 1e-6 for x in xs):
+        xs = sorted(xs + [hx], reverse=True)
+
+    def ring(x):
+        t, b, w = top(x), bot(x), wid(x)
+        zc, hh = (t + b) / 2, (t - b) / 2
+        m = _mouth_line(top, bot, x)
+        sv = max(-0.999, min(0.999, (m - zc) / hh))
+        am = math.copysign(abs(sv) ** (power / 2), sv)
+        am = math.asin(am)
+
+        def pt(a):
+            c, s_ = math.cos(a), math.sin(a)
+            return Vector((x, w * math.copysign(abs(c) ** (2 / power), c), zc + hh * math.copysign(abs(s_) ** (2 / power), s_)))
+        up = [pt(am + (math.pi - 2 * am) * k / nu) for k in range(nu + 1)]           # right lip, over the top, left lip
+        lo = [pt(math.pi - am + (math.pi + 2 * am) * k / nl) for k in range(1, nl)]  # left lip, under, right lip
+        return up, lo, t, b
+
+    def attrs(bmx):
+        return (bmx.verts.layers.float.get("zrel") or bmx.verts.layers.float.new("zrel"),
+                bmx.verts.layers.float.get("xrel") or bmx.verts.layers.float.new("xrel"))
+    bm, jb = bmesh.new(), bmesh.new()
+    zl, xl = attrs(bm)
+    jzl, jxl = attrs(jb)
+
+    def nv(bmx, co, t, b, x, zl_, xl_, off=Vector((0, 0, 0))):
+        v = bmx.verts.new(co - off)
+        v[zl_] = min(1.0, max(0.0, (co.z - b) / max(1e-6, t - b)))
+        v[xl_] = 1.0 - u_of(x)
+        return v
+    body_rings, jaw_rings = [], []
+    for x in xs:
+        up, lo, t, b = ring(x)
+        front = x > hx + 1e-6
+        rb = [nv(bm, p, t, b, x, zl, xl) for p in up]
+        if front:
+            rj = [nv(jb, p, t, b, x, jzl, jxl, hinge) for p in [up[-1]] + lo + [up[0]]]
+            body_rings.append((x, rb, None))
+            jaw_rings.append(rj)
+        else:
+            rb += [nv(bm, p, t, b, x, zl, xl) for p in lo]
+            body_rings.append((x, rb, None))
+            if abs(x - hx) < 1e-6:
+                jaw_rings.append([nv(jb, p, t, b, x, jzl, jxl, hinge) for p in [up[-1]] + lo + [up[0]]])
+    # body: upper arcs (+ palate) ahead of the hinge, full rings behind
+    for (xa, ra, _), (xb, rb, _) in zip(body_rings, body_rings[1:]):
+        if len(ra) == len(rb):
+            n = len(ra)
+            closed = n > nu + 1
+            for k in range(n if closed else n - 1):
+                f = bm.faces.new((ra[k], ra[(k + 1) % n], rb[(k + 1) % n], rb[k]))
+                f.smooth = True
+            if not closed:                                       # the palate: flat, dark red
+                f = bm.faces.new((ra[-1], ra[0], rb[0], rb[-1]))
+                f.material_index, f.smooth = 2, True
+        else:                                                    # the hinge: upper arc continues, back of the mouth
+            n = len(rb)
+            for k in range(len(ra) - 1):
+                f = bm.faces.new((ra[k], ra[k + 1], rb[k + 1], rb[k]))
+                f.smooth = True
+            f = bm.faces.new((ra[-1], ra[0], rb[0], rb[len(ra) - 1]))
+            f.material_index = 2
+            back = [rb[len(ra) - 1]] + rb[len(ra):] + [rb[0]]
+            f = bm.faces.new(back)
+            f.material_index = 2
+    x0, r0, _ = body_rings[0]                                    # the snout tip: a rounded cap on the upper jaw
+    tip = nv(bm, Vector((x0 + 0.006, 0.0, (r0[0].co.z + max(v.co.z for v in r0)) / 2)), top(x0), bot(x0), x0, zl, xl)
+    for k in range(len(r0) - 1):
+        bm.faces.new((r0[k + 1], r0[k], tip)).smooth = True
+    bm.faces.new((r0[0], r0[-1], tip)).material_index = 2
+    xe, re_, _ = body_rings[-1]                                  # the tail end
+    tail = bm.verts.new((xe - 0.004, 0.0, sum(v.co.z for v in re_) / len(re_)))
+    tail[zl], tail[xl] = 0.5, 0.0
+    for k in range(len(re_)):
+        bm.faces.new((re_[k], re_[(k + 1) % len(re_)], tail)).smooth = True
+    # jaw: lower arcs with a flat floor; its tip cap
+    for ra, rb in zip(jaw_rings, jaw_rings[1:]):
+        n = len(ra)
+        for k in range(n - 1):
+            jb.faces.new((ra[k], ra[k + 1], rb[k + 1], rb[k])).smooth = True
+        f = jb.faces.new((ra[-1], ra[0], rb[0], rb[-1]))
+        f.material_index, f.smooth = 1, True
+    j0 = jaw_rings[0]
+    jt_ = jb.verts.new((j0[0].co.x + 0.008, 0.0, (j0[0].co.z + min(v.co.z for v in j0)) / 2))
+    jt_[jzl], jt_[jxl] = 0.2, 1.0
+    for k in range(len(j0) - 1):
+        jb.faces.new((j0[k], j0[k + 1], jt_)).smooth = True
+    jb.faces.new((j0[-1], j0[0], jt_)).material_index = 1
+    jl_ = jaw_rings[-1]                                          # the jaw's back end: dark
+    jb.faces.new(list(reversed(jl_))).material_index = 1
+    # teeth along both lips, set a little inside the edge
+    tb0, jt = bmesh.new(), bmesh.new()
+    up_pts, lo_pts = [], []
+    for x in [L / 2 - 0.014 - i * 0.0102 for i in range(14)]:
+        if x <= hx + 0.01:
+            break
+        up, lo, t, b = ring(x)
+        for e in (up[0], up[-1]):                                # just inside the lip, on the palate and the floor
+            up_pts.append(Vector((e.x, e.y * 0.84, e.z - 0.0004)))
+            lo_pts.append(Vector((e.x + 0.005, e.y * 0.84, e.z + 0.0004)) - hinge)
+    teeth_row(tb0, up_pts, 0.0075, 0.0017, 0, down=True)
+    teeth_row(jt, lo_pts, 0.0085, 0.0017, 0, down=False)
+    return bm, jb, tb0, jt
+
+
+def crease_mouth(ob):
+    """Keep the lips sharp under subdivision so the closed jaw still meets the head along a clean line."""
+    me = ob.data
+    if "crease_edge" in me.attributes:
+        a = me.attributes["crease_edge"]
+    else:
+        a = me.attributes.new("crease_edge", "FLOAT", "EDGE")
+    mi = [p.material_index for p in me.polygons]
+    dark = ob.name.endswith("Jaw") and 1 or 2
+    edge_faces = {}
+    for p in me.polygons:
+        for ek in p.edge_keys:
+            edge_faces.setdefault(ek, []).append(p.index)
+    vals = []
+    for e in me.edges:
+        fs = edge_faces.get(e.key, [])
+        mats = {mi[i] == dark for i in fs}
+        vals.append(1.0 if len(mats) == 2 else 0.0)
+    a.data.foreach_set("value", vals)
+
+
+
 def make_musky(col, M, name="Musky"):
     """The musky: body (with eyes and upper teeth), fins, a hinged lower jaw with its teeth, a dark throat."""
     L = M_L
     top, bot, wid, u_of = musky_curves()
-    bm = bmesh.new()
-    ring_section(bm, L / 2, -L / 2, top, bot, wid, nr=90, na=40, power=2.1, xr=lambda x: 1.0 - u_of(x))
-    mouth_line = lambda x: bot(x) + 0.35 * (top(x) - bot(x))         # noqa: E731  (where the jaws meet)
-    for v in bm.verts:                                   # flatten the snout into a duck bill
-        u = u_of(v.co.x)
-        if u < 0.14:
-            k = (1.0 - u / 0.14) ** 1.5
-            v.co.z = mouth_line(v.co.x) + (v.co.z - mouth_line(v.co.x)) * (1.0 - 0.35 * k)
-            v.co.y *= 1.0 + 0.25 * k
-    hx0 = M_JAW_HINGE.x
-    for v in bm.verts:                                   # the lower jaw is its own object: the head ends at the palate
-        if v.co.x > hx0 - 0.03 and v.co.z < mouth_line(v.co.x):
-            k = min(1.0, (v.co.x - (hx0 - 0.03)) / 0.03)
-            v.co.z = v.co.z + (mouth_line(v.co.x) - 0.002 - v.co.z) * k
+    bm, jb, tb0, jt = musky_head_meshes(top, bot, wid, u_of)
     er = bm.verts.layers.float.new("eyer")
     ex = L / 2 - 0.105
-    ez = bot(ex) + 0.72 * (top(ex) - bot(ex))
+    ez = bot(ex) + 0.74 * (top(ex) - bot(ex))
     for s in (1, -1):
-        c = Vector((ex, s * wid(ex) * 0.72, ez))
+        c = Vector((ex, s * wid(ex) * 0.74, ez))
         faces = ellipsoid(bm, c, (0.0115, 0.006, 0.0105), subdiv=3, mat=1)
         axis = Vector((0.2, s * 1.0, 0.35)).normalized()
         for v in (v for f in faces for v in f.verts):
             v[er] = math.acos(max(-1.0, min(1.0, (v.co - c).normalized().dot(axis)))) / (math.pi / 2)
-    tb0 = bmesh.new()                                    # the upper teeth, just inside the edge of the upper jaw
-    pts = []
-    for s in (1, -1):
-        for i in range(14):
-            x = L / 2 - 0.012 - i * 0.0105
-            pts.append(Vector((x, s * wid(x) * 0.62, mouth_line(x) + 0.002)))
-    teeth_row(tb0, pts, 0.0085, 0.0018, 0, down=True)
-    me = fish_mesh(name, bm, [M.musky, M.eye])
+    me = fish_mesh(name, bm, [M.musky, M.eye, M.throat])
     body = bpy.data.objects.new(name, me)
     col.objects.link(body)
     upper_teeth = bpy.data.objects.new(name + "UpperTeeth", fish_mesh(name + "UpperTeeth", tb0, [M.teeth]))
@@ -2498,47 +2620,16 @@ def make_musky(col, M, name="Musky"):
         po.location = (xq, s * (wid(xq) - 0.008), bot(xq) + 0.016)
         po.rotation_euler = (s * math.radians(-10), math.radians(8), s * math.radians(-22))
         pects.append(po)
-    jb = bmesh.new()                                     # the lower jaw: long, flat, slightly projecting
-    hx = M_JAW_HINGE.x
-    jl = L / 2 + 0.008 - hx
-    mz = M_JAW_HINGE.z
-
-    def jtop(x):
-        return mouth_line(hx + x) - mz - 0.001
-
-    def jbot(x):
-        return bot(hx + x) - mz
-
-    def jwid(x):
-        return wid(hx + x) * 0.98 + 0.001
-    ring_section(jb, jl, -0.02, jtop, jbot, jwid, nr=24, na=24, power=2.3, xr=lambda x: 0.95)
-    for v in jb.verts:
-        v[jb.verts.layers.float["zrel"]] *= 0.4
-    tpts = []
-    for s in (1, -1):
-        for i in range(13):
-            x = jl - 0.012 - i * 0.0105
-            tpts.append(Vector((x, s * jwid(x) * 0.6, jtop(x) - 0.002)))
-    nj = len(jb.faces)
-    teeth_row(jb, tpts, 0.009, 0.0018, 0, down=False)
-    jaw = bpy.data.objects.new(name + "Jaw", fish_mesh(name + "Jaw", jb, [M.musky]))
+    jaw = bpy.data.objects.new(name + "Jaw", fish_mesh(name + "Jaw", jb, [M.musky, M.throat]))
     col.objects.link(jaw)
     jaw.parent = body
     jaw.location = M_JAW_HINGE
     jaw.rotation_mode = "XYZ"
-    jaw.data.materials.append(M.throat)
-    jaw.data.materials.append(M.teeth)
-    for i, p in enumerate(jaw.data.polygons):
-        p.use_smooth = True
-        if i >= nj:
-            p.material_index = 2
-        elif p.normal.z > 0.45:                          # the inside of the mouth
-            p.material_index = 1
-    tb = bmesh.new()                                     # the throat
-    ellipsoid(tb, (0.0, 0.0, 0.0), (0.08, 0.026, 0.016), subdiv=3, mat=0)
-    throat = finish(name + "Throat", tb, col, [M.throat])
+    lower_teeth = bpy.data.objects.new(name + "LowerTeeth", fish_mesh(name + "LowerTeeth", jt, [M.teeth]))
+    col.objects.link(lower_teeth)
+    lower_teeth.parent = jaw
+    throat = empty_object(name + "Throat", col, size=0.01)        # kept for key_gape (the mouth is built in)
     throat.parent = body
-    throat.location = (L / 2 - 0.12, 0.0, -0.016)
     root = empty_object(name + "Rig", col, size=0.3)
     root.rotation_mode = "QUATERNION"
     root.scale = (MUSKY_SCALE,) * 3
@@ -2550,7 +2641,11 @@ def make_musky(col, M, name="Musky"):
     sub = body.modifiers.new("Subdivision", "SUBSURF")
     sub.levels = 1
     sub.render_levels = 2
-    for ob in (body, fins, jaw, throat, upper_teeth, *pects):
+    for ob in (body, jaw):
+        crease_mouth(ob)
+    js = jaw.modifiers.new("Subdivision", "SUBSURF")
+    js.levels, js.render_levels = 1, 2
+    for ob in (body, fins, jaw, upper_teeth, lower_teeth, *pects):
         ob.visible_shadow = True
     return dict(root=root, body=body, fins=fins, jaw=jaw, throat=throat, pects=pects, beat=beat, L=M_L * MUSKY_SCALE)
 
