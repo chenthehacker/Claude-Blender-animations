@@ -1965,7 +1965,7 @@ def build_materials(atmos):
         col = mix_rgb(nt, foam, water, srgb(220, 232, 226))
         b = nt.nodes.new("ShaderNodeBsdfPrincipled")
         nt.links.new(col, b.inputs["Base Color"])
-        _feed(nt, b.inputs["Roughness"], map_range(nt, foam, 0.0, 1.0, 0.06, 0.5, smooth=False))
+        _feed(nt, b.inputs["Roughness"], map_range(nt, foam, 0.0, 1.0, 0.1, 0.5, smooth=False))
         b.inputs["IOR"].default_value = 1.333
         b.inputs["Specular IOR Level"].default_value = 0.6
         h = nmath(nt, "ADD", nmath(nt, "ADD", rip, nmath(nt, "MULTIPLY", rip2, 0.35)), nmath(nt, "MULTIPLY", foam, 0.4))
@@ -2901,7 +2901,8 @@ def line_object(name, col, M, start, end, radius=0.0007, sag=None, count=24):
 # --------------------------------------------------------------------------
 XS = Vector((-600.0, 0.0, 0.0))
 LS = Vector((600.0, 0.0, -10.0))
-LURE_Z = -4.3                         # the crankbait's running depth along the slope (illustrative)
+LURE_Z = -4.3                         # nominal running depth (cameras and helpers); the lures follow the bed
+LURE_H = 0.7                          # the crankbait runs this high over the slope (illustrative)
 HOOK_X0, HOOK_Y = 2.0, 0.6            # the hook: where the crankbait starts (x) and its line along the slope (y)
 TROLL_V = 1.0                         # trolling speed (m/s), illustrative
 STRIKE_H = WHIP_IN + 44               # the hit in the hook
@@ -3023,13 +3024,14 @@ def build_crank(col, M, name="Crank"):
     front = finish(name + "Front", fbm, col, [M.crank, M.crank_eye])
     front.parent = root
     bm = bmesh.new()                                          # the diving lip, angled down
-    lip = [(L * 0.5, -0.006), (L * 0.5 + 0.022, -0.014), (L * 0.5 + 0.028, -0.02), (L * 0.5 + 0.018, -0.024),
-           (L * 0.5 - 0.002, -0.012)]
-    plate(bm, lip, 0.0015, axis="Y")
-    for v in bm.verts:
-        v.co.y *= 1.0
+    lip = [(0.0, -0.008), (0.02, -0.0105), (0.026, -0.008), (0.0285, -0.003), (0.0285, 0.003), (0.026, 0.008),
+           (0.02, 0.0105), (0.0, 0.008)]                        # a wide, thin bill (outline in XY)
+    plate(bm, lip, 0.0012, axis="Z")
+    ca, sa = math.cos(math.radians(35.0)), math.sin(math.radians(35.0))
+    for v in bm.verts:                                        # pitched 35 degrees down from the chin
+        x, y, z = v.co
+        v.co = Vector((L * 0.5 - 0.002 + x * ca + z * sa, y, -0.004 - x * sa + z * ca))
     lipo = finish(name + "Lip", bm, col, [M.lip], recalc=True)
-    lipo.scale = (1.0, 6.0, 1.0)
     lipo.parent = root
     joint = empty_object(name + "Joint", col, size=0.01)
     joint.parent = root
@@ -3094,17 +3096,21 @@ def lure_over(f):
 def lure_hook(f):
     t = t_of(f) - t_of(WHIP_IN)
     stop_go = 0.25 * math.sin(t * 2 * math.pi * 0.7)          # worked stop and go: surges and pauses
-    return Vector((HOOK_X0 + TROLL_V * t + stop_go, HOOK_Y + 0.05 * math.sin(t * 1.7), LURE_Z + 0.06 * math.sin(t * 2.2)))
+    x, y = HOOK_X0 + TROLL_V * t + stop_go, HOOK_Y + 0.05 * math.sin(t * 1.7)
+    return Vector((x, y, lake_z(x, y) + LURE_H + 0.06 * math.sin(t * 2.2)))
 
 
 def trout_hook(f):
     """Holding low along the slope, a burst up into the crankbait, then a turn with it, shaking its head."""
     hit = lure_hook(STRIKE_H)
-    lurk = hit + Vector((-0.8, 0.5, -1.3))
+
+    def follow(g):          # shadowing the crankbait from below and behind, between it and the camera
+        t = t_of(g) - t_of(WHIP_IN)
+        x, y = HOOK_X0 + TROLL_V * t - 0.3, HOOK_Y - 0.7 + 0.05 * math.sin(t * 0.7)
+        return Vector((x, y, lake_z(x + 0.3, HOOK_Y) + LURE_H - 0.75 + 0.04 * math.sin(t * 1.1)))
+    lurk = follow(STRIKE_H - 10)
     if f <= STRIKE_H - 10:
-        t = t_of(f)
-        p = lurk + Vector((0.12 * math.sin(t * 0.9), 0.05 * math.sin(t * 0.7), 0.04 * math.sin(t * 1.1)))
-        return p, (hit - lurk).normalized().lerp(Vector((1, 0, 0)), 0.4).normalized()
+        return follow(f), Vector((1.0, 0.0, 0.08)).normalized()
     if f <= STRIKE_H:
         u = ease((f - (STRIKE_H - 10)) / 10.0)
         fwd = (hit - lurk).normalized()
@@ -3136,18 +3142,20 @@ def xs_trout(f):
 def lure_troll(f):
     t = t_of(f) - t_of(CUT2B)
     stop_go = 0.25 * math.sin(t * 2 * math.pi * 0.7)
-    return Vector((TROLL_X0 + TROLL_V * t + stop_go, TROLL_Y + 0.05 * math.sin(t * 1.5), LURE_Z + 0.05 * math.sin(t * 2.0)))
+    x, y = TROLL_X0 + TROLL_V * t + stop_go, TROLL_Y + 0.05 * math.sin(t * 1.5)
+    return Vector((x, y, lake_z(x, y) + LURE_H + 0.05 * math.sin(t * 2.0)))
 
 
 def lure_strike(f):
     t = t_of(f) - t_of(CUT3)
-    return Vector((STRIKE_X + TROLL_V * t, 0.2 + 0.05 * math.sin(t * 1.5), LURE_Z - 0.4 + 0.05 * math.sin(t * 2.0)))
+    x, y = STRIKE_X + TROLL_V * t, 0.2 + 0.05 * math.sin(t * 1.5)
+    return Vector((x, y, lake_z(x, y) + LURE_H + 0.05 * math.sin(t * 2.0)))
 
 
 def trout_strike(f):
     """Rising out of the depth along the slope into the crankbait, then turning down and away with it."""
     hit = lure_strike(STRIKE_S)
-    start = hit + Vector((-2.6, -1.8, -3.0))
+    start = hit + Vector((-2.6, -1.8, -2.0))
     if f <= STRIKE_S:
         u = ease(smoothstep(CUT3 - 2, STRIKE_S, f))
         fwd = (hit - start).normalized()
@@ -3558,9 +3566,9 @@ def build_overlays(hud, st):
     hud.serif("They hunt schools of baitfish.", CUT1 + 6, s1 - 9, lines=["They hunt schools", "*of baitfish.*"],
               src="HOOKED MAGAZINE · IN FISHERMAN")
     hud.serif("Big, rocky shorelines.", s1, CUT2 - 9, lines=["Big, rocky", "*shorelines.*"], src="HOOKED MAGAZINE")
-    hud.pin(lambda f: XS + Vector((0.0, -0.6, -2.0)), "baitfish school", CUT1 + 46, CUT2 - 12,
+    hud.pin(lambda f: XS + Vector((0.0, -0.6, -2.0)), "baitfish school", CUT1 + 30, s1 - 2,
             dot_color=srgb(200, 214, 220), side=0.06, y_band=(-0.22, 0.32))
-    hud.pin(lambda f: XS + Vector((0.0, 2.0, lake_z(0.0, 2.0) + 0.5)), "rocky shoreline", CUT1 + 50, CUT2 - 10,
+    hud.pin(lambda f: XS + Vector((0.0, 2.0, lake_z(0.0, 2.0) + 0.5)), "rocky shoreline", s1, CUT2 - 10,
             dot_color=srgb(200, 160, 110), side=-0.05, y_band=(-0.22, 0.32))
     hud.pin(lambda f: xs_trout(f)[0] + Vector((0.0, -0.1, 0.18)), "giant rainbow", s1 + 4, CUT2 - 10,
             dot_color=GOLD, side=-0.06, rise=0.09, y_band=(-0.24, 0.32))
@@ -3590,7 +3598,9 @@ def build_overlays(hud, st):
 
     def rod_pt(f):
         sc.frame_set(f)
-        return st["rod"]["ctrl"]["Mid"].matrix_world.translation.copy()
+        c = {k: st["rod"]["ctrl"][k].matrix_world.translation.copy() for k in ("Butt", "Mid", "Tip")}
+        u = 0.3                                   # a point on the bent blank (Mid is the Bezier control, off the curve)
+        return c["Butt"] * (1 - u) ** 2 + c["Mid"] * (2 * u * (1 - u)) + c["Tip"] * (u * u)
 
     def spool_pt(f):
         sc.frame_set(f)
@@ -3956,6 +3966,18 @@ def run_checks(frames, st):
             upd("lure studio", (p - LS).length - 0.2, f)
     for k, v in worst.items():
         print(f"closest {k}: {round(v[0], 3)} m at frame {v[1]} (negative = inside)")
+    # the subjects themselves: lures and fish must clear the lake bed and the boulders
+    subj = [("hook lure", lure_hook, WHIP_IN, STRIKE_H + 1, 0.05), ("hook trout", lambda f: trout_hook(f)[0], WHIP_IN, CUT1, 0.18),
+            ("troll lure", lure_troll, CUT2B, CUT3, 0.05), ("strike lure", lure_strike, CUT3, STRIKE_S + 1, 0.05),
+            ("strike trout", lambda f: trout_strike(f)[0], CUT3, CUT3B, 0.18)]
+    for name, fn, lo, hi, rad in subj:
+        if name == "hook trout":
+            xg = min(((bvh_of(st["xs_solid"]).find_nearest(xs_trout(f)[0])[3] or 1e9) - 0.18, f) for f in range(CUT1, CUT2))
+            print(f"cross section trout: clearance to the cut and its boulders {round(xg[0], 3)} m at frame {xg[1]}")
+        bed_gap = min((fn(f).z - lake_z(fn(f).x, fn(f).y) - rad, f) for f in range(lo, hi))
+        rock_gap = min(((rb.find_nearest(fn(f))[3] or 1e9) - rad, f) for f in range(lo, hi))
+        print(f"{name}: lake bed clearance {round(bed_gap[0], 3)} m at frame {bed_gap[1]}, "
+              f"rocks {round(rock_gap[0], 3)} m at frame {rock_gap[1]} (negative = inside)")
     acc, turn = (0.0, 0), (0.0, 0)
     whips = set(range(1, WHIP_IN + 7)) | set(range(CUT4 - 4, CUT4 + 8)) | set(range(CUT1 + 8, CUT1 + 47))
     for f in range(3, FRAME_END):
@@ -4073,6 +4095,8 @@ def build_xs(col, M):
         r = rng.uniform(0.25, 0.6) if rng.random() < 0.8 else rng.uniform(0.7, 1.2)
         if x + r > -0.2:
             continue
+        if math.hypot(x + 0.9, y + 2.4) < r + 0.75:       # keep the cross section's trout clear of boulders
+            continue
         spots.append((x, y, r))
     rocks = build_rocks(col, M, [(XS.x + x, y, r) for x, y, r in spots], 28, "XSRocks", ground=lambda x, y: lake_z(0.0, y))
     return dict(top=top, face=face, rocks=rocks)
@@ -4141,10 +4165,22 @@ def build_scene():
         nk += 1
     kd.balance()
 
+    kl = KDTree(3 * FRAME_END)                         # and out of the lures' and fish's paths
+    for f in range(WHIP_IN, CUT1):
+        kl.insert(lure_hook(f), f)
+        kl.insert(trout_hook(f)[0], f)
+    for f in range(CUT2B, CUT3):
+        kl.insert(lure_troll(f), f)
+    for f in range(CUT3, CUT3B):
+        kl.insert(lure_strike(f), f)
+        kl.insert(trout_strike(f)[0], f)
+    kl.balance()
+
     def clear_of_camera(x, y, r=1.6):
         c = Vector((x, y, lake_z(x, y)))
         _co, _i, dist = kd.find(c)
-        return dist is None or dist > r + 1.2
+        _co, _i, dl = kl.find(c + Vector((0.0, 0.0, r * 0.2)))
+        return (dist is None or dist > r + 1.2) and (dl is None or dl > r + 0.45)
     spots = rock_spots((-8.0, 72.0), (-8.0, 12.0), 1500, 11, keep=clear_of_camera)
     rocks = build_rocks(c_lake, M, spots, 13, "Boulders")
     cisco_ob = bpy.data.objects.new("CiscoFish", cisco_mesh(M))
@@ -4205,7 +4241,7 @@ def build_scene():
         key(studio["pivot"], "rotation_euler", f)
         studio["cb"]["joint"].rotation_euler = (0.0, 0.0, 0.25 * math.sin(t_of(f) * 2.0))
         key(studio["cb"]["joint"], "rotation_euler", f)
-    silt_s = drift_silt(LS + Vector((0.0, -0.3, 0.05)), (0.5, 0.3, 0.3), 260, 4, CUT2, CUT2B).build("StudioSilt", c_ls, M.silt)
+    silt_s = drift_silt(LS + Vector((0.0, 0.3, 0.05)), (0.6, 0.25, 0.3), 260, 4, CUT2, CUT2B).build("StudioSilt", c_ls, M.silt)
     st = dict(boat=boat, rod=rod, rocks=[rocks], xs_solid=[xsd["top"], xsd["face"], xsd["rocks"]], studio=studio)
     frames, fstop = camera_frames(st)
     build_camera(c_cam, frames, fstop)
