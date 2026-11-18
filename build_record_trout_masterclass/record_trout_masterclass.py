@@ -3599,7 +3599,7 @@ def build_overlays(hud, st):
     def rod_pt(f):
         sc.frame_set(f)
         c = {k: st["rod"]["ctrl"][k].matrix_world.translation.copy() for k in ("Butt", "Mid", "Tip")}
-        u = 0.3                                   # a point on the bent blank (Mid is the Bezier control, off the curve)
+        u = 0.6                                   # a point on the bent blank (Mid is the Bezier control, off the curve)
         return c["Butt"] * (1 - u) ** 2 + c["Mid"] * (2 * u * (1 - u)) + c["Tip"] * (u * u)
 
     def spool_pt(f):

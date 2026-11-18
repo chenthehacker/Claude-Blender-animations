@@ -51,7 +51,7 @@
    "They hunt schools of baitfish."
   ],
   [
-   305,
+   290,
    "pin",
    "baitfish school"
   ],
@@ -59,6 +59,11 @@
    351,
    "caption",
    "Big, rocky shorelines."
+  ],
+  [
+   355,
+   "pin",
+   "rocky shoreline"
   ],
   [
    359,
@@ -96,6 +101,11 @@
    "fluorocarbon leader"
   ],
   [
+   633,
+   "pin",
+   "braided line"
+  ],
+  [
    690,
    "badge",
    "STEADY PRESSURE"
@@ -114,6 +124,11 @@
    754,
    "caption",
    "Keep the rod bent and steady."
+  ],
+  [
+   756,
+   "pin",
+   "drag giving line"
   ],
   [
    756,
