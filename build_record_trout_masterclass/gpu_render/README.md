@@ -71,16 +71,16 @@ full resolution, 32 samples, motion blur and depth of field on, two processes in
 per process while another frame renders alongside), took:
 
     frame   1: 137.6 s     (the trolled line over the lake from above, the loop join)
-    frame 240: 232.6 s     (the cross section: the trout side on along the rocky slope)
+    frame 240: 240.8 s     (the cross section: the trout side on along the rocky slope)
     frame 480:  85.9 s     (the crankbait on its turntable)
-    frame 720: 268.4 s     (the strike, low along the slope)
+    frame 720: 305.7 s     (the strike, low along the slope)
     frame 790:  64.8 s     (the rod bent over the side, the drag giving line)
     frame 987: 138.0 s     (the trolled line over the lake from above, the loop join)
 
-    sum 927.3 s / 6 frames = 154.55 s per frame per process (two processes running)
-    two processes finish 2 frames every 154.55 s: 154.55 / 2 = 77.27 s per frame
-    77.27 s x 987 frames = 76,270 s = about 21.2 hours with two processes
-    one process alone (two give about 1.7 times the throughput here): 21.2 h x 1.7 = about 36.0 hours
+    sum 972.8 s / 6 frames = 162.13 s per frame per process (two processes running)
+    two processes finish 2 frames every 162.13 s: 162.13 / 2 = 81.07 s per frame
+    81.07 s x 987 frames = 80,013 s = about 22.2 hours with two processes
+    one process alone (two give about 1.7 times the throughput here): 22.2 h x 1.7 = about 37.8 hours
 
 Six frames are a small sample (the hook strike and the troll shot were not among them), so the real total could
 differ. Either way it is far over the 10 hour limit, so the full quality render runs on your GPU instead. How long
