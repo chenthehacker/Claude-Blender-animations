@@ -2046,7 +2046,7 @@ def build_materials(atmos):
         band = map_range(nt, nmath(nt, "ADD", z, nmath(nt, "MULTIPLY", n1, 0.08)), 0.42, 0.5)
         band = nmath(nt, "MULTIPLY", band, map_range(nt, nmath(nt, "ADD", z, nmath(nt, "MULTIPLY", n1, 0.08)), 0.66, 0.58))
         base = mix_rgb(nt, nmath(nt, "MULTIPLY", band, 0.5), base, srgb(214, 92, 108))
-        spots = map_range(nt, voronoi(nt, vmath(nt, "MULTIPLY", p, (1.0, 1.5, 1.0)), 85.0), 0.13, 0.06)
+        spots = map_range(nt, voronoi(nt, vmath(nt, "MULTIPLY", p, (1.0, 1.5, 1.0)), 42.0), 0.2, 0.12)
         spots = nmath(nt, "MULTIPLY", spots, map_range(nt, z, 0.5, 0.7))
         col = mix_rgb(nt, nmath(nt, "MULTIPLY", spots, 0.9), base, srgb(12, 14, 12))
         silver = nmath(nt, "MULTIPLY", map_range(nt, z, 0.12, 0.3), map_range(nt, z, 0.75, 0.6))
@@ -2434,12 +2434,15 @@ def trout_curves():
 
     def u_of(x):
         return (L / 2 - x) / L
-    top_u = pchip([(0.0, 0.012), (0.04, 0.03), (0.09, 0.062), (0.16, 0.105), (0.26, 0.145), (0.38, 0.17), (0.5, 0.17),
-                   (0.62, 0.155), (0.74, 0.12), (0.86, 0.08), (0.95, 0.06), (1.0, 0.055)])
-    bot_u = pchip([(0.0, -0.012), (0.04, -0.032), (0.09, -0.06), (0.16, -0.095), (0.26, -0.13), (0.38, -0.155),
-                   (0.5, -0.158), (0.62, -0.14), (0.74, -0.1), (0.86, -0.065), (0.95, -0.05), (1.0, -0.046)])
-    wid_u = pchip([(0.0, 0.014), (0.04, 0.03), (0.09, 0.05), (0.16, 0.072), (0.26, 0.09), (0.38, 0.105), (0.5, 0.106),
-                   (0.62, 0.095), (0.75, 0.07), (0.9, 0.04), (1.0, 0.03)])
+    # a short, rounded head (no pointed snout), a deep record girth, and a laterally flattened tail stalk that
+    # runs into the tail fin
+    top_u = pchip([(0.0, 0.022), (0.02, 0.042), (0.05, 0.068), (0.1, 0.098), (0.17, 0.127), (0.26, 0.152), (0.38, 0.17),
+                   (0.5, 0.168), (0.62, 0.15), (0.74, 0.112), (0.85, 0.07), (0.93, 0.048), (1.0, 0.038)])
+    bot_u = pchip([(0.0, -0.016), (0.02, -0.036), (0.05, -0.06), (0.1, -0.088), (0.17, -0.112), (0.26, -0.134),
+                   (0.38, -0.155), (0.5, -0.157), (0.62, -0.138), (0.74, -0.096), (0.85, -0.058), (0.93, -0.041),
+                   (1.0, -0.032)])
+    wid_u = pchip([(0.0, 0.02), (0.02, 0.036), (0.05, 0.054), (0.1, 0.07), (0.17, 0.083), (0.26, 0.095), (0.38, 0.105),
+                   (0.5, 0.105), (0.62, 0.092), (0.75, 0.062), (0.86, 0.032), (0.94, 0.014), (1.0, 0.005)])
     return (lambda x: top_u(u_of(x))), (lambda x: bot_u(u_of(x))), (lambda x: wid_u(u_of(x))), u_of
 
 
@@ -2589,8 +2592,8 @@ def trout_head_meshes(top, bot, wid, u_of, nr=96, nu=26, nl=18, power=2.1):
         for e in (up[0], up[-1]):                                # just inside the lip, on the palate and the floor
             up_pts.append(Vector((e.x, e.y * 0.84, e.z - 0.0004)))
             lo_pts.append(Vector((e.x + 0.005, e.y * 0.84, e.z + 0.0004)) - hinge)
-    teeth_row(tb0, up_pts, 0.004, 0.0012, 0, down=True)
-    teeth_row(jt, lo_pts, 0.0045, 0.0012, 0, down=False)
+    teeth_row(tb0, up_pts, 0.0022, 0.0008, 0, down=True)
+    teeth_row(jt, lo_pts, 0.0025, 0.0008, 0, down=False)
     return bm, jb, tb0, jt
 
 
